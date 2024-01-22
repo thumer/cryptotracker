@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoTracker", "src\CryptoTracker\CryptoTracker\CryptoTracker.csproj", "{3F1AADFA-7DBE-4C78-BDE8-DAF7BC851194}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoTracker.Client", "src\CryptoTracker\CryptoTracker.Client\CryptoTracker.Client.csproj", "{3178B75F-AE76-4EFA-AADA-20CAEB8A27BA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3F1AADFA-7DBE-4C78-BDE8-DAF7BC851194}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F1AADFA-7DBE-4C78-BDE8-DAF7BC851194}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F1AADFA-7DBE-4C78-BDE8-DAF7BC851194}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F1AADFA-7DBE-4C78-BDE8-DAF7BC851194}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3178B75F-AE76-4EFA-AADA-20CAEB8A27BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3178B75F-AE76-4EFA-AADA-20CAEB8A27BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3178B75F-AE76-4EFA-AADA-20CAEB8A27BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3178B75F-AE76-4EFA-AADA-20CAEB8A27BA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BD4BDA01-3DBD-424D-919E-70B636415A0F}
+	EndGlobalSection
+EndGlobal
