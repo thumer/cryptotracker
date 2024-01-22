@@ -1,0 +1,18 @@
+﻿@page "/import"
+@rendermode InteractiveAuto
+@inject HttpClient HttpClient
+
+<PageTitle>Import</PageTitle>
+
+<h1>Import</h1>
+
+<InputFile @key=@(InputFileId) OnChange="@HandleFileSelected" />
+
+<button class="btn btn-primary" @onclick="UploadDocument">Importieren</button>
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert">
+        @ErrorMessage
+    </div>
+}

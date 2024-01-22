@@ -1,0 +1,36 @@
+﻿@page "/"
+@rendermode InteractiveAuto
+
+<PageTitle>Überblick</PageTitle>
+
+<h1>Überblick</h1>
+
+@if (IsLoading)
+{
+    <div class="w-100 h-100">
+        <DxLoadingPanel CssClass="w-100"
+                        Visible="true" />
+    </div>
+}
+else
+{
+    <DxGrid Data="Cryptos"
+            PageSize="50"
+            KeyFieldName="Name"
+            ValidationEnabled="false"
+            EditMode="GridEditMode.EditRow"
+            EditorRenderMode="GridEditorRenderMode.Integrated"
+            KeyboardNavigationEnabled="true">
+        <Columns>
+            <DxGridDataColumn FieldName="Name" Width="200" />
+        </Columns>
+    </DxGrid>
+}
+
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert" style="margin-top:20px">
+        @ErrorMessage
+    </div>
+}

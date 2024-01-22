@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CryptoTracker.Entities
+﻿namespace CryptoTracker.Entities
 {
     public class FiatTransaction
     {
@@ -16,8 +10,8 @@ namespace CryptoTracker.Entities
         public string Wallet { get; set; }
         public double Quantity { get; set; }
         public double Fee { get; set; }
-        public string TransactionId { get; set; }
-        public string Comment { get; set; }
+        public string? TransactionId { get; set; }
+        public string? Comment { get; set; }
     }
 
 }
