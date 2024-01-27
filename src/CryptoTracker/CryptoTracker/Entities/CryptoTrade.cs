@@ -1,24 +1,53 @@
 ﻿namespace CryptoTracker.Entities
 {
+    public enum TradeType
+    {
+        Buy,
+        Sell
+    }
 
     public class CryptoTrade
     {
         public int Id { get; set; }
+        public string Wallet { get; set; }
         public DateTime DateTime { get; set; }
-        public string CoinSymbolFrom { get; set; }
-        public string CoinSymbolTo { get; set; }
 
         /// <summary>
-        /// Anzahl im Ziel Coin
+        /// Welcher Coin wurde gekauft/verkauft
+        /// </summary>
+        public string Symbol { get; set; }
+
+        /// <summary>
+        /// Mit welchen Coin wurde bezahlt / Betrag erhalten.
+        /// </summary>
+        public string OpositeSymbol { get; set; }
+
+        public TradeType TradeType { get; set; }
+
+        /// <summary>
+        /// Preis ausgehend von Symbol (1 {Symbol} kostet x  {OpositeSymbol})
         /// </summary>
         public double Price { get; set; }
-
         /// <summary>
-        /// Anzahl im Ziel Coin; Anzahl vor Gebühr
+        /// Anzahl vor Gebührabzug
         /// </summary>
         public double Quantity { get; set; }
-        public string Wallet { get; set; }
+
+        public double QuantityAfterFee => Quantity - Fee;
+
+        /// <summary>
+        /// In Anzahl in der Währungseinheit
+        /// </summary>
         public double Fee { get; set; }
+        public double ForeignFee {  get; set; }
+        public string ForeignFeeSymbol {  get; set; }
         public string? Comment { get; set; }
+
+        public int OppositeTradeId { get; set; }
+
+        /// <summary>
+        /// Gegenüberliegende Trade.
+        /// </summary>
+        public CryptoTrade OppositeTransaction { get; set; }
     }
 }

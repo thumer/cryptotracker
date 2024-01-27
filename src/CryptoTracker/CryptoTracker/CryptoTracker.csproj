@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CryptoTracker.Client\CryptoTracker.Client.csproj" />
+    <PackageReference Include="CsvHelper" Version="30.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.1" />
   </ItemGroup>

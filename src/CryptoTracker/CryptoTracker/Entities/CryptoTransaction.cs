@@ -1,25 +1,38 @@
 ﻿namespace CryptoTracker.Entities
 {
+    public enum TransactionType
+    {
+        Send,
+        Receive
+    }
+
     public class CryptoTransaction
     {
         public int Id { get; set; }
+        public string SourceWallet { get; set; }
+        public string TargetWallet { get; set; }
         public DateTime DateTime { get; set; }
-        public string TransactionType { get; set; }
+        public TransactionType TransactionType { get; set; }
+        public string Symbol { get; set; }
         /// <summary>
-        /// Wenn TransactionType: Send => Zielwallet / bei Receive => Quellwallet
-        /// </summary>
-        public string Wallet { get; set; }
-        public string CoinSymbol { get; set; }
-        /// <summary>
-        /// Anzahl nach Gebührabzug
+        /// Anzahl vor Gebührabzug
         /// </summary>
         public double Quantity { get; set; }
+
+        public double QuantityAfterFee => Quantity - Fee;
 
         /// <summary>
         /// In Coin als Währung (nur bei Send) / Bei Receive ist Fee immer 0
         /// </summary>
         public double Fee { get; set; }
         public string? TransactionId { get; set; }
+
+        public Guid? OppositeTransactionId { get; set; }
+
+        /// <summary>
+        /// Falls es eine zusammengehörige Transaction gibt, dann haben diese die gleiche Guid.
+        /// </summary>
+        public CryptoTransaction? OppositeTransaction { get; set; }
 
         /// <summary>
         /// Wenn TransactionType: Send => Zieladresse / bei Receive => Quelladresse
