@@ -27,7 +27,7 @@
         public double Fee { get; set; }
         public string? TransactionId { get; set; }
 
-        public Guid? OppositeTransactionId { get; set; }
+        public int? OppositeTransactionId { get; set; }
 
         /// <summary>
         /// Falls es eine zusammengehörige Transaction gibt, dann haben diese die gleiche Guid.

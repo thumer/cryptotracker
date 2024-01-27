@@ -48,6 +48,6 @@
         /// <summary>
         /// Gegenüberliegende Trade.
         /// </summary>
-        public CryptoTrade OppositeTransaction { get; set; }
+        public CryptoTrade OppositeTrade { get; set; }
     }
 }
