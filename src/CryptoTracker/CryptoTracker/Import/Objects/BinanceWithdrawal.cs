@@ -7,7 +7,7 @@ namespace CryptoTracker.Import.Objects
     // Date(UTC); Coin;Network;Amount;TransactionFee;Address;TXID;Comment
     // 01.02.2018 19:46;BTC;;0,026;0,001;33tRpdnG68JKadrzPbTD9VingnekiasKsQ;62ee20deb7742fa4c0a66b1e2bf84d5bd72a43d38f8d98a9ae02ecdc67899d1d;an okx.com
 
-    public class BinanceWithdrawal
+    public class BinanceWithdrawal : ICryptoCsvEntry
     {
         [Name("Date(UTC)")]
         public DateTime Date { get; set; }

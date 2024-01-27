@@ -9,7 +9,7 @@ namespace CryptoTracker.Import.Objects
     // "2013-04-17 15:35:15";Kauf;BTC;QW3A9T;;61.00;"BTC / EUR";1.00000000;61.00;EUR;0.99000000;60.69;EUR;0.99000000;0.99000000;"Erster BTC Kauf"
     // "2013-04-17 20:55:35";Auszahlung;BTC;a0545e842dd311d998cc4797be7502f573e3d1a6cb5c6cf0a8713e64e28be63a;196pDut3qJFHY8qPRVagUjtmggCkZBBwBt;;;;;;;;;-0.99000000;0.00000000;PC Wallet
 
-    public class BitcoinDeTransaction
+    public class BitcoinDeTransaction : ICryptoCsvEntry
     {
         public DateTime Datum { get; set; }
 

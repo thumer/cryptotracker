@@ -11,7 +11,7 @@ namespace CryptoTracker.Import.Objects
     // Tf99fd4b9-97d2-4665-80f3-db45e6dfceab,2022-01-29T16:21:30+01:00,buy,outgoing,100.00,EUR,0.04245838,ETH,2355.25,EUR,Cryptocurrency,5,-,-,-,-,0.00
     // C2ca8a52b-3672-4ced-954f-ad2929be66f9,2022-03-21T18:56:17+01:00,withdrawal,outgoing,0,EUR,0.38188785,ETH,0.00,-,Cryptocurrency,5,0.00297774,ETH,-,-,-,0x8be99316f151a4cf393e46371020e5079d7f6d91,Juicyfields
 
-    public class BitpandaTransaction
+    public class BitpandaTransaction : ICryptoCsvEntry
     {
         /// <summary>
         /// Interne TransactionId

@@ -1,4 +1,5 @@
 ﻿@page "/import"
+@using CryptoTracker.Shared
 @rendermode InteractiveAuto
 @inject HttpClient HttpClient
 
@@ -6,9 +7,24 @@
 
 <h1>Import</h1>
 
-<InputFile @key=@(InputFileId) OnChange="@HandleFileSelected" />
+@foreach (ImportDocumentType documentType in Enum.GetValues(typeof(ImportDocumentType)))
+{
+    <h5>@documentType.GetDisplayName()</h5>
 
-<button class="btn btn-primary" @onclick="UploadDocument">Importieren</button>
+    <div class="row">
+        <div class="col-md-6">
+            <InputFile @key="InputFileIdDictionary[documentType]" OnChange="@(e => HandleFileSelected(documentType, e))" />
+        </div>
+
+        <div class="col-md-4">
+            <DxTextBox @bind-Text="@WalletNameDictionary[documentType]" NullText="Wallet Name" />
+        </div>
+
+        <div class="col-md-4">
+            <button class="btn btn-primary" @onclick="(() => UploadDocument(documentType))">Importieren</button>
+        </div>
+    </div>
+}
 
 @if (ErrorMessage != null)
 {

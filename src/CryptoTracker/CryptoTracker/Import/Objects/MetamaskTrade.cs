@@ -7,7 +7,7 @@ namespace CryptoTracker.Import.Objects
     // Date(UTC);Pair;Side;Price;Executed;Amount;Fee;Tradingplatform
     // 02.07.2021;BabyDo-ETH;BUY;1,0142E-12 ETH;1,8E+11 BabyDo;0,17 ETH;2E+11 BabyDo;pancakeswap.finance
 
-    public class MetamaskTrade
+    public class MetamaskTrade : ICryptoCsvEntry
     {
         [Name("Date(UTC)")]
         public DateTime Date { get; set; }

@@ -8,7 +8,7 @@ namespace CryptoTracker.Import.Objects
     // Datum;Typ;Coin;Network;Amount;TransactionFee;Kommentar
     // 02.07.2021 20:38;Eingang;ETH;BSC;0,209932;0,000068;von binance.com
 
-    public class MetamaskTransaction
+    public class MetamaskTransaction : ICryptoCsvEntry
     {
         /// <summary>
         /// Datum in ISO 8601 und CET

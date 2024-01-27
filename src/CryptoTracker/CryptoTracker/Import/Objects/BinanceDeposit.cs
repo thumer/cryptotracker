@@ -7,7 +7,7 @@ namespace CryptoTracker.Import.Objects
     // Date(UTC); Coin;Network;Amount;TransactionFee;Address;TXID;Comment
     // 29.12.2017 21:10;BTC;BTC;0,57127657;0;1AyrgWt9nVoET4vgADmDUnVordkqgAwSLo;ec030407f019f959b664226a0dd145829850c3d9f6baa73fcd25634f848d1391;von bitcoin.de
     
-    public class BinanceDeposit
+    public class BinanceDeposit : ICryptoCsvEntry
     {
         [Name("Date(UTC)")]
         public DateTime Date { get; set; }

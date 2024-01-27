@@ -7,7 +7,7 @@ namespace CryptoTracker.Import.Objects
     // "Date(UTC)","Pair","Side","Price","Executed","Amount","Fee"
     // "2024-01-22 19:37:27","ETHUSDT","SELL","2329.15","0.1374ETH","320.02521USDT","0.32002521USDT"
 
-    public class BinanceTrade
+    public class BinanceTrade : ICryptoCsvEntry
     {
         [Name("Date(UTC)")]
         public DateTime Date { get; set; }

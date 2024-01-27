@@ -1,37 +1,43 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
+﻿using CryptoTracker.Shared;
+using Microsoft.AspNetCore.Components.Forms;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
+using System.Xml.Linq;
 
 namespace CryptoTracker.Client.Pages
 {
     public partial class Import
     {
         private const int MAX_REQUEST_SIZE = 1024 * 1024 * 100; //100MB
-        private IBrowserFile _selectedFile;
+        private IDictionary<ImportDocumentType, IBrowserFile> _selectedFiles = new Dictionary<ImportDocumentType, IBrowserFile>();
 
         private string? ErrorMessage { get; set; }
-        private Guid InputFileId { get; set; } = Guid.NewGuid();
+        private Dictionary<ImportDocumentType, string> WalletNameDictionary = Enum.GetValues(typeof(ImportDocumentType)).OfType<ImportDocumentType>().ToDictionary(t => t, t => string.Empty);
+        private Dictionary<ImportDocumentType, Guid> InputFileIdDictionary = Enum.GetValues(typeof(ImportDocumentType)).OfType<ImportDocumentType>().ToDictionary(t => t, t => Guid.NewGuid());
 
-        private async Task HandleFileSelected(InputFileChangeEventArgs e)
+        private async Task HandleFileSelected(ImportDocumentType documentType, InputFileChangeEventArgs e)
         {
-            _selectedFile = e.File;
+            _selectedFiles[documentType] = e.File;
         }
 
-        private async Task UploadDocument()
+        private async Task UploadDocument(ImportDocumentType documentType)
         {
-            if (_selectedFile != null)
+            if (_selectedFiles.TryGetValue(documentType, out var selectedFile) && selectedFile != null)
             {
+                WalletNameDictionary.TryGetValue(documentType, out var walletName);
+
                 using var content = new MultipartFormDataContent();
-                using var fileContent = new StreamContent(_selectedFile.OpenReadStream(MAX_REQUEST_SIZE));
+                using var fileContent = new StreamContent(selectedFile.OpenReadStream(MAX_REQUEST_SIZE));
 
                 fileContent.Headers.ContentType =
-                    new MediaTypeHeaderValue(_selectedFile.ContentType);
+                    new MediaTypeHeaderValue(selectedFile.ContentType);
 
                 content.Add(
                     content: fileContent,
                     name: "\"file\"",
-                    fileName: _selectedFile.Name);
-                //content.Add(JsonContent.Create(new UpdateIndexRequest() { ContainerName = SelectedDocumentContainer, FileName = file.Name, Tags = Tags.ToArray() }), "request");
+                    fileName: selectedFile.Name);
+                content.Add(JsonContent.Create(new ImportFileRequest() { Type = documentType, WalletName = walletName }), "request");
 
                 var response = await HttpClient.PostAsync($"api/DataImport/ImportFile", content);
 
@@ -41,7 +47,7 @@ namespace CryptoTracker.Client.Pages
                     return;
                 }
 
-                InputFileId = Guid.NewGuid();
+                InputFileIdDictionary[documentType] = Guid.NewGuid();
             }
         }
     }
