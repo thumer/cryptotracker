@@ -56,6 +56,7 @@ namespace CryptoTracker.Client.Pages
                 }
 
                 InputFileIdDictionary[documentType] = Guid.NewGuid();
+                WalletNameDictionary[documentType] = string.Empty;
             }
         }
     }
