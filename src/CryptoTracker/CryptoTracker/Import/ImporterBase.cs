@@ -20,6 +20,7 @@ namespace CryptoTracker.Import
             using var stream = openStreamFunc();
             using TextReader reader = new StreamReader(stream);
             using CsvReader csvReader = new CsvReader(reader, CreateCsvConfiguration());
+            OnCsvReaderCreated(csvReader);
             var records = csvReader.GetRecords<T>();
             await OnImport(args, records);
         }
@@ -27,6 +28,9 @@ namespace CryptoTracker.Import
         protected virtual CsvConfiguration CreateCsvConfiguration() 
         {
             return new CsvConfiguration(CultureInfo.InvariantCulture);
+        }
+        protected virtual void OnCsvReaderCreated(CsvReader reader)
+        {
         }
 
         protected abstract Task OnImport(ImportArgs args, IEnumerable<T> records);
