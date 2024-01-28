@@ -19,6 +19,14 @@ namespace CryptoTracker.Client.Pages
         private async Task HandleFileSelected(ImportDocumentType documentType, InputFileChangeEventArgs e)
         {
             _selectedFiles[documentType] = e.File;
+
+            int indexOfHashtag = e.File.Name.IndexOf('#');
+            if (indexOfHashtag >= 0)
+            {
+                int indexOfLastDot = e.File.Name.LastIndexOf('.');
+                string walletName = e.File.Name.Substring(indexOfHashtag + 1, (e.File.Name.Length - (indexOfHashtag + 1)) - (e.File.Name.Length - indexOfLastDot));
+                WalletNameDictionary[documentType] = walletName;
+            }
         }
 
         private async Task UploadDocument(ImportDocumentType documentType)
