@@ -19,7 +19,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Preis die ausbezahlt wurden. Entspricht Preis nach Fee Abzug.
         /// </summary>
-        public double Amount {  get; set; }
+        public decimal Amount {  get; set; }
         
         /// <summary>
         /// Zieladresse

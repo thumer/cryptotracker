@@ -20,14 +20,14 @@
         /// <summary>
         /// Anzahl vor Gebührabzug
         /// </summary>
-        public double Quantity { get; set; }
+        public decimal Quantity { get; set; }
 
-        public double QuantityAfterFee => Quantity - Fee;
+        public decimal QuantityAfterFee => Quantity - Fee;
 
         /// <summary>
         /// In Coin als Währung (nur bei Send) / Bei Receive ist Fee immer 0
         /// </summary>
-        public double Fee { get; set; }
+        public decimal Fee { get; set; }
 
         public int? OppositeTransactionId { get; set; }
 

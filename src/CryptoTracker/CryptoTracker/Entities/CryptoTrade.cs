@@ -27,19 +27,19 @@
         /// <summary>
         /// Preis ausgehend von Symbol (1 {Symbol} kostet x  {OpositeSymbol})
         /// </summary>
-        public double Price { get; set; }
+        public decimal Price { get; set; }
         /// <summary>
         /// Anzahl vor Gebührabzug
         /// </summary>
-        public double Quantity { get; set; }
+        public decimal Quantity { get; set; }
 
-        public double QuantityAfterFee => Quantity - Fee;
+        public decimal QuantityAfterFee => Quantity - Fee;
 
         /// <summary>
         /// In Anzahl in der Währungseinheit
         /// </summary>
-        public double Fee { get; set; }
-        public double ForeignFee {  get; set; }
+        public decimal Fee { get; set; }
+        public decimal ForeignFee {  get; set; }
         public string ForeignFeeSymbol {  get; set; }
         public string? Comment { get; set; }
 

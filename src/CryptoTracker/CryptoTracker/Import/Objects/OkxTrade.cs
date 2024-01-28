@@ -25,7 +25,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Preis ausgehend von PrimarySymbol (1 {PrimarySymbol} kostet x {SecondardSymbol})
         /// </summary>
-        public double Price {  get; set; }
+        public decimal Price {  get; set; }
 
         /// <summary>
         /// Anzahl an {PrimarySymbol} die gekauft/verkauft wurden.

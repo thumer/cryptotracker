@@ -29,10 +29,10 @@ namespace CryptoTracker.Import
         {
             foreach (var record in records)
             {
-                (double executed, string symbol1) = ParseNumberAndCurrency(record.Executed);
+                (decimal executed, string symbol1) = ParseNumberAndCurrency(record.Executed);
                 var symbol2 = record.Pair.Substring(symbol1.Length);
-                (double amount, string amountSymbol) = ParseNumberAndCurrency(record.Amount);
-                (double fee, string feeSymbol) = ParseNumberAndCurrency(record.Fee);
+                (decimal amount, string amountSymbol) = ParseNumberAndCurrency(record.Amount);
+                (decimal fee, string feeSymbol) = ParseNumberAndCurrency(record.Fee);
                 TradeType tradeType = record.Side == "BUY" ? TradeType.Buy : TradeType.Sell;
 
                 var sellTrade = new CryptoTrade
@@ -71,14 +71,14 @@ namespace CryptoTracker.Import
             await DbContext.SaveChangesAsync();
         }
 
-        private static (double Number, string Currency) ParseNumberAndCurrency(string input)
+        private static (decimal Number, string Currency) ParseNumberAndCurrency(string input)
         {
             Match numberMatch = Regex.Match(input, @"[\d\.]+");
             Match currencyMatch = Regex.Match(input, @"[^\d\.]+");
 
             if (numberMatch.Success && currencyMatch.Success)
             {
-                if (double.TryParse(numberMatch.Value, new CultureInfo("en-US"), out double number))
+                if (decimal.TryParse(numberMatch.Value, new CultureInfo("en-US"), out decimal number))
                 {
                     string currency = currencyMatch.Value.Trim();
                     return (number, currency);
