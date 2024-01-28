@@ -28,6 +28,30 @@ namespace CryptoTracker
                 .HasForeignKey<CryptoTrade>(c => c.OppositeTradeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<CryptoTrade>()
+                .Property(c => c.Price)
+                .HasColumnType("decimal(27, 12)"); // Beispiel: 18 Gesamtanzahl Ziffern, 8 Dezimalstellen
+
+            modelBuilder.Entity<CryptoTrade>()
+                .Property(c => c.Quantity)
+                .HasColumnType("decimal(27, 12)");
+
+            modelBuilder.Entity<CryptoTrade>()
+                .Property(c => c.Fee)
+                .HasColumnType("decimal(27, 12)");
+
+            modelBuilder.Entity<CryptoTrade>()
+                .Property(c => c.ForeignFee)
+                .HasColumnType("decimal(27, 12)");
+
+            modelBuilder.Entity<CryptoTransaction>()
+                .Property(c => c.Quantity)
+                .HasColumnType("decimal(27, 12)");
+
+            modelBuilder.Entity<CryptoTransaction>()
+                .Property(c => c.Fee)
+                .HasColumnType("decimal(27, 12)");
+
             base.OnModelCreating(modelBuilder);
         }
     }
