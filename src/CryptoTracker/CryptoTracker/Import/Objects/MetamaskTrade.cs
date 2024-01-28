@@ -25,7 +25,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Preis ausgehend von PrimarySymbol (1 {PrimarySymbol} kostet x {SecondardSymbol})
         /// </summary>
-        public decimal Price {  get; set; }
+        public string Price {  get; set; }
 
         /// <summary>
         /// Anzahl an {PrimarySymbol} die gekauft/verkauft wurden.
@@ -47,6 +47,6 @@ namespace CryptoTracker.Import.Objects
         /// </summary>
         public string Fee { get; set; }
 
-        public string TradingPlatform { get; set; }
+        public string Tradingplatform { get; set; }
     }
 }
