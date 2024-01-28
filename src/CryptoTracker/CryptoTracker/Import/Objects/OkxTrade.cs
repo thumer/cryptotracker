@@ -24,13 +24,13 @@ namespace CryptoTracker.Import.Objects
 
         /// <summary>
         /// Preis ausgehend von PrimarySymbol (1 {PrimarySymbol} kostet x {SecondardSymbol})
+        /// Nach der Zahl steht das Währungssymbol. z.B. "0.1374ETH"
         /// </summary>
-        public decimal Price {  get; set; }
+        public string Price {  get; set; }
 
         /// <summary>
         /// Anzahl an {PrimarySymbol} die gekauft/verkauft wurden.
-        /// Nach der Zahl steht das Währungssymbol. z.B. "0.1374ETH"
         /// </summary>
-        public string Executed { get; set; }
+        public decimal Executed { get; set; }
     }
 }
