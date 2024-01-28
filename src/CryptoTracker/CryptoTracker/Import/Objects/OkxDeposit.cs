@@ -10,7 +10,7 @@ namespace CryptoTracker.Import.Objects
     public class OkxDeposit : ICryptoCsvEntry
     {
         [Name("Date(UTC)")]
-        public DateTime Date { get; set; }
+        public DateTimeOffset Date { get; set; }
 
         public string Coin {  get; set; }
 

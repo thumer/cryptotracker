@@ -13,7 +13,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Datum in ISO 8601 und CET
         /// </summary>
-        public DateTime Datum { get; set; }
+        public DateTimeOffset Datum { get; set; }
 
         /// <summary>
         /// Eingang, Ausgang
