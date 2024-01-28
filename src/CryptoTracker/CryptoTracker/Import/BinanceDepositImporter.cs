@@ -1,4 +1,5 @@
-﻿using CryptoTracker.Import.Objects;
+﻿using CryptoTracker.Entities;
+using CryptoTracker.Import.Objects;
 using CsvHelper.Configuration;
 
 namespace CryptoTracker.Import
@@ -16,7 +17,7 @@ namespace CryptoTracker.Import
                         Delimiter = ";",
                     };
 
-        protected override void OnImport(IEnumerable<BinanceDeposit> records)
+        protected override async Task OnImport(ImportArgs args, IEnumerable<BinanceDeposit> records)
         {
         }
     }

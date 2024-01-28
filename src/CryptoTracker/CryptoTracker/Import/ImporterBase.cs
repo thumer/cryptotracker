@@ -15,13 +15,13 @@ namespace CryptoTracker.Import
 
         protected CryptoTrackerDbContext DbContext { get; }
 
-        public void Import(Func<Stream> openStreamFunc)
+        public async Task Import(ImportArgs args, Func<Stream> openStreamFunc)
         {
             using var stream = openStreamFunc();
             using TextReader reader = new StreamReader(stream);
             using CsvReader csvReader = new CsvReader(reader, CreateCsvConfiguration());
             var records = csvReader.GetRecords<T>();
-            OnImport(records);
+            await OnImport(args, records);
         }
 
         protected virtual CsvConfiguration CreateCsvConfiguration() 
@@ -29,6 +29,6 @@ namespace CryptoTracker.Import
             return new CsvConfiguration(CultureInfo.InvariantCulture);
         }
 
-        protected abstract void OnImport(IEnumerable<T> records);
+        protected abstract Task OnImport(ImportArgs args, IEnumerable<T> records);
     }
 }

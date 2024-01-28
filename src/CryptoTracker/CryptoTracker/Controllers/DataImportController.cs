@@ -29,7 +29,7 @@ namespace CryptoTracker.Controllers
                 throw new ArgumentNullException(nameof(file));
 
             var importer = GetImporter(request.Type);
-            importer.Import(file.OpenReadStream);
+            await importer.Import(new ImportArgs() { Wallet = request.WalletName }, file.OpenReadStream);
 
             return Ok("CryptoTrade erfolgreich importiert");
         }

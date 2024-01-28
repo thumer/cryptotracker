@@ -11,7 +11,7 @@ namespace CryptoTracker.Import
         {
         }
 
-        protected override void OnImport(IEnumerable<MetamaskTrade> records)
+        protected override async Task OnImport(ImportArgs args, IEnumerable<MetamaskTrade> records)
         {
             throw new NotImplementedException();
         }

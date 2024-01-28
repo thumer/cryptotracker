@@ -11,7 +11,7 @@ namespace CryptoTracker.Import
         {
         }
 
-        protected override void OnImport(IEnumerable<OkxDeposit> records)
+        protected override async Task OnImport(ImportArgs args, IEnumerable<OkxDeposit> records)
         {
             throw new NotImplementedException();
         }

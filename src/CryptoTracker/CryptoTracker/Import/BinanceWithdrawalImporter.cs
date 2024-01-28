@@ -11,7 +11,7 @@ namespace CryptoTracker.Import
         {
         }
 
-        protected override void OnImport(IEnumerable<BinanceWithdrawal> records)
+        protected override async Task OnImport(ImportArgs args, IEnumerable<BinanceWithdrawal> records)
         {
             throw new NotImplementedException();
         }

@@ -9,8 +9,11 @@
     public class CryptoTransaction
     {
         public int Id { get; set; }
-        public string SourceWallet { get; set; }
-        public string TargetWallet { get; set; }
+
+        /// <summary>
+        /// Wenn TransactionType: Receive => Zielwallet / bei Send => Quellwallet
+        /// </summary>
+        public string Wallet { get; set; }
         public DateTime DateTime { get; set; }
         public TransactionType TransactionType { get; set; }
         public string Symbol { get; set; }
@@ -25,7 +28,6 @@
         /// In Coin als Währung (nur bei Send) / Bei Receive ist Fee immer 0
         /// </summary>
         public double Fee { get; set; }
-        public string? TransactionId { get; set; }
 
         public int? OppositeTransactionId { get; set; }
 
@@ -34,6 +36,7 @@
         /// </summary>
         public CryptoTransaction? OppositeTransaction { get; set; }
 
+        public string? TransactionId { get; set; }
         /// <summary>
         /// Wenn TransactionType: Send => Zieladresse / bei Receive => Quelladresse
         /// </summary>
