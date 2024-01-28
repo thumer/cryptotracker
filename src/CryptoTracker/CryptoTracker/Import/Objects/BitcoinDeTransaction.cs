@@ -37,7 +37,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Kurs in EUR (z.B. 61 EUR pro BTC)
         /// </summary>
-        public double Kurs { get; set; }
+        public double? Kurs { get; set; }
 
         /// <summary>
         /// z.B. BTC / EUR
@@ -49,13 +49,13 @@ namespace CryptoTracker.Import.Objects
         /// z.B. Anzahl an BTC/ETH vor Gebührenabzug. z.B. 1.000
         /// </summary>
         [Name("Crypto vor Gebühr")]
-        public double CryptoVorGebuehr { get; set; }
+        public double? CryptoVorGebuehr { get; set; }
 
         /// <summary>
         /// z.B. Anzahl der Gegenwährung (z.B. EUR) vor Gebührenabzug z.B. 61€
         /// </summary>
         [Name("Menge vor Gebühr")]
-        public double MengeVorGebuehr { get; set; }
+        public double? MengeVorGebuehr { get; set; }
 
         /// <summary>
         /// z.B. EUR
@@ -67,13 +67,13 @@ namespace CryptoTracker.Import.Objects
         /// z.B. Anzahl an BTC/ETH nach Gebührenabzug. z.B. 1.000
         /// </summary>
         [Name("Crypto nach Bitcoin.de-Gebühr")]
-        public double CryptoNachGebuehr { get; set; }
+        public double? CryptoNachGebuehr { get; set; }
 
         /// <summary>
         /// z.B. Anzahl der Gegenwährung (z.B. EUR) nach Gebührenabzug z.B. 61€
         /// </summary>
         [Name("Menge nach Bitcoin.de-Gebühr")]
-        public double MengeNachGebuehr { get; set; }
+        public double? MengeNachGebuehr { get; set; }
 
         /// <summary>
         /// z.B. EUR
