@@ -43,11 +43,11 @@
         public string ForeignFeeSymbol {  get; set; }
         public string? Comment { get; set; }
 
-        public int OppositeTradeId { get; set; }
+        public int? OppositeTradeId { get; set; }
 
         /// <summary>
         /// Gegenüberliegende Trade.
         /// </summary>
-        public CryptoTrade OppositeTrade { get; set; }
+        public CryptoTrade? OppositeTrade { get; set; }
     }
 }

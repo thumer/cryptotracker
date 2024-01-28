@@ -27,6 +27,7 @@ namespace CryptoTracker.Import
 
         protected override async Task OnImport(ImportArgs args, IEnumerable<MetamaskTrade> records)
         {
+            var trades = new List<(CryptoTrade sellTrade, CryptoTrade buyTrade)>();
             foreach (var record in records)
             {
                 var splittedPair = record.Pair.Split('-');
@@ -75,10 +76,17 @@ namespace CryptoTracker.Import
                     buyTrade.Quantity += fee;
                 }
 
-                sellTrade.OppositeTrade = buyTrade;
-                buyTrade.OppositeTrade = sellTrade;
                 DbContext.Add(sellTrade);
                 DbContext.Add(buyTrade);
+                trades.Add((sellTrade, buyTrade));
+            }
+
+            await DbContext.SaveChangesAsync();
+
+            foreach (var pair in trades)
+            {
+                pair.sellTrade.OppositeTrade = pair.buyTrade;
+                pair.buyTrade.OppositeTrade = pair.sellTrade;
             }
 
             await DbContext.SaveChangesAsync();

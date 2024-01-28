@@ -27,6 +27,7 @@ namespace CryptoTracker.Import
 
         protected override async Task OnImport(ImportArgs args, IEnumerable<OkxTrade> records)
         {
+            var trades = new List<(CryptoTrade sellTrade, CryptoTrade buyTrade)>();
             foreach (var record in records)
             {
                 (decimal price, string symbol2) = ParseNumberAndCurrency(record.Price); 
@@ -60,10 +61,17 @@ namespace CryptoTracker.Import
                     ForeignFeeSymbol = string.Empty,
                 };
 
-                sellTrade.OppositeTrade = buyTrade;
-                buyTrade.OppositeTrade = sellTrade;
                 DbContext.Add(sellTrade);
                 DbContext.Add(buyTrade);
+                trades.Add((sellTrade, buyTrade));
+            }
+
+            await DbContext.SaveChangesAsync();
+
+            foreach (var pair in trades)
+            {
+                pair.sellTrade.OppositeTrade = pair.buyTrade;
+                pair.buyTrade.OppositeTrade = pair.sellTrade;
             }
 
             await DbContext.SaveChangesAsync();

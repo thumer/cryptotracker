@@ -54,6 +54,7 @@ namespace CryptoTracker.Import
 
         protected override async Task OnImport(ImportArgs args, IEnumerable<BitpandaTransaction> records)
         {
+            var trades = new List<(CryptoTrade sellTrade, CryptoTrade buyTrade)>();
             foreach (var record in records)
             {
                 if (record.AssetClass == "Cryptocurrency" && (record.TransactionType == "buy" || record.TransactionType == "sell"))
@@ -85,10 +86,9 @@ namespace CryptoTracker.Import
                         ForeignFeeSymbol = string.Empty,
                     };
 
-                    sellTrade.OppositeTrade = buyTrade;
-                    buyTrade.OppositeTrade = sellTrade;
                     DbContext.Add(sellTrade);
                     DbContext.Add(buyTrade);
+                    trades.Add((sellTrade, buyTrade));
                 }
                 else if (record.AssetClass == "Cryptocurrency" && (record.TransactionType == "deposit" || record.TransactionType == "withdrawal"))
                 {
@@ -106,6 +106,14 @@ namespace CryptoTracker.Import
                     };
                     DbContext.Add(transaction);
                 }
+            }
+
+            await DbContext.SaveChangesAsync();
+
+            foreach (var pair in trades)
+            {
+                pair.sellTrade.OppositeTrade = pair.buyTrade;
+                pair.buyTrade.OppositeTrade = pair.sellTrade;
             }
 
             await DbContext.SaveChangesAsync();

@@ -11,7 +11,7 @@ namespace CryptoTracker.Import
 {
     public class BinanceTradeImporter : ImporterBase<BinanceTrade>
     {
-        public BinanceTradeImporter(CryptoTrackerDbContext dbContext) 
+        public BinanceTradeImporter(CryptoTrackerDbContext dbContext)
             : base(dbContext)
         {
         }
@@ -27,6 +27,7 @@ namespace CryptoTracker.Import
 
         protected override async Task OnImport(ImportArgs args, IEnumerable<BinanceTrade> records)
         {
+            var trades = new List<(CryptoTrade sellTrade, CryptoTrade buyTrade)>();
             foreach (var record in records)
             {
                 (decimal executed, string symbol1) = ParseNumberAndCurrency(record.Executed);
@@ -62,10 +63,18 @@ namespace CryptoTracker.Import
                     ForeignFeeSymbol = string.Empty,
                 };
 
-                sellTrade.OppositeTrade = buyTrade;
-                buyTrade.OppositeTrade = sellTrade;
+                trades.Add((sellTrade, buyTrade));
+
                 DbContext.Add(sellTrade);
                 DbContext.Add(buyTrade);
+            }
+
+            await DbContext.SaveChangesAsync();
+
+            foreach (var pair in trades)
+            {
+                pair.sellTrade.OppositeTrade = pair.buyTrade;
+                pair.buyTrade.OppositeTrade = pair.sellTrade;
             }
 
             await DbContext.SaveChangesAsync();
