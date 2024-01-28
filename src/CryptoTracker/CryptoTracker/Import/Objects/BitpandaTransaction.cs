@@ -40,7 +40,7 @@ namespace CryptoTracker.Import.Objects
         /// Betrag in Fiat für Kauf oder Verkauf aber auch den aktuellen Wert bei Crypto Aus-/Einzahlung.
         /// </summary>
         [Name("Amount Fiat")]
-        public decimal AmountFiat { get; set; }
+        public decimal? AmountFiat { get; set; }
 
         /// <summary>
         /// Symbol der Fiat Währung
@@ -51,7 +51,7 @@ namespace CryptoTracker.Import.Objects
         /// Menge an Cryptos vor Gebührenabzug bei Transaktion
         /// </summary>
         [Name("Amount Asset")]
-        public decimal AmountAsset { get; set; }
+        public decimal? AmountAsset { get; set; }
 
         /// <summary>
         /// Symbol der Asset Währung
@@ -62,7 +62,7 @@ namespace CryptoTracker.Import.Objects
         /// Aktuelle Preis der Cryptowährung in der {AssetMarketPriceCurrency} Währung (in der Regel Fiat Währung).
         /// </summary>
         [Name("Asset market price")]
-        public decimal AssetMarketPrice { get; set; }
+        public decimal? AssetMarketPrice { get; set; }
 
         [Name("Asset market price currency")]
         public string AssetMarketPriceCurrency { get; set; }
@@ -79,18 +79,18 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Gebühr bei einer withdrawal Transaktion in der {FeeAsset} Währung.
         /// </summary>
-        public decimal Fee { get; set; }
+        public decimal? Fee { get; set; }
 
         [Name("Fee asset")]
-        public decimal FeeAsset { get; set; }
+        public decimal? FeeAsset { get; set; }
 
-        public decimal Spread { get; set; }
+        public decimal? Spread { get; set; }
 
         [Name("Spread Currency")]
-        public decimal SpreadCurrency { get; set; }
+        public decimal? SpreadCurrency { get; set; }
 
         [Name("Tax Fiat")]
-        public decimal TaxFiat { get; set; }
+        public decimal? TaxFiat { get; set; }
 
         /// <summary>
         /// Ziel- oder Quell-Hash Addresse bei einer Cryptotransaktion
