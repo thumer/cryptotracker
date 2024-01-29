@@ -1,5 +1,4 @@
-﻿using CryptoTracker.Import;
-using CryptoTracker.Services;
+﻿using CryptoTracker.Services;
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -28,24 +27,15 @@ namespace CryptoTracker.Controllers
             if (file == null)
                 throw new ArgumentNullException(nameof(file));
 
-            var importer = GetImporter(request.Type);
-            await importer.Import(new ImportArgs() { Wallet = request.WalletName }, file.OpenReadStream);
-
+            await _dataImportService.Import(request.Type, request.WalletName, file.OpenReadStream);
             return Ok("CryptoTrade erfolgreich importiert");
         }
 
-        private IImporter GetImporter(ImportDocumentType type)
-            => type switch
-            {
-                ImportDocumentType.BinanceDepositHistory => new BinanceDepositImporter(_dbContext),
-                ImportDocumentType.BinanceTradingHistory => new BinanceTradeImporter(_dbContext),
-                ImportDocumentType.BinanceWithdrawalHistory => new BinanceWithdrawalImporter(_dbContext),
-                ImportDocumentType.BitcoinDeTransactions => new BitcoinDeTransactionImporter(_dbContext),
-                ImportDocumentType.BitpandaTransaction => new BitpandaTransactionImporter(_dbContext),
-                ImportDocumentType.MetamaskTradingHistory => new MetamaskTradeImporter(_dbContext),
-                ImportDocumentType.MetamaskTransactions => new MetamaskTransactionImporter(_dbContext),
-                ImportDocumentType.OkxDepositHistory => new OkxDepositImporter(_dbContext),
-                ImportDocumentType.OkxTradingHistory => new OkxTradeImporter(_dbContext)
-            };
+        [HttpPost("[action]")]
+        public async Task<IActionResult> ProcessTransactionPairs()
+        {
+            await _dataImportService.ProcessTransactionPairs();
+            return Ok("Transaktionen wurden erfolgreich zusammengeführt");
+        }
     }
 }

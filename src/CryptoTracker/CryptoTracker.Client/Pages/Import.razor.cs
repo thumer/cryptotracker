@@ -59,5 +59,18 @@ namespace CryptoTracker.Client.Pages
                 WalletNameDictionary[documentType] = string.Empty;
             }
         }
+
+        private async Task ProcessTransactionPairs()
+        {
+            using var content = new MultipartFormDataContent();
+
+            var response = await HttpClient.PostAsync($"api/DataImport/ProcessTransactionPairs", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ErrorMessage = "Fehler beim Hochladen der Dokumente: " + response.Content.ReadAsStringAsync().Result;
+                return;
+            }
+        }
     }
 }
