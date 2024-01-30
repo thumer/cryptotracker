@@ -71,6 +71,7 @@ namespace CryptoTracker.Import
                         Fee = 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
+                        Referenz = record.TransactionId,
                     };
                     var buyTrade = new CryptoTrade
                     {
@@ -84,6 +85,7 @@ namespace CryptoTracker.Import
                         Fee = 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
+                        Referenz = record.TransactionId,
                     };
 
                     DbContext.Add(sellTrade);

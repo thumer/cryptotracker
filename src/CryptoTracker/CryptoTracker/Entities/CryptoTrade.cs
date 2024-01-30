@@ -1,73 +1,79 @@
-﻿namespace CryptoTracker.Entities
+﻿using CryptoTracker.Shared;
+
+namespace CryptoTracker.Entities;
+
+public enum TradeType
 {
-    public enum TradeType
+    Buy,
+    Sell
+}
+
+public class CryptoTrade : IFlow
+{
+    public int Id { get; set; }
+    public string Wallet { get; set; }
+    public DateTime DateTime { get; set; }
+
+    /// <summary>
+    /// Welcher Coin wurde gekauft/verkauft
+    /// </summary>
+    public string Symbol { get; set; }
+
+    /// <summary>
+    /// Mit welchen Coin wurde bezahlt / Betrag erhalten.
+    /// </summary>
+    public string OpositeSymbol { get; set; }
+
+    public TradeType TradeType { get; set; }
+
+    /// <summary>
+    /// Preis ausgehend von Symbol (1 {Symbol} kostet x  {OpositeSymbol})
+    /// </summary>
+    public decimal Price { get; set; }
+    /// <summary>
+    /// Anzahl vor Gebührabzug
+    /// </summary>
+    public decimal Quantity { get; set; }
+
+    public decimal QuantityAfterFee => Quantity - Fee;
+
+    /// <summary>
+    /// In Anzahl in der Währungseinheit
+    /// </summary>
+    public decimal Fee { get; set; }
+    public decimal ForeignFee {  get; set; }
+    public string ForeignFeeSymbol {  get; set; }
+
+    /// <summary>
+    /// Externe Referenz - z.B. TransactionId bei Kauf Fiat->Crypto
+    /// </summary>
+    public string? Referenz {  get; set; }
+    public string? Comment { get; set; }
+
+    public int? OppositeTradeId { get; set; }
+
+    /// <summary>
+    /// Gegenüberliegende Trade.
+    /// </summary>
+    public CryptoTrade? OppositeTrade { get; set; }
+
+    FlowDirection IFlow.FlowDirection => TradeType switch
     {
-        Buy,
-        Sell
-    }
+        TradeType.Buy => FlowDirection.Inflow,
+        TradeType.Sell => FlowDirection.Outflow,
+        _ => throw new NotSupportedException()
+    };
 
-    public class CryptoTrade : IFlow
+    decimal IFlow.FlowAmount => TradeType switch
     {
-        public int Id { get; set; }
-        public string Wallet { get; set; }
-        public DateTime DateTime { get; set; }
+        TradeType.Buy => QuantityAfterFee,
+        TradeType.Sell => Quantity,
+        _ => throw new NotSupportedException()
+    };
 
-        /// <summary>
-        /// Welcher Coin wurde gekauft/verkauft
-        /// </summary>
-        public string Symbol { get; set; }
+    string IFlow.SourceWallet => Wallet;
 
-        /// <summary>
-        /// Mit welchen Coin wurde bezahlt / Betrag erhalten.
-        /// </summary>
-        public string OpositeSymbol { get; set; }
+    string IFlow.TargetWallet => Wallet;
 
-        public TradeType TradeType { get; set; }
-
-        /// <summary>
-        /// Preis ausgehend von Symbol (1 {Symbol} kostet x  {OpositeSymbol})
-        /// </summary>
-        public decimal Price { get; set; }
-        /// <summary>
-        /// Anzahl vor Gebührabzug
-        /// </summary>
-        public decimal Quantity { get; set; }
-
-        public decimal QuantityAfterFee => Quantity - Fee;
-
-        /// <summary>
-        /// In Anzahl in der Währungseinheit
-        /// </summary>
-        public decimal Fee { get; set; }
-        public decimal ForeignFee {  get; set; }
-        public string ForeignFeeSymbol {  get; set; }
-        public string? Comment { get; set; }
-
-        public int? OppositeTradeId { get; set; }
-
-        /// <summary>
-        /// Gegenüberliegende Trade.
-        /// </summary>
-        public CryptoTrade? OppositeTrade { get; set; }
-
-        FlowDirection IFlow.FlowDirection => TradeType switch
-        {
-            TradeType.Buy => FlowDirection.Inflow,
-            TradeType.Sell => FlowDirection.Outflow,
-            _ => throw new NotSupportedException()
-        };
-
-        decimal IFlow.FlowAmount => TradeType switch
-        {
-            TradeType.Buy => QuantityAfterFee,
-            TradeType.Sell => Quantity,
-            _ => throw new NotSupportedException()
-        };
-
-        string IFlow.SourceWallet => Wallet;
-
-        string IFlow.TargetWallet => Wallet;
-
-        FlowType IFlow.FlowType => FlowType.Trade;
-    }
+    FlowType IFlow.FlowType => FlowType.Trade;
 }

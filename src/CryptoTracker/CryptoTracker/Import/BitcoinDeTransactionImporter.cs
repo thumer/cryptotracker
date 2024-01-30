@@ -37,6 +37,7 @@ namespace CryptoTracker.Import
                         Fee = record.Typ == "Kauf" ? record.MengeVorGebuehr!.Value - record.MengeNachGebuehr!.Value : 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
+                        Referenz = record.Referenz,
                     };
                     var buyTrade = new CryptoTrade
                     {
@@ -50,6 +51,7 @@ namespace CryptoTracker.Import
                         Fee = record.Typ == "Verkauf" ? record.MengeVorGebuehr!.Value - record.MengeNachGebuehr!.Value : 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
+                        Referenz = record.Referenz,
                     };
                     DbContext.Add(sellTrade);
                     DbContext.Add(buyTrade);
