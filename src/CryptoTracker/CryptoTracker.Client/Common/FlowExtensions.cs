@@ -4,7 +4,7 @@ namespace CryptoTracker.Common;
 
 public static class FlowExtensions
 {
-    public static IFlow Clone(this IFlow flow)
+    public static FlowDTO CloneToDTO(this IFlow flow)
         => new FlowDTO(
             flow.FlowType,
             flow.DateTime,

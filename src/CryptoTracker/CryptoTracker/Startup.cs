@@ -39,6 +39,8 @@ namespace CryptoTracker
             });
 
             services.AddScoped<DataImportService>();
+            services.AddScoped<WalletService>();
+            services.AddScoped<FlowService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

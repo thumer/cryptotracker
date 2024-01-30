@@ -10,12 +10,10 @@ namespace CryptoTracker.Controllers
     public class DataImportController : ControllerBase
     {
         private readonly DataImportService _dataImportService;
-        private readonly CryptoTrackerDbContext _dbContext;
 
-        public DataImportController(DataImportService dataImportService, CryptoTrackerDbContext dbContext)
+        public DataImportController(DataImportService dataImportService)
         {
             _dataImportService = dataImportService;
-            _dbContext = dbContext;
         }
 
         [HttpPost("[action]")]
