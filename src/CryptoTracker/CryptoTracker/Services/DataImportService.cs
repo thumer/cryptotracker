@@ -36,7 +36,9 @@ namespace CryptoTracker.Services
                 if (oppositeTransaction != null)
                 {
                     transaction.OppositeTransaction = oppositeTransaction;
+                    transaction.OppositeWallet = oppositeTransaction.Wallet;
                     oppositeTransaction.OppositeTransaction = transaction;
+                    oppositeTransaction.OppositeWallet = transaction.Wallet;
                 }
             }
 
@@ -54,7 +56,8 @@ namespace CryptoTracker.Services
                 ImportDocumentType.MetamaskTradingHistory => new MetamaskTradeImporter(_dbContext),
                 ImportDocumentType.MetamaskTransactions => new MetamaskTransactionImporter(_dbContext),
                 ImportDocumentType.OkxDepositHistory => new OkxDepositImporter(_dbContext),
-                ImportDocumentType.OkxTradingHistory => new OkxTradeImporter(_dbContext)
+                ImportDocumentType.OkxTradingHistory => new OkxTradeImporter(_dbContext),
+                _ => throw new NotSupportedException()
             };
     }
 }

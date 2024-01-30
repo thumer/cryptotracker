@@ -6,7 +6,7 @@
         Sell
     }
 
-    public class CryptoTrade
+    public class CryptoTrade : IFlow
     {
         public int Id { get; set; }
         public string Wallet { get; set; }
@@ -49,5 +49,25 @@
         /// Gegenüberliegende Trade.
         /// </summary>
         public CryptoTrade? OppositeTrade { get; set; }
+
+        FlowDirection IFlow.FlowDirection => TradeType switch
+        {
+            TradeType.Buy => FlowDirection.Inflow,
+            TradeType.Sell => FlowDirection.Outflow,
+            _ => throw new NotSupportedException()
+        };
+
+        decimal IFlow.FlowAmount => TradeType switch
+        {
+            TradeType.Buy => QuantityAfterFee,
+            TradeType.Sell => Quantity,
+            _ => throw new NotSupportedException()
+        };
+
+        string IFlow.SourceWallet => Wallet;
+
+        string IFlow.TargetWallet => Wallet;
+
+        FlowType IFlow.FlowType => FlowType.Trade;
     }
 }

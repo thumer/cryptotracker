@@ -6,7 +6,7 @@
         Receive
     }
 
-    public class CryptoTransaction
+    public class CryptoTransaction : IFlow
     {
         public int Id { get; set; }
 
@@ -36,6 +36,11 @@
         /// </summary>
         public CryptoTransaction? OppositeTransaction { get; set; }
 
+        /// <summary>
+        /// OppositeTransaction.Wallet (ist zwar redundant - vereinfacht jedoch die Abfragen).
+        /// </summary>
+        public string? OppositeWallet { get; set; }
+
         public string? TransactionId { get; set; }
         /// <summary>
         /// Wenn TransactionType: Send => Zieladresse / bei Receive => Quelladresse
@@ -43,5 +48,35 @@
         public string? Address { get; set; }
         public string? Network { get; set; }
         public string? Comment { get; set; }
+
+        FlowDirection IFlow.FlowDirection => TransactionType switch
+        {
+            TransactionType.Receive => FlowDirection.Inflow,
+            TransactionType.Send => FlowDirection.Outflow,
+            _ => throw new NotSupportedException()
+        };
+
+        decimal IFlow.FlowAmount => TransactionType switch
+        {
+            TransactionType.Receive => QuantityAfterFee,
+            TransactionType.Send => Quantity,
+            _ => throw new NotSupportedException()
+        };
+
+        string? IFlow.SourceWallet => TransactionType switch
+        {
+            TransactionType.Receive => OppositeWallet,
+            TransactionType.Send => Wallet,
+            _ => throw new NotSupportedException()
+        };
+
+        string? IFlow.TargetWallet => TransactionType switch
+        {
+            TransactionType.Receive => Wallet,
+            TransactionType.Send => OppositeWallet,
+            _ => throw new NotSupportedException()
+        };
+
+        FlowType IFlow.FlowType => FlowType.Transaction;
     }
 }
