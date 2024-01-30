@@ -47,7 +47,7 @@ namespace CryptoTracker.Import
                         OpositeSymbol = record.Typ == "Kauf" ? record.EinheitMengeVorGebuehr : record.Waehrung,
                         TradeType = TradeType.Buy,
                         Price = record.Typ == "Verkauf" ? 1 / record.Kurs!.Value : record.Kurs!.Value,
-                        Quantity = record.Typ == "Kauf" ? 1 / record.CryptoVorGebuehr!.Value : record.MengeVorGebuehr!.Value,
+                        Quantity = record.Typ == "Kauf" ? record.CryptoVorGebuehr!.Value : record.MengeVorGebuehr!.Value,
                         Fee = record.Typ == "Verkauf" ? record.MengeVorGebuehr!.Value - record.MengeNachGebuehr!.Value : 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
