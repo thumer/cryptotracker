@@ -31,11 +31,6 @@ public class FlowService
                 bilanz += f.FlowAmount;
             else
                 bilanz -= f.FlowAmount;
-
-            if (f is CryptoTrade trade)
-                bilanz -= trade.Fee;
-            if (f is CryptoTransaction transaction)
-                bilanz -= transaction.Fee;
         }
         return bilanz;
     }
