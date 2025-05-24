@@ -9,14 +9,17 @@ main {
 }
 
 .sidebar {
-    background-color: #ffffff;
-    border-right: 1px solid #e1e4e8;
+    background-color: #343a40;
+    border-right: 1px solid #495057;
+    color: white;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
 }
 
 .top-row {
-    background-color: #ffffff;
-    border-bottom: 1px solid #e1e4e8;
-    justify-content: flex-end;
+    background-color: #343a40;
+    border-bottom: 1px solid #495057;
+    justify-content: center;
+    color: white;
     height: 3.5rem;
     display: flex;
     align-items: center;
@@ -26,7 +29,7 @@ main {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 2rem;
     font-weight: bold;
-    margin-right: auto;
+    margin-right: 0;
 }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
@@ -46,7 +49,7 @@ main {
 
 @media (max-width: 640.98px) {
     .top-row {
-        justify-content: space-between;
+        justify-content: center;
     }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
