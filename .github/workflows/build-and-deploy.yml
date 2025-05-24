@@ -50,8 +50,19 @@ jobs:
 
       - name: Install sqlcmd tooling
         run: |
+          # 1. Add Microsoft’s GPG key
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
+            | sudo apt-key add -
+
+          # 2. Register the MSSQL Tools repo for Ubuntu 24.04 (noble)
+          curl -sSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list \
+            | sudo tee /etc/apt/sources.list.d/mssql-release.list
+
+          # 3. Update and install
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+
+          # 4. Make sqlcmd globally available
           sudo ln -s /opt/mssql-tools/bin/sqlcmd /usr/local/bin/sqlcmd
 
 
