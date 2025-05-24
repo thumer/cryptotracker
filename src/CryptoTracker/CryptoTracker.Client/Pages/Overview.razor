@@ -9,32 +9,69 @@
 
 @if (IsLoading)
 {
-    <div class="w-100 h-100">
-        <DxLoadingPanel CssClass="w-100"
-                        Visible="true" />
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border" role="status"></div>
     </div>
 }
 else
 {
     <div class="mt-3" style="max-width:200px">
         <label for="walletCombo">Select Wallet:</label>
-        <DxComboBox Id="walletCombo" Data="@Wallets" Value="@SelectedWallet" TextFieldName="@nameof(WalletDTO.Name)" Placeholder="Select Wallet" ValueChanged="@((WalletDTO wallet) => OnSelectedWalletChanged(wallet))" />
+        <select id="walletCombo" class="form-select" @onchange="e => OnSelectedWalletChanged(e.Value?.ToString() ?? string.Empty)">
+            <option value="">Select Wallet</option>
+            @if (Wallets != null)
+            {
+                foreach (var w in Wallets)
+                {
+                    <option value="@w.Name">@w.Name</option>
+                }
+            }
+        </select>
     </div>
 
     <div class="mt-3" style="max-width:200px">
         <label for="symbolCombo">Select Symbol:</label>
-        <DxComboBox Id="symbolCombo" Data="@Symbols" Value="@SelectedSymbol" Placeholder="Select Symbol" ValueChanged="@((string symbol) => OnSelectedSymbolChanged(symbol))" />
+        <select id="symbolCombo" class="form-select" @onchange="OnSelectedSymbolChanged">
+            <option value="">Select Symbol</option>
+            @if (Symbols != null)
+            {
+                foreach (var s in Symbols)
+                {
+                    <option value="@s">@s</option>
+                }
+            }
+        </select>
     </div>
 
     <div class="mt-3">
-        <DxDataGrid Data="@Flows">
-            <DxDataGridColumn Field="DateTime" />
-            <DxDataGridColumn Field="FlowType" />
-            <DxDataGridColumn Field="FlowDirection" />
-            <DxDataGridColumn Field="SourceWallet" Width="150" />
-            <DxDataGridColumn Field="TargetWallet" Width="150" />
-            <DxDataGridColumn Field="FlowAmount" />
-        </DxDataGrid>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>DateTime</th>
+                    <th>FlowType</th>
+                    <th>FlowDirection</th>
+                    <th>SourceWallet</th>
+                    <th>TargetWallet</th>
+                    <th>FlowAmount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Flows != null)
+                {
+                    foreach (var flow in Flows)
+                    {
+                        <tr>
+                            <td>@flow.DateTime</td>
+                            <td>@flow.FlowType</td>
+                            <td>@flow.FlowDirection</td>
+                            <td>@flow.SourceWallet</td>
+                            <td>@flow.TargetWallet</td>
+                            <td>@flow.FlowAmount</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
     </div>
 
     <div class="mt-3">
