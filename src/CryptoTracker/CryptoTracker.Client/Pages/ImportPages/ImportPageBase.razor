@@ -67,6 +67,17 @@ else if (Entries.Count > 0)
     private Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         SelectedFile = e.File;
+
+        int indexOfHashtag = e.File.Name.IndexOf('#');
+        if (indexOfHashtag >= 0)
+        {
+            int indexOfLastDot = e.File.Name.LastIndexOf('.');
+            if (indexOfLastDot > indexOfHashtag)
+            {
+                WalletName = e.File.Name.Substring(indexOfHashtag + 1, indexOfLastDot - indexOfHashtag - 1);
+            }
+        }
+
         return Task.CompletedTask;
     }
 
