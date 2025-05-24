@@ -1,0 +1,46 @@
+@page "/bilanzen"
+@rendermode InteractiveAuto
+@using CryptoTracker.Shared
+@inject HttpClient HttpClient
+
+<PageTitle>Bilanzen</PageTitle>
+
+<h1>Bilanzen</h1>
+
+@if (IsLoading)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border" role="status"></div>
+    </div>
+}
+else if (Balances != null)
+{
+    foreach (var balance in Balances)
+    {
+        <h5 class="mt-3">@balance.Platform</h5>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Menge</th>
+                    <th>Wert in EUR</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var asset in balance.Assets)
+            {
+                <tr>
+                    <td>@asset.Symbol</td>
+                    <td>@asset.Amount</td>
+                    <td>@string.Format("{0:F2}", asset.EuroValue)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+}
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert">@ErrorMessage</div>
+}
