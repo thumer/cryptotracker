@@ -79,6 +79,7 @@ namespace CryptoTracker
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 
+            // Initialize Blazorise providers
             app.ApplicationServices
                 .UseBootstrap5Providers()
                 .UseFontAwesomeIcons();
