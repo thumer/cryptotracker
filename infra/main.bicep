@@ -5,7 +5,6 @@ targetScope = 'resourceGroup'
 @maxLength(64)
 @description('Name of the the environment which is used to generate a short unique hash used in all resources.')
 param environmentName string
-param azureFuncEnvName string
 param location string = resourceGroup().location
 param appServicePlanName string
 param appServicePlanNameResourceGroupName string
