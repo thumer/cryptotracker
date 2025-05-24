@@ -8,6 +8,7 @@ namespace CryptoTracker
     {
         public DbSet<CryptoTransaction> CryptoTransactions { get; set; }
         public DbSet<CryptoTrade> CryptoTrades { get; set; }
+        public DbSet<Wallet> Wallets { get; set; }
         public DbSet<BinanceDeposit> BinanceDeposits { get; set; }
         public DbSet<BinanceWithdrawal> BinanceWithdrawals { get; set; }
         public DbSet<BinanceTrade> BinanceTrades { get; set; }
@@ -24,11 +25,23 @@ namespace CryptoTracker
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Wallet>().HasKey(w => w.Id);
+            modelBuilder.Entity<Wallet>().HasIndex(w => w.Name).IsUnique();
+
             modelBuilder.Entity<CryptoTransaction>().HasKey(c => c.Id);
             modelBuilder.Entity<CryptoTransaction>()
                 .HasOne(c => c.OppositeTransaction)
                 .WithOne()
                 .HasForeignKey<CryptoTransaction>(c => c.OppositeTransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CryptoTransaction>()
+                .HasOne(c => c.Wallet)
+                .WithMany()
+                .HasForeignKey(c => c.WalletId);
+            modelBuilder.Entity<CryptoTransaction>()
+                .HasOne(c => c.OppositeWallet)
+                .WithMany()
+                .HasForeignKey(c => c.OppositeWalletId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<CryptoTrade>().HasKey(c => c.Id);
@@ -37,6 +50,10 @@ namespace CryptoTracker
                 .WithOne()
                 .HasForeignKey<CryptoTrade>(c => c.OppositeTradeId)
                 .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CryptoTrade>()
+                .HasOne(c => c.Wallet)
+                .WithMany()
+                .HasForeignKey(c => c.WalletId);
 
             modelBuilder.Entity<BinanceDeposit>().HasKey(b => b.Id);
             modelBuilder.Entity<BinanceWithdrawal>().HasKey(b => b.Id);

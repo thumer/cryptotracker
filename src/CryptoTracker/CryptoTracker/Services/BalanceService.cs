@@ -18,18 +18,20 @@ public class BalanceService
     public async Task<IList<PlatformBalanceDTO>> GetBalances()
     {
         var tradeFlows = await _dbContext.CryptoTrades
+            .Include(t => t.Wallet)
             .Select(t => new
             {
-                t.Wallet,
+                Wallet = t.Wallet.Name,
                 t.Symbol,
                 Amount = t.TradeType == TradeType.Buy ? t.QuantityAfterFee : -t.Quantity
             })
             .ToListAsync();
 
         var txFlows = await _dbContext.CryptoTransactions
+            .Include(t => t.Wallet)
             .Select(t => new
             {
-                t.Wallet,
+                Wallet = t.Wallet.Name,
                 t.Symbol,
                 Amount = t.TransactionType == TransactionType.Receive ? t.QuantityAfterFee : -t.Quantity
             })

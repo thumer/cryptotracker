@@ -14,7 +14,7 @@ namespace CryptoTracker.Tests.Importers;
 
 public class BinanceDepositImporterTests : DbTestBase
 {
-    private const string Wallet = "TestWallet";
+    private const string WalletName = "TestWallet";
     private const string Csv = "Date(UTC);Coin;Network;Amount;Confirmations;Address;TXID;Comment\n" +
         "29.12.2017 21:10;BTC;BTC;0,57127657;0;1BvBMrv6gnwf...;a3f1c7...4d1391;von bitcoin.de\n" +
         "31.12.2017 13:30;BTC;BTC;0,01907041;0;1BvBMrv6gnwf...;f7d12e...29ea1;von bitcoin.de\n" +
@@ -27,12 +27,16 @@ public class BinanceDepositImporterTests : DbTestBase
     {
         var importer = new BinanceDepositImporter(DbContext);
 
-        await importer.Import(new ImportArgs { Wallet = Wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
+        var wallet = new Wallet { Name = WalletName };
+        DbContext.Wallets.Add(wallet);
+        DbContext.SaveChanges();
+
+        await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTransactions.Should().HaveCount(5);
         var tx = DbContext.CryptoTransactions.First();
 
-        tx.Wallet.Should().Be(Wallet);
+        tx.Wallet.Name.Should().Be(WalletName);
         tx.TransactionType.Should().Be(TransactionType.Receive);
         tx.Symbol.Should().Be("BTC");
         tx.DateTime.Should().Be(new DateTime(2017, 12, 29, 21, 10, 0));

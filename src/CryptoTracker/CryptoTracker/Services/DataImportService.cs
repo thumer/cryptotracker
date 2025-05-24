@@ -23,7 +23,14 @@ namespace CryptoTracker.Services
             await StoreRawEntries(type, openStreamFunc);
 
             var importer = GetImporter(type);
-            await importer.Import(new ImportArgs() { Wallet = walletName }, openStreamFunc);
+            var wallet = await _dbContext.Wallets.FirstOrDefaultAsync(w => w.Name == walletName);
+            if (wallet == null)
+            {
+                wallet = new Wallet { Name = walletName };
+                _dbContext.Wallets.Add(wallet);
+                await _dbContext.SaveChangesAsync();
+            }
+            await importer.Import(new ImportArgs() { Wallet = wallet }, openStreamFunc);
         }
 
         private async Task StoreRawEntries(ImportDocumentType type, Func<Stream> openStreamFunc)
@@ -142,8 +149,10 @@ namespace CryptoTracker.Services
                 {
                     transaction.OppositeTransaction = oppositeTransaction;
                     transaction.OppositeWallet = oppositeTransaction.Wallet;
+                    transaction.OppositeWalletId = oppositeTransaction.WalletId;
                     oppositeTransaction.OppositeTransaction = transaction;
                     oppositeTransaction.OppositeWallet = transaction.Wallet;
+                    oppositeTransaction.OppositeWalletId = transaction.WalletId;
                 }
             }
 

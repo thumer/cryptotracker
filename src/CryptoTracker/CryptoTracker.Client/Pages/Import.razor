@@ -16,7 +16,13 @@
         </div>
 
         <div class="col-md-4">
-            <input class="form-control" @bind="WalletNameDictionary[documentType]" placeholder="Wallet Name" />
+            <select class="form-select" @bind="WalletNameDictionary[documentType]">
+                <option value="">Wallet wählen</option>
+                @foreach (var w in Wallets)
+                {
+                    <option value="@w.Name">@w.Name</option>
+                }
+            </select>
         </div>
     </div>
 

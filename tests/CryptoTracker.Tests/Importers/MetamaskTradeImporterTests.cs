@@ -14,7 +14,7 @@ namespace CryptoTracker.Tests.Importers;
 
 public class MetamaskTradeImporterTests : DbTestBase
 {
-    private const string Wallet = "TestWallet";
+    private const string WalletName = "TestWallet";
     private const string Csv = "Date(UTC);Pair;Side;Price;Executed;Amount;Fee;Tradingplatform\n" +
         "02.07.2021;BabyDo-ETH;BUY;1,0142E-12 ETH;1,8E+11 BabyDo;0,17 ETH;2E+10 BabyDo;pancakeswap.finance\n" +
         "01.10.2021;WDUCX-ETH;BUY;9,61538E-05 ETH;1456,161 WDUCX;0,14 ETH;0 WDUCX;pancakeswap.finance\n" +
@@ -25,7 +25,11 @@ public class MetamaskTradeImporterTests : DbTestBase
     {
         var importer = new MetamaskTradeImporter(DbContext);
 
-        await importer.Import(new ImportArgs { Wallet = Wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
+        var wallet = new Wallet { Name = WalletName };
+        DbContext.Wallets.Add(wallet);
+        DbContext.SaveChanges();
+
+        await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTrades.Should().HaveCount(6);
         var date = new DateTime(2021, 7, 2);

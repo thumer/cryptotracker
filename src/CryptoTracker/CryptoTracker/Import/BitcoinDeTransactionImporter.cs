@@ -27,7 +27,7 @@ namespace CryptoTracker.Import
                 {
                     var sellTrade = new CryptoTrade
                     {
-                        Wallet = args.Wallet,
+                        WalletId = args.Wallet.Id,
                         DateTime = record.Datum,
                         Symbol = record.Typ == "Kauf" ? record.EinheitMengeVorGebuehr : record.Waehrung,
                         OpositeSymbol = record.Typ == "Kauf" ? record.Waehrung : record.EinheitMengeVorGebuehr,
@@ -41,7 +41,7 @@ namespace CryptoTracker.Import
                     };
                     var buyTrade = new CryptoTrade
                     {
-                        Wallet = args.Wallet,
+                        WalletId = args.Wallet.Id,
                         DateTime = record.Datum,
                         Symbol = record.Typ == "Kauf" ? record.Waehrung : record.EinheitMengeVorGebuehr,
                         OpositeSymbol = record.Typ == "Kauf" ? record.EinheitMengeVorGebuehr : record.Waehrung,
@@ -62,7 +62,7 @@ namespace CryptoTracker.Import
                     var transaction = new CryptoTransaction
                     {
                         TransactionType = record.Typ == "Einzahlung" ? TransactionType.Receive : TransactionType.Send,
-                        Wallet = args.Wallet,
+                        WalletId = args.Wallet.Id,
                         DateTime = record.Datum,
                         Symbol = record.Waehrung,
                         Quantity = record.Typ == "Auszahlung" ? record.ZuAbgang * -1 : record.ZuAbgang,

@@ -14,7 +14,7 @@ namespace CryptoTracker.Tests.Importers;
 
 public class OkxTradeImporterTests : DbTestBase
 {
-    private const string Wallet = "TestWallet";
+    private const string WalletName = "TestWallet";
     private const string Csv = "Date(UTC);Pair;Side;Price;Executed;Amount\n" +
         "2018-01-23 20:17:13;IOTAUSDT;BUY;2,37;1000,0;2370,00USDT\n" +
         "2022-03-10 12:04:59;ETHUSDT;SELL;2750,75;0,50;1375,38USDT\n" +
@@ -25,7 +25,11 @@ public class OkxTradeImporterTests : DbTestBase
     {
         var importer = new OkxTradeImporter(DbContext);
 
-        await importer.Import(new ImportArgs { Wallet = Wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
+        var wallet = new Wallet { Name = WalletName };
+        DbContext.Wallets.Add(wallet);
+        DbContext.SaveChanges();
+
+        await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTrades.Should().HaveCount(6);
         var date = new DateTime(2018, 1, 23, 20, 17, 13);

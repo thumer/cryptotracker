@@ -15,6 +15,13 @@ namespace CryptoTracker.Client.Pages
         private string? ErrorMessage { get; set; }
         private Dictionary<ImportDocumentType, string> WalletNameDictionary = Enum.GetValues(typeof(ImportDocumentType)).OfType<ImportDocumentType>().ToDictionary(t => t, t => string.Empty);
         private Dictionary<ImportDocumentType, Guid> InputFileIdDictionary = Enum.GetValues(typeof(ImportDocumentType)).OfType<ImportDocumentType>().ToDictionary(t => t, t => Guid.NewGuid());
+        private IList<WalletInfoDTO> Wallets { get; set; } = new List<WalletInfoDTO>();
+
+        protected override async Task OnInitializedAsync()
+        {
+            await base.OnInitializedAsync();
+            Wallets = await HttpClient.GetFromJsonAsync<IList<WalletInfoDTO>>("api/Wallet/GetWalletInfos") ?? new List<WalletInfoDTO>();
+        }
 
         private Task HandleFileSelected(ImportDocumentType documentType, InputFileChangeEventArgs e)
         {

@@ -14,7 +14,7 @@ namespace CryptoTracker.Tests.Importers;
 
 public class BinanceWithdrawalImporterTests : DbTestBase
 {
-    private const string Wallet = "TestWallet";
+    private const string WalletName = "TestWallet";
     private const string Csv = "Date(UTC);Coin;Network;Amount;Fee;Address;TXID;Status;Comment\n" +
         "02.02.2018 09:14;BTC;BTC;0,050;0,0005;3J98t1WpEZ73...;c47dd1...2ef9;Completed;an eigene Wallet\n" +
         "15.06.2019 12:30;ETH;ERC20;2,000;0,005;0x8e12fa...;4bd913...a1b2;Completed;Hardware-Wallet\n" +
@@ -25,13 +25,17 @@ public class BinanceWithdrawalImporterTests : DbTestBase
     {
         var importer = new BinanceWithdrawalImporter(DbContext);
 
-        await importer.Import(new ImportArgs { Wallet = Wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
+        var wallet = new Wallet { Name = WalletName };
+        DbContext.Wallets.Add(wallet);
+        DbContext.SaveChanges();
+
+        await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTransactions.Should().HaveCount(3);
         var tx = DbContext.CryptoTransactions.First();
 
         tx.TransactionType.Should().Be(TransactionType.Send);
-        tx.Wallet.Should().Be(Wallet);
+        tx.Wallet.Name.Should().Be(WalletName);
         tx.Symbol.Should().Be("BTC");
         tx.DateTime.Should().Be(new DateTime(2018, 2, 2, 9, 14, 0));
         tx.Quantity.Should().Be(0.0505m);

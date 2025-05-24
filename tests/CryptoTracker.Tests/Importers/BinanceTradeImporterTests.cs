@@ -15,7 +15,7 @@ namespace CryptoTracker.Tests.Importers;
 
 public class BinanceTradeImporterTests : DbTestBase
 {
-    private const string Wallet = "TestWallet";
+    private const string WalletName = "TestWallet";
 
     private const string Csv = "Date(UTC),Pair,Side,Price,Executed,Amount,Fee\n" +
         "2023-11-11 14:02:15,LTCETH,BUY,0.0508376,1.63850661LTC,0.06ETH,0.000LTC\n" +
@@ -27,7 +27,11 @@ public class BinanceTradeImporterTests : DbTestBase
     {
         var importer = new BinanceTradeImporter(DbContext);
 
-        await importer.Import(new ImportArgs { Wallet = Wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
+        var wallet = new Wallet { Name = WalletName };
+        DbContext.Wallets.Add(wallet);
+        DbContext.SaveChanges();
+
+        await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTrades.Should().HaveCount(6);
 
@@ -35,7 +39,7 @@ public class BinanceTradeImporterTests : DbTestBase
         var sell = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Sell);
         var buy = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Buy);
 
-        sell.Wallet.Should().Be(Wallet);
+        sell.Wallet.Name.Should().Be(WalletName);
         sell.Symbol.Should().Be("ETH");
         sell.OpositeSymbol.Should().Be("LTC");
         sell.Price.Should().Be(1m / 0.0508376m);
@@ -45,7 +49,7 @@ public class BinanceTradeImporterTests : DbTestBase
         ((IFlow)sell).FlowDirection.Should().Be(FlowDirection.Outflow);
         ((IFlow)sell).FlowAmount.Should().Be(0.06m);
 
-        buy.Wallet.Should().Be(Wallet);
+        buy.Wallet.Name.Should().Be(WalletName);
         buy.Symbol.Should().Be("LTC");
         buy.OpositeSymbol.Should().Be("ETH");
         buy.Price.Should().Be(0.0508376m);
