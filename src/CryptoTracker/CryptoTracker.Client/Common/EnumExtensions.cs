@@ -7,7 +7,7 @@ namespace CryptoTracker
         public static string GetDisplayName(this Enum enumValue)
         {
             var attribute = enumValue.GetType()
-                .GetField(enumValue.ToString())
+                .GetField(enumValue.ToString())?
                 .GetCustomAttributes(typeof(DisplayNameAttribute), false)
                 .FirstOrDefault() as DisplayNameAttribute;
 

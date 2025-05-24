@@ -64,9 +64,10 @@ else if (Entries.Count > 0)
         await LoadData();
     }
 
-    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    private Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         SelectedFile = e.File;
+        return Task.CompletedTask;
     }
 
     private async Task Upload()

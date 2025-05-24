@@ -1,15 +1,28 @@
-using Finance.Net;
+using Finance.Net.Interfaces;
+using Finance.Net.Models.Yahoo;
+using Finance.Net.Exceptions;
 
 namespace CryptoTracker.Services;
 
 public class FinanceValueProvider : IFinanceValueProvider
 {
-    private readonly YahooFinance _client = new YahooFinance();
+    private readonly IYahooFinanceService _financeService;
+
+    public FinanceValueProvider(IYahooFinanceService financeService)
+    {
+        _financeService = financeService;
+    }
 
     public async Task<decimal> GetCurrentEuroValueAsync(string symbol)
     {
-        // Finance.Net expects trading pair symbols like BTC-EUR
-        var quote = await _client.GetQuoteAsync($"{symbol}-EUR");
-        return quote.RegularMarketPrice;
+        try
+        {
+            Quote quote = await _financeService.GetQuoteAsync($"{symbol}-EUR");
+            return quote.RegularMarketPrice;
+        }
+        catch (FinanceException)
+        {
+            return 0m;
+        }
     }
 }
