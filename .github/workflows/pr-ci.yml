@@ -21,10 +21,11 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --configuration Release \
-          --logger "trx;LogFileName=test_results.trx" \
-          --results-directory TestResults \
-          --verbosity normal
+        run: |
+          dotnet test --configuration Release \
+            --logger "trx;LogFileName=test_results.trx" \
+            --results-directory TestResults \
+            --verbosity normal
         continue-on-error: true
 
       - name: Summarize test results
