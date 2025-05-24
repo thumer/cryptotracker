@@ -24,7 +24,7 @@ namespace CryptoTracker.Import.Objects
         /// Datum in ISO 8601 und CET
         /// </summary>
         [Name("Timestamp", "Date")]
-        public DateTime Timestamp { get; set; }
+        public DateTimeOffset Timestamp { get; set; }
 
         /// <summary>
         /// deposit, withdrawal, buy, sell
@@ -91,12 +91,12 @@ namespace CryptoTracker.Import.Objects
         public decimal? Fee { get; set; }
 
         [Name("Fee asset")]
-        public decimal? FeeAsset { get; set; }
+        public string FeeAsset { get; set; } = string.Empty;
 
         public decimal? Spread { get; set; }
 
         [Name("Spread Currency")]
-        public decimal? SpreadCurrency { get; set; }
+        public string SpreadCurrency { get; set; } = string.Empty;
 
         [Name("Tax Fiat")]
         public decimal? TaxFiat { get; set; }
