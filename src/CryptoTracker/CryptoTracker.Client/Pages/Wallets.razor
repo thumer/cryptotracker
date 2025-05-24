@@ -16,12 +16,12 @@
 <DataGrid TItem="WalletInfoDTO" Data="WalletsList" Sortable="true" Filterable="true" Resizable="true" ShowPager="false">
     <DataGridColumns>
         <DataGridColumn TItem="WalletInfoDTO" Field="@nameof(WalletInfoDTO.Name)" Caption="Name" />
-        <DataGridTemplateColumn TItem="WalletInfoDTO">
-            <Template Context="w">
+        <DataGridColumn TItem="WalletInfoDTO">
+            <DisplayTemplate Context="w">
                 <button class="btn btn-sm btn-secondary me-1" @onclick="(() => Edit(w))">Ändern</button>
                 <button class="btn btn-sm btn-danger" @onclick="(() => Delete(w.Id))">Löschen</button>
-            </Template>
-        </DataGridTemplateColumn>
+            </DisplayTemplate>
+        </DataGridColumn>
     </DataGridColumns>
 </DataGrid>
 
