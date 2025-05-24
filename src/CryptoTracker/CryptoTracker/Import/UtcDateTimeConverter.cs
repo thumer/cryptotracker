@@ -8,7 +8,8 @@ namespace CryptoTracker.Import
     {
         public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
         {
-            if (text != null && DateTime.TryParse(text, out DateTime parsedDateTime))
+            var culture = row.Context?.Configuration?.CultureInfo ?? System.Globalization.CultureInfo.InvariantCulture;
+            if (text != null && DateTime.TryParse(text, culture, System.Globalization.DateTimeStyles.None, out DateTime parsedDateTime))
             {
                 return new DateTimeOffset(DateTime.SpecifyKind(parsedDateTime, DateTimeKind.Utc));
             }

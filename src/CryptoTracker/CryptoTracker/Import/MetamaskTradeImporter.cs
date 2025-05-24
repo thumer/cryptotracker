@@ -99,7 +99,7 @@ namespace CryptoTracker.Import
             {
                 string numberStr = input.Substring(0, splitIndex);
                 string currencyStr = input.Substring(splitIndex + 1);
-                var number = decimal.Parse(numberStr, NumberStyles.Float);
+                var number = decimal.Parse(numberStr, NumberStyles.Float, new CultureInfo("de-AT"));
                 return (number, currencyStr);
             }
 
