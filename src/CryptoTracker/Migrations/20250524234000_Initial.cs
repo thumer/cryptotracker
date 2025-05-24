@@ -290,17 +290,13 @@ namespace CryptoTracker.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     WalletId = table.Column<int>(type: "int", nullable: false),
-                    Date = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Hash = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    From = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    To = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Value = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ValueInUSD = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TransactionFee = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TransactionFeeInUSD = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    GasPrice = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    GasLimit = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Datum = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    Typ = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Coin = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Network = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    TransactionFee = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Kommentar = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {

@@ -6,15 +6,11 @@ public class MetamaskTransactionEntity
     public int WalletId { get; set; }
     public Wallet Wallet { get; set; } = null!;
 
-    public DateTimeOffset Date { get; set; }
-    public string Type { get; set; } = string.Empty;
-    public string Hash { get; set; } = string.Empty;
-    public string From { get; set; } = string.Empty;
-    public string To { get; set; } = string.Empty;
-    public string Value { get; set; } = string.Empty;
-    public string ValueInUSD { get; set; } = string.Empty;
-    public string TransactionFee { get; set; } = string.Empty;
-    public string TransactionFeeInUSD { get; set; } = string.Empty;
-    public string GasPrice { get; set; } = string.Empty;
-    public string GasLimit { get; set; } = string.Empty;
+    public DateTimeOffset Datum { get; set; }
+    public string Typ { get; set; } = string.Empty;
+    public string Coin { get; set; } = string.Empty;
+    public string Network { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public decimal TransactionFee { get; set; }
+    public string Kommentar { get; set; } = string.Empty;
 }
