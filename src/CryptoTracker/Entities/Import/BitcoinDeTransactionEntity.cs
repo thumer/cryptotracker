@@ -6,7 +6,7 @@ public class BitcoinDeTransactionEntity
     public int WalletId { get; set; }
     public Wallet Wallet { get; set; } = null!;
 
-    public DateTime Datum { get; set; }
+    public DateTimeOffset Datum { get; set; }
     public string Typ { get; set; } = string.Empty;
     public string Waehrung { get; set; } = string.Empty;
     public string Referenz { get; set; } = string.Empty;

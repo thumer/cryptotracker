@@ -9,18 +9,19 @@ using CryptoTracker.Entities;
 using CryptoTracker.Shared;
 using FluentAssertions;
 using Xunit;
+using Microsoft.EntityFrameworkCore;
 
 namespace CryptoTracker.Tests.Importers;
 
 public class BitcoinDeTransactionImporterTests : DbTestBase
 {
     private const string WalletName = "TestWallet";
-    private const string Csv = "Datum;Art;Währung;Auftrag;Preis;Betrag;Gebührart;Gebühr;Gebühr-Währung;Saldo;Kommentar\n" +
-        "2013-04-12 11:20:56;Registrierung;BTC;;;0;;0;;0,00;\n" +
-        "2013-04-17 15:35:15;Kauf;BTC;QW3A9T;78,00;1,00;EUR;0,99;EUR;1,00;\n" +
-        "2014-01-02 13:10:05;Verkauf;BTC;RT6E2P;570,00;0,50;EUR;2,85;EUR;0,50;Erste Auszahlung\n";
+    private const string Csv = @"Datum;Typ;Währung;Referenz;Adresse;Kurs;""Einheit (Kurs)"";""Crypto vor Gebühr"";""Menge vor Gebühr"";""Einheit (Menge vor Gebühr)"";""Crypto nach Bitcoin.de-Gebühr"";""Menge nach Bitcoin.de-Gebühr"";""Einheit (Menge nach Bitcoin.de-Gebühr)"";""Zu- / Abgang"";Kontostand;Kommentar
+""2014-04-12 11:20:56"";Registrierung;BTC;;;0.00;BTC;;;;;;;0.00000000;0.00000000;
+""2014-04-17 15:35:15"";Kauf;BTC;EW3A9T;;61.00;""BTC / EUR"";1.00000000;21.00;EUR;0.99000000;20.69;EUR;0.59000000;0.59000000;
+""2014-04-17 20:55:35"";Auszahlung;BTC;a1545e842dd311d998cc4797be7502f573e3d1a6cb5c6cf0e8713e64e28be63a;196pDut3qJFHY8qPRVagUjtmggCkZBBwBt;;;;;;;;;-0.99000000;0.00000000;xxx";
 
-    [Fact(Skip="Broken after wallet refactor")]
+    [Fact]
     public async Task ImportCreatesBitcoinDeTradePair()
     {
         var importer = new BitcoinDeTransactionImporter(DbContext);

@@ -15,7 +15,7 @@ public enum FlowType
 public interface IFlow
 {
     FlowType FlowType { get; }
-    DateTime DateTime { get; }
+    DateTimeOffset DateTime { get; }
     string Symbol { get; }
     string? SourceWallet { get; }
     string? TargetWallet { get; }

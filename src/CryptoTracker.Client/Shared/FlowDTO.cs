@@ -1,7 +1,7 @@
 ﻿namespace CryptoTracker.Shared;
 
-public record FlowDTO(FlowType FlowType, 
-                      DateTime DateTime, 
+public record FlowDTO(FlowType FlowType,
+                      DateTimeOffset DateTime, 
                       string Symbol, 
                       string? SourceWallet, 
                       string? TargetWallet, 

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CryptoTracker.Migrations
 {
     [DbContext(typeof(CryptoTrackerDbContext))]
-    [Migration("20250524214525_Initial")]
+    [Migration("20250524223701_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -36,8 +36,8 @@ namespace CryptoTracker.Migrations
                     b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("DateTime")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("DateTime")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<decimal>("Fee")
                         .HasColumnType("decimal(27, 12)");
@@ -100,8 +100,8 @@ namespace CryptoTracker.Migrations
                     b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("DateTime")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("DateTime")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<decimal>("Fee")
                         .HasColumnType("decimal(27, 12)");
@@ -300,8 +300,8 @@ namespace CryptoTracker.Migrations
                     b.Property<decimal?>("CryptoVorGebuehr")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateTime>("Datum")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("Datum")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("EinheitKurs")
                         .IsRequired()

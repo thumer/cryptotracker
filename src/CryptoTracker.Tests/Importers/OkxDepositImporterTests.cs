@@ -15,7 +15,7 @@ namespace CryptoTracker.Tests.Importers;
 public class OkxDepositImporterTests : DbTestBase
 {
     private const string WalletName = "TestWallet";
-    private const string Csv = "Date(UTC);Coin;Network;Amount;Address;Comment\n" +
+    private const string Csv = "Date(UTC);Coin;Network;Amount;Address;Kommentar\n" +
         "23.01.2018 20:25;ETH;ETH;0,400000;0x55a7e...c393;von bitcoin.de\n" +
         "01.02.2018 19:46;BTC;BTC;0,026000;bc1qxy2...8kg0;von binance.com\n" +
         "17.07.2022 07:13;ADA;ADA;950,00;DdzFFzCq...;interner Transfer\n";

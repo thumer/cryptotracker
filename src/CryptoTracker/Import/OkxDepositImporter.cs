@@ -32,7 +32,7 @@ namespace CryptoTracker.Import
                 {
                     TransactionType = TransactionType.Receive,
                     WalletId = args.Wallet.Id,
-                    DateTime = record.Date.LocalDateTime,
+                    DateTime = record.Date,
                     Symbol = record.Coin,
                     Quantity = record.Amount,
                     Fee = 0,

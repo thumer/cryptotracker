@@ -16,8 +16,6 @@ namespace CryptoTracker.Import
             => new CsvConfiguration(new CultureInfo("en-US"))
             {
                 Delimiter = ";",
-                HeaderValidated = null,
-                MissingFieldFound = null,
             };
 
         protected override async Task OnImport(ImportArgs args, IEnumerable<BitcoinDeTransaction> records)

@@ -32,7 +32,7 @@ public class MetamaskTradeImporterTests : DbTestBase
         await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTrades.Should().HaveCount(6);
-        var date = new DateTime(2021, 7, 2);
+        var date = new DateTimeOffset(2021, 7, 2, 0, 0, 0, TimeSpan.Zero);
         var sell = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Sell);
         var buy = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Buy);
 

@@ -111,7 +111,7 @@ namespace CryptoTracker.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     WalletId = table.Column<int>(type: "int", nullable: false),
-                    Datum = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Datum = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     Typ = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Waehrung = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Referenz = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -184,7 +184,7 @@ namespace CryptoTracker.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     WalletId = table.Column<int>(type: "int", nullable: false),
-                    DateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    DateTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     Symbol = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OpositeSymbol = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     TradeType = table.Column<int>(type: "int", nullable: false),
@@ -221,7 +221,7 @@ namespace CryptoTracker.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     WalletId = table.Column<int>(type: "int", nullable: false),
-                    DateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    DateTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     TransactionType = table.Column<int>(type: "int", nullable: false),
                     Symbol = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Quantity = table.Column<decimal>(type: "decimal(27,12)", nullable: false),

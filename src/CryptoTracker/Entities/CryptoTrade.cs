@@ -13,7 +13,7 @@ public class CryptoTrade : IFlow
     public int Id { get; set; }
     public int WalletId { get; set; }
     public Wallet Wallet { get; set; } = null!;
-    public DateTime DateTime { get; set; }
+    public DateTimeOffset DateTime { get; set; }
 
     /// <summary>
     /// Welcher Coin wurde gekauft/verkauft

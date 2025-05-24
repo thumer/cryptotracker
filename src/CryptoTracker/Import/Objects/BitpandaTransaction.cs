@@ -12,8 +12,6 @@ namespace CryptoTracker.Import.Objects
 
     public class BitpandaTransaction : ICryptoCsvEntry
     {
-        [Ignore]
-        public int Id { get; set; }
         /// <summary>
         /// Interne TransactionId
         /// </summary>
@@ -23,13 +21,12 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Datum in ISO 8601 und CET
         /// </summary>
-        [Name("Timestamp", "Date")]
         public DateTimeOffset Timestamp { get; set; }
 
         /// <summary>
         /// deposit, withdrawal, buy, sell
         /// </summary>
-        [Name("Transaction Type", "Buy/Sell")]
+        [Name("Transaction Type")]
         public string TransactionType {  get; set; } = string.Empty;
 
         /// <summary>
@@ -42,25 +39,23 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Betrag in Fiat für Kauf oder Verkauf aber auch den aktuellen Wert bei Crypto Aus-/Einzahlung.
         /// </summary>
-        [Name("Amount Fiat", "Fiat Amount")]
+        [Name("Amount Fiat")]
         public decimal? AmountFiat { get; set; }
 
         /// <summary>
         /// Symbol der Fiat Währung
         /// </summary>
-        [Name("Fiat Currency")]
         public string Fiat { get; set; } = string.Empty;
 
         /// <summary>
         /// Menge an Cryptos vor Gebührenabzug bei Transaktion
         /// </summary>
-        [Name("Amount Asset", "Crypto Amount")]
+        [Name("Amount Asset")]
         public decimal? AmountAsset { get; set; }
 
         /// <summary>
         /// Symbol der Asset Währung
         /// </summary>
-        [Name("Asset", "Crypto Currency")]
         public string Asset { get; set; } = string.Empty;
 
         /// <summary>

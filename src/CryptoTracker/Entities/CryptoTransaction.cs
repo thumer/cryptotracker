@@ -17,7 +17,7 @@ public class CryptoTransaction : IFlow
     /// </summary>
     public int WalletId { get; set; }
     public Wallet Wallet { get; set; } = null!;
-    public DateTime DateTime { get; set; }
+    public DateTimeOffset DateTime { get; set; }
     public TransactionType TransactionType { get; set; }
     public string Symbol { get; set; } = string.Empty;
     /// <summary>

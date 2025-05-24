@@ -35,7 +35,7 @@ public class BinanceTradeImporterTests : DbTestBase
 
         DbContext.CryptoTrades.Should().HaveCount(6);
 
-        var date = new DateTime(2023, 11, 11, 14, 2, 15);
+        var date = new DateTimeOffset(2023, 11, 11, 14, 2, 15, TimeSpan.Zero);
         var sell = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Sell);
         var buy = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Buy);
 

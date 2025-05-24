@@ -15,11 +15,7 @@ namespace CryptoTracker.Import
         }
 
         protected override CsvConfiguration CreateCsvConfiguration()
-            => new CsvConfiguration(new CultureInfo("en-US"))
-            {
-                HeaderValidated = null,
-                MissingFieldFound = null,
-            };
+            => new CsvConfiguration(new CultureInfo("en-US"));
 
         protected override void OnCsvReaderCreated(CsvReader reader)
         {
@@ -69,7 +65,7 @@ namespace CryptoTracker.Import
                     var sellTrade = new CryptoTrade
                     {
                         WalletId = args.Wallet.Id,
-                        DateTime = record.Timestamp.DateTime,
+                        DateTime = record.Timestamp,
                         Symbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
                         OpositeSymbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
                         TradeType = TradeType.Sell,
@@ -83,7 +79,7 @@ namespace CryptoTracker.Import
                     var buyTrade = new CryptoTrade
                     {
                         WalletId = args.Wallet.Id,
-                        DateTime = record.Timestamp.DateTime,
+                        DateTime = record.Timestamp,
                         Symbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
                         OpositeSymbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
                         TradeType = TradeType.Buy,
@@ -107,7 +103,7 @@ namespace CryptoTracker.Import
                     {
                         TransactionType = record.TransactionType == "deposit" ? TransactionType.Receive : TransactionType.Send,
                         WalletId = args.Wallet.Id,
-                        DateTime = record.Timestamp.DateTime,
+                        DateTime = record.Timestamp,
                         Symbol = record.Asset,
                         Quantity = record.AmountAsset.GetValueOrDefault() + record.Fee.GetValueOrDefault(),
                         Fee = record.Fee.GetValueOrDefault(),

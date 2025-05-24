@@ -38,7 +38,7 @@ namespace CryptoTracker.Import
                 var sellTrade = new CryptoTrade
                 {
                     WalletId = args.Wallet.Id,
-                    DateTime = record.Date.LocalDateTime,
+                    DateTime = record.Date,
                     Symbol = tradeType == TradeType.Sell ? symbol1 : symbol2,
                     OpositeSymbol = tradeType == TradeType.Sell ? symbol2 : symbol1,
                     TradeType = TradeType.Sell,
@@ -51,7 +51,7 @@ namespace CryptoTracker.Import
                 var buyTrade = new CryptoTrade
                 {
                     WalletId = args.Wallet.Id,
-                    DateTime = record.Date.LocalDateTime,
+                    DateTime = record.Date,
                     Symbol = tradeType == TradeType.Sell ? symbol2 : symbol1,
                     OpositeSymbol = tradeType == TradeType.Sell ? symbol1 : symbol2,
                     TradeType = TradeType.Buy,

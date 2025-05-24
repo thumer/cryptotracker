@@ -33,8 +33,8 @@ namespace CryptoTracker.Migrations
                     b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("DateTime")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("DateTime")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<decimal>("Fee")
                         .HasColumnType("decimal(27, 12)");
@@ -97,8 +97,8 @@ namespace CryptoTracker.Migrations
                     b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("DateTime")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("DateTime")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<decimal>("Fee")
                         .HasColumnType("decimal(27, 12)");
@@ -297,8 +297,8 @@ namespace CryptoTracker.Migrations
                     b.Property<decimal?>("CryptoVorGebuehr")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateTime>("Datum")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("Datum")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("EinheitKurs")
                         .IsRequired()

@@ -9,8 +9,6 @@ namespace CryptoTracker.Import.Objects
 
     public class BinanceWithdrawal : ICryptoCsvEntry
     {
-        [Ignore]
-        public int Id { get; set; }
         [Name("Date(UTC)")]
         public DateTimeOffset Date { get; set; }
 
@@ -26,7 +24,6 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// TransactionFee in der Coin-Symbol Währung
         /// </summary>
-        [Name("Fee")]
         public decimal TransactionFee { get; set; }
         
         /// <summary>

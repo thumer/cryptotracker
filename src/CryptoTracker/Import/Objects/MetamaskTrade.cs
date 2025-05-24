@@ -9,8 +9,6 @@ namespace CryptoTracker.Import.Objects
 
     public class MetamaskTrade : ICryptoCsvEntry
     {
-        [Ignore]
-        public int Id { get; set; }
         [Name("Date(UTC)")]
         public DateTimeOffset Date { get; set; }
 

@@ -15,11 +15,11 @@ namespace CryptoTracker.Tests.Importers;
 public class BitpandaTransactionImporterTests : DbTestBase
 {
     private const string WalletName = "TestWallet";
-    private const string Csv = "Transaction ID,Date,Buy/Sell,Asset,Fiat Amount,Fiat Currency,Crypto Amount,Crypto Currency,Fee,Fee asset,Spread,Spread Currency,Tax Fiat,Address,Comment\n" +
-        "c1d2f3e4-...,2022-01-03T12:56:40+01:00,Buy,ADA,100,EUR,300,ADA,1,ADA,0,EUR,0,,bitpanda.com\n" +
-        "b9e8d7c6-...,2022-01-29T16:21:30+01:00,Sell,ETH,50,EUR,0.012,ETH,0.5,ETH,0,EUR,0,,bitpanda.com\n" +
-        "a4b3c2d1-...,2023-03-15T18:45:00+01:00,Buy,BTC,250,EUR,0.005,BTC,1,BTC,0,EUR,0,,promo\n" +
-        "d8c7b6a5-...,2024-07-21T09:05:33+02:00,Convert,SOL,0,EUR,1.5,SOL,0,SOL,0,EUR,0,,staking-reward\n";
+    private const string Csv = @"""Transaction ID"",Timestamp,""Transaction Type"",In/Out,""Amount Fiat"",Fiat,""Amount Asset"",Asset,""Asset market price"",""Asset market price currency"",""Asset class"",""Product ID"",Fee,""Fee asset"",Spread,""Spread Currency"",""Tax Fiat"",""Address"",""Comment""
+Febb6de9a-fe34-45b4-9d4b-79e6b08fa29d,2022-01-03T12:56:40+01:00,deposit,incoming,200.00,EUR,-,EUR,-,-,Fiat,-,0.00000000,EUR,-,-,0.00,,
+Te99fd4b9-97d2-4665-80f3-db45e6dfceab,2022-01-29T16:21:30+01:00,buy,outgoing,200.00,EUR,0.04245838,ETH,2355.25,EUR,Cryptocurrency,5,-,-,-,-,0.00,,
+C1ca8a52b-3672-4ced-954f-ad2929be66f9,2022-03-21T18:56:17+01:00,withdrawal,outgoing,0,EUR,0.48188785,ETH,0.00,-,Cryptocurrency,5,0.00297774,ETH,-,-,-,0xebe19316f151a4cf393e46371020e5079d7f6d91,abc
+73ba57e0-0c32-45cc-aeac-60393f718a6b,2022-09-21T19:59:41+02:00,transfer,incoming,1.15,EUR,0.38122557,ETHW,5.63,EUR,Cryptocurrency,2115,-,-,-,-,-,,ebc";
 
     [Fact]
     public async Task ImportCreatesBitpandaTradePair()
@@ -32,7 +32,7 @@ public class BitpandaTransactionImporterTests : DbTestBase
 
         await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
-        DbContext.CryptoTrades.Should().HaveCount(6);
-        DbContext.CryptoTrades.Should().Contain(t => t.Symbol == "EUR" && t.OpositeSymbol == "ADA");
+        DbContext.CryptoTrades.Should().HaveCount(2);
+        DbContext.CryptoTrades.Should().Contain(t => t.Symbol == "EUR" && t.OpositeSymbol == "ETH");
     }
 }
