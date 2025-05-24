@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using CryptoTracker;
 using CryptoTracker.Import;
 using CryptoTracker.Entities;
+using CryptoTracker.Shared;
 using FluentAssertions;
 using Xunit;
 

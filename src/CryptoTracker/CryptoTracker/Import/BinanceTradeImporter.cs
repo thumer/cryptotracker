@@ -3,7 +3,6 @@ using CryptoTracker.Entities;
 using CryptoTracker.Import.Objects;
 using CsvHelper;
 using CsvHelper.Configuration;
-using DevExpress.DirectX.Common.Direct2D;
 using System.Globalization;
 using System.Text.RegularExpressions;
 

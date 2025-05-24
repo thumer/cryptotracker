@@ -1,6 +1,7 @@
 ﻿using CryptoTracker.Shared;
 using System.Net.Http.Json;
 using CryptoTracker.Client.Shared;
+using Microsoft.AspNetCore.Components;
 
 namespace CryptoTracker.Client.Pages
 {
@@ -14,6 +15,7 @@ namespace CryptoTracker.Client.Pages
         private IList<string>? Symbols { get; set; }
 
         private WalletDTO? SelectedWallet { get; set; }
+        private string? SelectedWalletName { get; set; }
         private string? SelectedSymbol { get; set; }
 
         private IList<FlowDTO> Flows { get; set; }
@@ -28,18 +30,19 @@ namespace CryptoTracker.Client.Pages
             IsLoading = false;
         }
 
-        private async Task OnSelectedWalletChanged(WalletDTO wallet)
+        private async Task OnSelectedWalletChanged(string walletName)
         {
-            SelectedWallet = wallet;
-            Symbols = wallet.Symbols.ToList();
+            SelectedWalletName = walletName;
+            SelectedWallet = Wallets?.FirstOrDefault(w => w.Name == walletName);
+            Symbols = SelectedWallet?.Symbols.ToList();
 
             if (SelectedWallet != null && SelectedSymbol != null)
                 await LoadData();
         }
 
-        private async Task OnSelectedSymbolChanged(string symbol)
+        private async Task OnSelectedSymbolChanged(ChangeEventArgs e)
         {
-            SelectedSymbol = symbol;
+            SelectedSymbol = e.Value?.ToString();
 
             if (SelectedWallet != null && SelectedSymbol != null)
                 await LoadData();

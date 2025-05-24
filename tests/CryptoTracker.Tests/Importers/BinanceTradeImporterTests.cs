@@ -7,6 +7,7 @@ using CryptoTracker;
 using CryptoTracker.Import;
 using CryptoTracker.Import.Objects;
 using CryptoTracker.Entities;
+using CryptoTracker.Shared;
 using FluentAssertions;
 using Xunit;
 
