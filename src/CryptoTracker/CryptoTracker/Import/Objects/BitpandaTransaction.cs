@@ -13,6 +13,7 @@ namespace CryptoTracker.Import.Objects
 
     public class BitpandaTransaction : ICryptoCsvEntry
     {
+        public int Id { get; set; }
         /// <summary>
         /// Interne TransactionId
         /// </summary>
