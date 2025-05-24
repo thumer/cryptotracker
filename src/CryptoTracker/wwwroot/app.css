@@ -1,7 +1,5 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    background-color: #f6f8fa;
-    color: #24292e;
 }
 
 a, .btn-link {
@@ -50,17 +48,4 @@ h1:focus {
 
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
-}
-
-table {
-    background-color: #ffffff;
-    border: 1px solid #d0d7de;
-}
-
-thead {
-    background-color: #f6f8fa;
-}
-
-.table-striped > tbody > tr:nth-of-type(odd) {
-    background-color: #f9f9f9;
 }

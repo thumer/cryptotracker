@@ -16,8 +16,8 @@ main {
 }
 
 .top-row {
-    background-color: #4e73df;
-    border-bottom: 1px solid #4e73df;
+    background-color: #222222;
+    border-bottom: 1px solid #0b6b6b;
     justify-content: center;
     color: #ffffff;
     height: 3.5rem;

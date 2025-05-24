@@ -1,18 +1,22 @@
 ﻿@inherits LayoutComponentBase
 
-<Layout>
-    <LayoutHeader Class="bg-primary text-white px-4">
-        <h1 class="logo my-2">CryptoTracker</h1>
-    </LayoutHeader>
-    <Layout>
-        <LayoutSider Background="Background.Light">
-            <NavMenu />
-        </LayoutSider>
-        <LayoutContent Class="p-4">
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+
+        <div class="top-row px-4">
+          
+        </div>
+
+
+        <article class="content px-4">
             @Body
-        </LayoutContent>
-    </Layout>
-</Layout>
+        </article>
+    </main>
+</div>
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.

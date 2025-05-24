@@ -1,27 +1,80 @@
-<Bar Mode="BarMode.VerticalInline" Class="mt-4" Background="Background.Light" ThemeContrast="ThemeContrast.Light">
-    <BarMenu>
-        <BarItem>
-            <BarLink To="" Match="Match.All">Überblick</BarLink>
-        </BarItem>
-        <BarItem>
-            <BarLink To="bilanzen">Bilanzen</BarLink>
-        </BarItem>
-        <BarItem>
-            <BarLink To="wallets">Wallets</BarLink>
-        </BarItem>
-        <BarDropdown>
-            <BarLink To="import">Import</BarLink>
-            <BarDropdownMenu Class="ms-3">
-                <BarItem><BarLink To="import/binance-deposit">Binance Deposit</BarLink></BarItem>
-                <BarItem><BarLink To="import/binance-withdrawal">Binance Withdrawal</BarLink></BarItem>
-                <BarItem><BarLink To="import/binance-trade">Binance Trade</BarLink></BarItem>
-                <BarItem><BarLink To="import/bitcoinde-transactions">Bitcoin.de Transactions</BarLink></BarItem>
-                <BarItem><BarLink To="import/bitpanda-transactions">Bitpanda Transactions</BarLink></BarItem>
-                <BarItem><BarLink To="import/metamask-transactions">Metamask Transactions</BarLink></BarItem>
-                <BarItem><BarLink To="import/metamask-trades">Metamask Trades</BarLink></BarItem>
-                <BarItem><BarLink To="import/okx-deposit">Okx Deposit</BarLink></BarItem>
-                <BarItem><BarLink To="import/okx-trade">Okx Trade</BarLink></BarItem>
-            </BarDropdownMenu>
-        </BarDropdown>
-    </BarMenu>
-</Bar>
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <h1 class="navbar-brand logo my-2">CryptoTracker</h1>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-speedometer2-nav-menu" aria-hidden="true"></span> Überblick
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="bilanzen">
+                <span class="bi bi-pie-chart-fill-nav-menu" aria-hidden="true"></span> Bilanzen
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="wallets">
+                <span class="bi bi-wallet2-nav-menu" aria-hidden="true"></span> Wallets
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="import">
+                <span class="bi bi-folder2-open-nav-menu" aria-hidden="true"></span> Import
+            </NavLink>
+        </div>
+        <div class="nav flex-column">
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/binance-deposit">
+                    Binance Deposit
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/binance-withdrawal">
+                    Binance Withdrawal
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/binance-trade">
+                    Binance Trade
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/bitcoinde-transactions">
+                    Bitcoin.de Transactions
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/bitpanda-transactions">
+                    Bitpanda Transactions
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/metamask-transactions">
+                    Metamask Transactions
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/metamask-trades">
+                    Metamask Trades
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/okx-deposit">
+                    Okx Deposit
+                </NavLink>
+            </div>
+            <div class="nav-item px-5">
+                <NavLink class="nav-link" href="import/okx-trade">
+                    Okx Trade
+                </NavLink>
+            </div>
+        </div>
+    </nav>
+</div>
