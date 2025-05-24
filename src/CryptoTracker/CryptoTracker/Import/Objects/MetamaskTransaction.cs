@@ -10,6 +10,7 @@ namespace CryptoTracker.Import.Objects
 
     public class MetamaskTransaction : ICryptoCsvEntry
     {
+        public int Id { get; set; }
         /// <summary>
         /// Datum in ISO 8601 und CET
         /// </summary>
