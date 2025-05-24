@@ -16,7 +16,7 @@ namespace CryptoTracker.Client.Pages
         private Dictionary<ImportDocumentType, string> WalletNameDictionary = Enum.GetValues(typeof(ImportDocumentType)).OfType<ImportDocumentType>().ToDictionary(t => t, t => string.Empty);
         private Dictionary<ImportDocumentType, Guid> InputFileIdDictionary = Enum.GetValues(typeof(ImportDocumentType)).OfType<ImportDocumentType>().ToDictionary(t => t, t => Guid.NewGuid());
 
-        private async Task HandleFileSelected(ImportDocumentType documentType, InputFileChangeEventArgs e)
+        private Task HandleFileSelected(ImportDocumentType documentType, InputFileChangeEventArgs e)
         {
             _selectedFiles[documentType] = e.File;
 
@@ -27,6 +27,7 @@ namespace CryptoTracker.Client.Pages
                 string walletName = e.File.Name.Substring(indexOfHashtag + 1, (e.File.Name.Length - (indexOfHashtag + 1)) - (e.File.Name.Length - indexOfLastDot));
                 WalletNameDictionary[documentType] = walletName;
             }
+            return Task.CompletedTask;
         }
 
         private async Task UploadDocument(ImportDocumentType documentType)
@@ -45,7 +46,7 @@ namespace CryptoTracker.Client.Pages
                     content: fileContent,
                     name: "\"file\"",
                     fileName: selectedFile.Name);
-                content.Add(JsonContent.Create(new ImportFileRequest() { Type = documentType, WalletName = walletName }), "request");
+                content.Add(JsonContent.Create(new ImportFileRequest() { Type = documentType, WalletName = walletName ?? string.Empty }), "request");
 
                 var response = await HttpClient.PostAsync($"api/DataImport/ImportFile", content);
 
