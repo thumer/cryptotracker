@@ -28,8 +28,6 @@ jobs:
         resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP_NAME }}
         scope: resourcegroup
         template: ./infra/main.bicep
-        parameters: |
-          ./infra/main.parameters.json
-          azureDbConnectionString='${{ vars.AZURE_DB_CONNECTION_STRING }}'
+        parameters: ./infra/main.parameters.json azureDbConnectionString='${{ vars.AZURE_DB_CONNECTION_STRING }}'
         failOnStdErr: false
         
