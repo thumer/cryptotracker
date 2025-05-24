@@ -22,11 +22,14 @@ jobs:
         enable-AzPSSession: true
 
     - name: deploy
-      uses: azure/arm-deploy@v1
+      uses: azure/arm-deploy@v2
       with:
         subscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
         resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP_NAME }}
-        scope: 'resourcegroup'
+        scope: resourcegroup
         template: ./infra/main.bicep
-        parameters: ./infra/main.parameters.json azureDbConnectionString="${{ vars.AZURE_DB_CONNECTION_STRING }}"
+        parameters: |
+          ./infra/main.parameters.json
+          azureDbConnectionString='${{ vars.AZURE_DB_CONNECTION_STRING }}'
         failOnStdErr: false
+        
