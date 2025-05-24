@@ -1,0 +1,69 @@
+name: CryptoTracker build&deploy
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_ENV_NAME }}
+  AZURE_WEBAPP_PACKAGE_PATH: './src/CryptoTracker/CryptoTracker'
+  DOTNET_VERSION: '9.0.x'
+  CONNECTION_STRING: ${{ vars.AZURE_DB_CONNECTION_STRING }}
+  SQL_SERVER: ${{ vars.AZURE_SQL_SERVER_NAME }}
+  SQL_DATABASE: ${{ vars.AZURE_SQL_DATABASE_NAME }}
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Set up dependency caching for faster builds
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: dotnet build and publish
+        run: |
+          dotnet restore
+          dotnet build --configuration Release
+          dotnet publish -c Release -o ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/output/
+
+      - name: OIDC Login to Azure Public Cloud with AzPowershell
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_DEPLOYMENT_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+
+      - name: Install sqlcmd tooling
+        run: |
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+          sudo ln -s /opt/mssql-tools/bin/sqlcmd /usr/local/bin/sqlcmd
+
+
+      - name: Run EF Core migrations
+        run: |
+          dotnet tool install --global dotnet-ef
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet ef database update --project src/CryptoTracker/CryptoTracker/CryptoTracker.csproj --connection "${{ env.CONNECTION_STRING }}"
+
+      - name: Deploy to Azure Web apps
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          slot-name: 'production'
+          package: '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/output/'
