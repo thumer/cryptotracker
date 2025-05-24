@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CryptoTracker\CryptoTracker\CryptoTracker.csproj" />
+    <ProjectReference Include="..\CryptoTracker\CryptoTracker.csproj" />
   </ItemGroup>
 
 </Project>
