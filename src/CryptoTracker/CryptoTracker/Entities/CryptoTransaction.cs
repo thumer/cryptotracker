@@ -15,10 +15,10 @@ public class CryptoTransaction : IFlow
     /// <summary>
     /// Wenn TransactionType: Receive => Zielwallet / bei Send => Quellwallet
     /// </summary>
-    public string Wallet { get; set; }
+    public string Wallet { get; set; } = string.Empty;
     public DateTime DateTime { get; set; }
     public TransactionType TransactionType { get; set; }
-    public string Symbol { get; set; }
+    public string Symbol { get; set; } = string.Empty;
     /// <summary>
     /// Anzahl vor Gebührabzug
     /// </summary>

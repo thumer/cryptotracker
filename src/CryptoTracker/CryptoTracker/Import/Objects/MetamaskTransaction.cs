@@ -9,6 +9,7 @@ namespace CryptoTracker.Import.Objects
 
     public class MetamaskTransaction : ICryptoCsvEntry
     {
+        [Ignore]
         public int Id { get; set; }
         /// <summary>
         /// Datum in ISO 8601 und CET
@@ -18,17 +19,17 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Eingang, Ausgang
         /// </summary>
-        public string Typ { get; set; }
+        public string Typ { get; set; } = string.Empty;
 
         /// <summary>
         /// Symbol der Cryptowährung
         /// </summary>
-        public string Coin { get; set; }
+        public string Coin { get; set; } = string.Empty;
 
         /// <summary>
         /// Netzwerk über das die Coins übertragen wurden
         /// </summary>
-        public string Network { get; set; }
+        public string Network { get; set; } = string.Empty;
 
         /// <summary>
         /// Anzahl der Coins vor Gebührenabzug
@@ -40,6 +41,6 @@ namespace CryptoTracker.Import.Objects
         /// </summary>
         public decimal TransactionFee { get; set; }
 
-        public string Kommentar { get; set; }
+        public string Kommentar { get; set; } = string.Empty;
     }
 }

@@ -6,9 +6,9 @@ namespace CryptoTracker.Import
 {
     public class UtcDateTimeConverter : DateTimeConverter
     {
-        public override object ConvertFromString(string text, IReaderRow row, MemberMapData memberMapData)
+        public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
         {
-            if (DateTime.TryParse(text, out DateTime parsedDateTime))
+            if (text != null && DateTime.TryParse(text, out DateTime parsedDateTime))
             {
                 return new DateTimeOffset(DateTime.SpecifyKind(parsedDateTime, DateTimeKind.Utc));
             }

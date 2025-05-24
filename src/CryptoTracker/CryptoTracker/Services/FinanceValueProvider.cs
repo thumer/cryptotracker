@@ -18,9 +18,9 @@ public class FinanceValueProvider : IFinanceValueProvider
         try
         {
             Quote quote = await _financeService.GetQuoteAsync($"{symbol}-EUR");
-            return quote.RegularMarketPrice;
+            return Convert.ToDecimal(quote.RegularMarketPrice ?? 0d);
         }
-        catch (FinanceException)
+        catch (FinanceNetException)
         {
             return 0m;
         }

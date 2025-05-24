@@ -4,6 +4,7 @@ using CryptoTracker.Client.Pages;
 using Microsoft.AspNetCore.Components;
 using CryptoTracker.Services;
 using Finance.Net;
+using Finance.Net.Extensions;
 
 namespace CryptoTracker
 {
@@ -32,7 +33,7 @@ namespace CryptoTracker
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
 
-            services.AddFinanceNetServiceProvider(new FinanceNetConfiguration()
+            services.AddFinanceNet(new FinanceNetConfiguration()
             {
                 HttpRetryCount = 3
             });
