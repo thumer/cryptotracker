@@ -1,6 +1,10 @@
 ﻿using CryptoTracker.Entities;
 using CryptoTracker.Import;
 using CryptoTracker.Shared;
+using CryptoTracker.Import.Objects;
+using CsvHelper;
+using CsvHelper.Configuration;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 
 namespace CryptoTracker.Services
@@ -16,8 +20,109 @@ namespace CryptoTracker.Services
 
         public async Task Import(ImportDocumentType type, string walletName, Func<Stream> openStreamFunc)
         {
+            await StoreRawEntries(type, openStreamFunc);
+
             var importer = GetImporter(type);
             await importer.Import(new ImportArgs() { Wallet = walletName }, openStreamFunc);
+        }
+
+        private async Task StoreRawEntries(ImportDocumentType type, Func<Stream> openStreamFunc)
+        {
+            switch (type)
+            {
+                case ImportDocumentType.BinanceDepositHistory:
+                    await SaveEntries<BinanceDeposit>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.BinanceWithdrawalHistory:
+                    await SaveEntries<BinanceWithdrawal>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.BinanceTradingHistory:
+                    await SaveEntries<BinanceTrade>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.BitcoinDeTransactions:
+                    await SaveEntries<BitcoinDeTransaction>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.BitpandaTransaction:
+                    await SaveEntries<BitpandaTransaction>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.MetamaskTradingHistory:
+                    await SaveEntries<MetamaskTrade>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.MetamaskTransactions:
+                    await SaveEntries<MetamaskTransaction>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.OkxDepositHistory:
+                    await SaveEntries<OkxDeposit>(type, openStreamFunc);
+                    break;
+                case ImportDocumentType.OkxTradingHistory:
+                    await SaveEntries<OkxTrade>(type, openStreamFunc);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private async Task SaveEntries<T>(ImportDocumentType type, Func<Stream> openStreamFunc) where T : class
+        {
+            using var stream = openStreamFunc();
+            using var reader = new StreamReader(stream);
+            var (config, setup) = GetCsvSetup(type);
+            using var csv = new CsvReader(reader, config);
+            setup?.Invoke(csv);
+            var records = csv.GetRecords<T>().ToList();
+
+            _dbContext.Set<T>().AddRange(records);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        private (CsvConfiguration config, Action<CsvReader>? setup) GetCsvSetup(ImportDocumentType type)
+        {
+            switch (type)
+            {
+                case ImportDocumentType.BinanceDepositHistory:
+                case ImportDocumentType.BinanceWithdrawalHistory:
+                case ImportDocumentType.OkxDepositHistory:
+                case ImportDocumentType.OkxTradingHistory:
+                case ImportDocumentType.MetamaskTradingHistory:
+                case ImportDocumentType.MetamaskTransactions:
+                    return (new CsvConfiguration(new CultureInfo("de-AT")) { Delimiter = ";" }, reader => reader.Context.TypeConverterCache.AddConverter<DateTimeOffset>(new UtcDateTimeConverter()));
+                case ImportDocumentType.BinanceTradingHistory:
+                    return (new CsvConfiguration(new CultureInfo("en-US")), reader => reader.Context.TypeConverterCache.AddConverter<DateTimeOffset>(new UtcDateTimeConverter()));
+                case ImportDocumentType.BitcoinDeTransactions:
+                    return (new CsvConfiguration(new CultureInfo("en-US")) { Delimiter = ";" }, null);
+                case ImportDocumentType.BitpandaTransaction:
+                    return (new CsvConfiguration(new CultureInfo("en-US")), reader =>
+                    {
+                        reader.Context.TypeConverterCache.AddConverter<decimal>(new BitpandaDecimalConverter());
+                        reader.Context.TypeConverterCache.AddConverter<int>(new BitpandaIntConverter());
+                    });
+                default:
+                    return (new CsvConfiguration(CultureInfo.InvariantCulture), null);
+            }
+        }
+
+        private class BitpandaDecimalConverter : CsvHelper.TypeConversion.DecimalConverter
+        {
+            public override object? ConvertFromString(string? text, CsvHelper.IReaderRow row, CsvHelper.Configuration.MemberMapData memberMapData)
+            {
+                if (text == "-")
+                    text = string.Empty;
+                if (decimal.TryParse(text, new CultureInfo("en-US"), out var result))
+                    return result;
+                return null;
+            }
+        }
+
+        private class BitpandaIntConverter : CsvHelper.TypeConversion.Int32Converter
+        {
+            public override object? ConvertFromString(string? text, CsvHelper.IReaderRow row, CsvHelper.Configuration.MemberMapData memberMapData)
+            {
+                if (text == "-")
+                    text = string.Empty;
+                if (int.TryParse(text, new CultureInfo("en-US"), out var result))
+                    return result;
+                return null;
+            }
         }
 
         public async Task ProcessTransactionPairs()

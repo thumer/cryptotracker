@@ -9,6 +9,7 @@ namespace CryptoTracker.Import.Objects
 
     public class BinanceTrade : ICryptoCsvEntry
     {
+        public int Id { get; set; }
         [Name("Date(UTC)")]
         public DateTimeOffset Date { get; set; }
 

@@ -1,4 +1,5 @@
 ﻿using CryptoTracker.Entities;
+using CryptoTracker.Import.Objects;
 using Microsoft.EntityFrameworkCore;
 
 namespace CryptoTracker
@@ -7,6 +8,15 @@ namespace CryptoTracker
     {
         public DbSet<CryptoTransaction> CryptoTransactions { get; set; }
         public DbSet<CryptoTrade> CryptoTrades { get; set; }
+        public DbSet<BinanceDeposit> BinanceDeposits { get; set; }
+        public DbSet<BinanceWithdrawal> BinanceWithdrawals { get; set; }
+        public DbSet<BinanceTrade> BinanceTrades { get; set; }
+        public DbSet<BitcoinDeTransaction> BitcoinDeTransactions { get; set; }
+        public DbSet<BitpandaTransaction> BitpandaTransactions { get; set; }
+        public DbSet<MetamaskTrade> MetamaskTrades { get; set; }
+        public DbSet<MetamaskTransaction> MetamaskTransactions { get; set; }
+        public DbSet<OkxDeposit> OkxDeposits { get; set; }
+        public DbSet<OkxTrade> OkxTrades { get; set; }
 
         public CryptoTrackerDbContext(DbContextOptions<CryptoTrackerDbContext> options) : base(options)
         {
@@ -27,6 +37,16 @@ namespace CryptoTracker
                 .WithOne()
                 .HasForeignKey<CryptoTrade>(c => c.OppositeTradeId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<BinanceDeposit>().HasKey(b => b.Id);
+            modelBuilder.Entity<BinanceWithdrawal>().HasKey(b => b.Id);
+            modelBuilder.Entity<BinanceTrade>().HasKey(b => b.Id);
+            modelBuilder.Entity<BitcoinDeTransaction>().HasKey(b => b.Id);
+            modelBuilder.Entity<BitpandaTransaction>().HasKey(b => b.Id);
+            modelBuilder.Entity<MetamaskTrade>().HasKey(b => b.Id);
+            modelBuilder.Entity<MetamaskTransaction>().HasKey(b => b.Id);
+            modelBuilder.Entity<OkxDeposit>().HasKey(b => b.Id);
+            modelBuilder.Entity<OkxTrade>().HasKey(b => b.Id);
 
             modelBuilder.Entity<CryptoTrade>()
                 .Property(c => c.Price)

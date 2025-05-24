@@ -11,6 +11,7 @@ namespace CryptoTracker.Import.Objects
 
     public class BitcoinDeTransaction : ICryptoCsvEntry
     {
+        public int Id { get; set; }
         public DateTime Datum { get; set; }
 
         /// <summary>
