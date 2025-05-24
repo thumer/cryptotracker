@@ -11,18 +11,18 @@ public enum TradeType
 public class CryptoTrade : IFlow
 {
     public int Id { get; set; }
-    public string Wallet { get; set; }
+    public string Wallet { get; set; } = string.Empty;
     public DateTime DateTime { get; set; }
 
     /// <summary>
     /// Welcher Coin wurde gekauft/verkauft
     /// </summary>
-    public string Symbol { get; set; }
+    public string Symbol { get; set; } = string.Empty;
 
     /// <summary>
     /// Mit welchen Coin wurde bezahlt / Betrag erhalten.
     /// </summary>
-    public string OpositeSymbol { get; set; }
+    public string OpositeSymbol { get; set; } = string.Empty;
 
     public TradeType TradeType { get; set; }
 
@@ -42,7 +42,7 @@ public class CryptoTrade : IFlow
     /// </summary>
     public decimal Fee { get; set; }
     public decimal ForeignFee {  get; set; }
-    public string ForeignFeeSymbol {  get; set; }
+    public string ForeignFeeSymbol {  get; set; } = string.Empty;
 
     /// <summary>
     /// Externe Referenz - z.B. TransactionId bei Kauf Fiat->Crypto

@@ -2,6 +2,6 @@
 {
     public class ImportArgs
     {
-        public string Wallet { get; set; }
+        public string Wallet { get; set; } = string.Empty;
     }
 }

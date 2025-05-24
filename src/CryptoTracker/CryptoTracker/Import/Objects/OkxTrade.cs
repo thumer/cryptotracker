@@ -9,6 +9,7 @@ namespace CryptoTracker.Import.Objects
 
     public class OkxTrade : ICryptoCsvEntry
     {
+        [Ignore]
         public int Id { get; set; }
         [Name("Date(UTC)")]
         public DateTimeOffset Date { get; set; }
@@ -16,18 +17,18 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// "{PrimarySymbol}{SecondardSymbol}" z.B. "ETHUSDT"
         /// </summary>
-        public string Pair {  get; set; }
+        public string Pair {  get; set; } = string.Empty;
 
         /// <summary>
         /// SELL or BUY
         /// </summary>
-        public string Side { get; set; }
+        public string Side { get; set; } = string.Empty;
 
         /// <summary>
         /// Preis ausgehend von PrimarySymbol (1 {PrimarySymbol} kostet x {SecondardSymbol})
         /// Nach der Zahl steht das Währungssymbol. z.B. "0.1374ETH"
         /// </summary>
-        public string Price {  get; set; }
+        public string Price {  get; set; } = string.Empty;
 
         /// <summary>
         /// Anzahl an {PrimarySymbol} die gekauft/verkauft wurden.
