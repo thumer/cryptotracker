@@ -11,29 +11,30 @@ namespace CryptoTracker.Import.Objects
 
     public class BitcoinDeTransaction : ICryptoCsvEntry
     {
+        [Ignore]
         public int Id { get; set; }
         public DateTime Datum { get; set; }
 
         /// <summary>
         /// Kauf, Verkauf, Auszahlung, Einzahlung, Netzwerk-Gebühr, Partnerprogramm, Korrekturposition, Registrierung, Initialisierung
         /// </summary>
-        public string Typ {  get; set; }
+        public string Typ {  get; set; } = string.Empty;
 
         /// <summary>
         /// Symbol der Cryptowährung
         /// </summary>
         [Name("Währung")]
-        public string Waehrung { get; set; }
+        public string Waehrung { get; set; } = string.Empty;
 
         /// <summary>
         /// z.B. Transaction Hash bei Ein- oder Auszahlung oder Bitcoin.de TransactionId bei Kauf/Verkauf
         /// </summary>
-        public string Referenz { get; set; }
+        public string Referenz { get; set; } = string.Empty;
 
         /// <summary>
         /// Ziel- oder Quelladdresse bei einer Crypto Transaktion
         /// </summary>
-        public string Adresse { get; set; }
+        public string Adresse { get; set; } = string.Empty;
 
         /// <summary>
         /// Kurs in EUR (z.B. 61 EUR pro BTC)
@@ -44,7 +45,7 @@ namespace CryptoTracker.Import.Objects
         /// z.B. BTC / EUR
         /// </summary>
         [Name("Einheit (Kurs)")]
-        public string EinheitKurs { get; set; }
+        public string EinheitKurs { get; set; } = string.Empty;
 
         /// <summary>
         /// z.B. Anzahl an BTC/ETH vor Gebührenabzug. z.B. 1.000
@@ -62,7 +63,7 @@ namespace CryptoTracker.Import.Objects
         /// z.B. EUR
         /// </summary>
         [Name("Einheit (Menge vor Gebühr)")]
-        public string EinheitMengeVorGebuehr { get; set; }
+        public string EinheitMengeVorGebuehr { get; set; } = string.Empty;
 
         /// <summary>
         /// z.B. Anzahl an BTC/ETH nach Gebührenabzug. z.B. 1.000
@@ -80,7 +81,7 @@ namespace CryptoTracker.Import.Objects
         /// z.B. EUR
         /// </summary>
         [Name("Einheit (Menge nach Bitcoin.de-Gebühr)")]
-        public string EinheitMengeNachGebuehr { get; set; }
+        public string EinheitMengeNachGebuehr { get; set; } = string.Empty;
 
         /// <summary>
         /// Menge, die vom Konto zu- oder abgebucht wurden.
@@ -93,6 +94,6 @@ namespace CryptoTracker.Import.Objects
         /// </summary>
         public decimal Kontostand {  get; set; }
 
-        public string Kommentar { get; set; }
+        public string Kommentar { get; set; } = string.Empty;
     }
 }

@@ -9,6 +9,7 @@ namespace CryptoTracker.Import.Objects
 
     public class MetamaskTrade : ICryptoCsvEntry
     {
+        [Ignore]
         public int Id { get; set; }
         [Name("Date(UTC)")]
         public DateTimeOffset Date { get; set; }
@@ -16,38 +17,38 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// "{PrimarySymbol}{SecondardSymbol}" z.B. "ETHUSDT"
         /// </summary>
-        public string Pair {  get; set; }
+        public string Pair {  get; set; } = string.Empty;
 
         /// <summary>
         /// SELL or BUY
         /// </summary>
-        public string Side { get; set; }
+        public string Side { get; set; } = string.Empty;
 
         /// <summary>
         /// Preis ausgehend von PrimarySymbol (1 {PrimarySymbol} kostet x {SecondardSymbol})
         /// </summary>
-        public string Price {  get; set; }
+        public string Price {  get; set; } = string.Empty;
 
         /// <summary>
         /// Anzahl an {PrimarySymbol} die gekauft/verkauft wurden.
         /// Nach der Zahl steht das Währungssymbol. z.B. "0.1374ETH"
         /// </summary>
-        public string Executed { get; set; }
+        public string Executed { get; set; } = string.Empty;
 
         /// <summary>
         /// Anzahl an Coins in {SecondardSymbol} die im Gegenzug bezahlt bzw. erhalten wurden.
         /// Entspricht Wert vor Fee-Abzug.
         /// Nach der Zahl steht das Währungssymbol. z.B. "320.02521USDT"
         /// </summary>
-        public string Amount { get; set; }
+        public string Amount { get; set; } = string.Empty;
 
         /// <summary>
         /// Anzahl von {SecondardSymbol} oder alternativ Währung, die beim Trade angefallen sind.
         /// 
         /// Nach der Zahl steht das Währungssymbol. z.B. "0.32002521USDT" oder "0.0079859100BNB"
         /// </summary>
-        public string Fee { get; set; }
+        public string Fee { get; set; } = string.Empty;
 
-        public string Tradingplatform { get; set; }
+        public string Tradingplatform { get; set; } = string.Empty;
     }
 }

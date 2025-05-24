@@ -26,7 +26,7 @@ namespace CryptoTracker.Import
 
         private class BitpandaDecimalConverter : DecimalConverter
         {
-            public override object ConvertFromString(string text, IReaderRow row, MemberMapData memberMapData)
+            public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
             {
                 if (text == "-")
                     text = "";
@@ -40,7 +40,7 @@ namespace CryptoTracker.Import
 
         private class BitpandaIntConverter : Int32Converter
         {
-            public override object ConvertFromString(string text, IReaderRow row, MemberMapData memberMapData)
+            public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
             {
                 if (text == "-")
                     text = "";

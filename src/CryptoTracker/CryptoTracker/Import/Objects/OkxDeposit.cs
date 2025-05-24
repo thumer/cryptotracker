@@ -9,13 +9,14 @@ namespace CryptoTracker.Import.Objects
 
     public class OkxDeposit : ICryptoCsvEntry
     {
+        [Ignore]
         public int Id { get; set; }
         [Name("Date(UTC)")]
         public DateTimeOffset Date { get; set; }
 
-        public string Coin {  get; set; }
+        public string Coin {  get; set; } = string.Empty;
 
-        public string Network { get; set; }
+        public string Network { get; set; } = string.Empty;
 
         /// <summary>
         /// Preis die ausbezahlt wurden. Entspricht Preis nach Fee Abzug.
@@ -25,8 +26,9 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Zieladresse
         /// </summary>
-        public string Address {  get; set; }
+        public string Address {  get; set; } = string.Empty;
 
-        public string Kommentar {  get; set; }
+        [Name("Comment")]
+        public string Kommentar {  get; set; } = string.Empty;
     }
 }

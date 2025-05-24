@@ -12,12 +12,13 @@ namespace CryptoTracker.Import.Objects
 
     public class BitpandaTransaction : ICryptoCsvEntry
     {
+        [Ignore]
         public int Id { get; set; }
         /// <summary>
         /// Interne TransactionId
         /// </summary>
         [Name("Transaction ID")]
-        public string TransactionId { get; set; }
+        public string TransactionId { get; set; } = string.Empty;
 
         /// <summary>
         /// Datum in ISO 8601 und CET
@@ -28,13 +29,13 @@ namespace CryptoTracker.Import.Objects
         /// deposit, withdrawal, buy, sell
         /// </summary>
         [Name("Transaction Type")]
-        public string TransactionType {  get; set; }
+        public string TransactionType {  get; set; } = string.Empty;
 
         /// <summary>
         /// incoming, outgoing
         /// </summary>
         [Name("In/Out")]
-        public string InOut { get; set; }
+        public string InOut { get; set; } = string.Empty;
 
         /// <summary>
         /// Betrag in Fiat für Kauf oder Verkauf aber auch den aktuellen Wert bei Crypto Aus-/Einzahlung.
@@ -45,7 +46,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Symbol der Fiat Währung
         /// </summary>
-        public string Fiat { get; set; }
+        public string Fiat { get; set; } = string.Empty;
 
         /// <summary>
         /// Menge an Cryptos vor Gebührenabzug bei Transaktion
@@ -56,7 +57,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Symbol der Asset Währung
         /// </summary>
-        public string Asset { get; set; }
+        public string Asset { get; set; } = string.Empty;
 
         /// <summary>
         /// Aktuelle Preis der Cryptowährung in der {AssetMarketPriceCurrency} Währung (in der Regel Fiat Währung).
@@ -65,13 +66,13 @@ namespace CryptoTracker.Import.Objects
         public decimal? AssetMarketPrice { get; set; }
 
         [Name("Asset market price currency")]
-        public string AssetMarketPriceCurrency { get; set; }
+        public string AssetMarketPriceCurrency { get; set; } = string.Empty;
 
         /// <summary>
         /// Asset Class z.B. Cryptocurrency
         /// </summary>
         [Name("Asset class")]
-        public string AssetClass { get; set; }
+        public string AssetClass { get; set; } = string.Empty;
 
         [Name("Product ID")]
         public int? ProductID { get; set; }
@@ -95,8 +96,8 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Ziel- oder Quell-Hash Addresse bei einer Cryptotransaktion
         /// </summary>
-        public string Address { get; set; }
+        public string Address { get; set; } = string.Empty;
 
-        public string Comment { get; set; }
+        public string Comment { get; set; } = string.Empty;
     }
 }
