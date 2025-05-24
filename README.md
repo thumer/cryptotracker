@@ -24,4 +24,8 @@ Features:
 - Finanzamtprotokoll
   - Spezielle für einen Asset-Ausgang
 
+Weitere Automatisierungen:
+- Abhängigkeiten werden wöchentlich mit [Dependabot](https://docs.github.com/de/code-security/dependabot/dependabot-version-updates/configuration-options-for-dependency-updates) geprüft und Updates
+  als Pull Request bereitgestellt.
+
 
