@@ -18,5 +18,4 @@ CultureInfo.DefaultThreadCurrentUICulture = culture;
 
 var host = builder.Build();
 
-await host.Services.UseBootstrap5Providers().UseFontAwesomeIcons();
 await host.RunAsync();
