@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CryptoTracker.Migrations
 {
     [DbContext(typeof(CryptoTrackerDbContext))]
-    [Migration("20250524152338_Initial")]
+    [Migration("20250524214525_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -72,15 +72,16 @@ namespace CryptoTracker.Migrations
                     b.Property<int>("TradeType")
                         .HasColumnType("int");
 
-                    b.Property<string>("Wallet")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("OppositeTradeId")
                         .IsUnique()
                         .HasFilter("[OppositeTradeId] IS NOT NULL");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("CryptoTrades");
                 });
@@ -111,8 +112,8 @@ namespace CryptoTracker.Migrations
                     b.Property<int?>("OppositeTransactionId")
                         .HasColumnType("int");
 
-                    b.Property<string>("OppositeWallet")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("OppositeWalletId")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
                         .HasColumnType("decimal(27, 12)");
@@ -127,9 +128,8 @@ namespace CryptoTracker.Migrations
                     b.Property<int>("TransactionType")
                         .HasColumnType("int");
 
-                    b.Property<string>("Wallet")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -137,10 +137,14 @@ namespace CryptoTracker.Migrations
                         .IsUnique()
                         .HasFilter("[OppositeTransactionId] IS NOT NULL");
 
+                    b.HasIndex("OppositeWalletId");
+
+                    b.HasIndex("WalletId");
+
                     b.ToTable("CryptoTransactions");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.BinanceDeposit", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BinanceDepositEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -177,12 +181,17 @@ namespace CryptoTracker.Migrations
                     b.Property<decimal>("TransactionFee")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("BinanceDeposits");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.BinanceTrade", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BinanceTradeEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -216,12 +225,17 @@ namespace CryptoTracker.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("BinanceTrades");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.BinanceWithdrawal", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BinanceWithdrawalEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -258,12 +272,17 @@ namespace CryptoTracker.Migrations
                     b.Property<decimal>("TransactionFee")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("BinanceWithdrawals");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.BitcoinDeTransaction", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BitcoinDeTransactionEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -324,15 +343,20 @@ namespace CryptoTracker.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("ZuAbgang")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("WalletId");
+
                     b.ToTable("BitcoinDeTransactions");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.BitpandaTransaction", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BitpandaTransactionEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -372,8 +396,9 @@ namespace CryptoTracker.Migrations
                     b.Property<decimal?>("Fee")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("FeeAsset")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<string>("FeeAsset")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Fiat")
                         .IsRequired()
@@ -389,14 +414,15 @@ namespace CryptoTracker.Migrations
                     b.Property<decimal?>("Spread")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("SpreadCurrency")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<string>("SpreadCurrency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("TaxFiat")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("TransactionId")
                         .IsRequired()
@@ -406,12 +432,17 @@ namespace CryptoTracker.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("BitpandaTransactions");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.MetamaskTrade", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.MetamaskTradeEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -450,12 +481,17 @@ namespace CryptoTracker.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("MetamaskTrades");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.MetamaskTransaction", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.MetamaskTransactionEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -463,37 +499,60 @@ namespace CryptoTracker.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Coin")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset>("Datum")
+                    b.Property<DateTimeOffset>("Date")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<string>("Kommentar")
+                    b.Property<string>("From")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Network")
+                    b.Property<string>("GasLimit")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("TransactionFee")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Typ")
+                    b.Property<string>("GasPrice")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("To")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TransactionFee")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TransactionFeeInUSD")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ValueInUSD")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("MetamaskTransactions");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.OkxDeposit", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.OkxDepositEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -512,23 +571,35 @@ namespace CryptoTracker.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTimeOffset>("Date")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Kommentar")
+                    b.Property<string>("Comment")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("Date")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("Network")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("TXID")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TransactionFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("OkxDeposits");
                 });
 
-            modelBuilder.Entity("CryptoTracker.Import.Objects.OkxTrade", b =>
+            modelBuilder.Entity("CryptoTracker.Entities.Import.OkxTradeEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -554,9 +625,34 @@ namespace CryptoTracker.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("WalletId");
+
                     b.ToTable("OkxTrades");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Wallet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Wallets");
                 });
 
             modelBuilder.Entity("CryptoTracker.Entities.CryptoTrade", b =>
@@ -566,7 +662,15 @@ namespace CryptoTracker.Migrations
                         .HasForeignKey("CryptoTracker.Entities.CryptoTrade", "OppositeTradeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("OppositeTrade");
+
+                    b.Navigation("Wallet");
                 });
 
             modelBuilder.Entity("CryptoTracker.Entities.CryptoTransaction", b =>
@@ -576,7 +680,121 @@ namespace CryptoTracker.Migrations
                         .HasForeignKey("CryptoTracker.Entities.CryptoTransaction", "OppositeTransactionId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("CryptoTracker.Entities.Wallet", "OppositeWallet")
+                        .WithMany()
+                        .HasForeignKey("OppositeWalletId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("OppositeTransaction");
+
+                    b.Navigation("OppositeWallet");
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BinanceDepositEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BinanceTradeEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BinanceWithdrawalEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BitcoinDeTransactionEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.BitpandaTransactionEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.MetamaskTradeEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.MetamaskTransactionEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.OkxDepositEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.Import.OkxTradeEntity", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
                 });
 #pragma warning restore 612, 618
         }
