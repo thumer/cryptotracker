@@ -80,9 +80,9 @@ namespace CryptoTracker
             app.UseStaticFiles();
 
             // Initialize Blazorise providers
-            app.ApplicationServices
-                .UseBootstrap5Providers()
-                .UseFontAwesomeIcons();
+            app.UseBlazorise();
+            app.UseBootstrap5Providers();
+            app.UseFontAwesomeIcons();
 
             app.UseRouting();
             app.UseAntiforgery();
