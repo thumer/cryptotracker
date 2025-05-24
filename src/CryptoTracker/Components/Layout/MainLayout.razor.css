@@ -9,17 +9,17 @@ main {
 }
 
 .sidebar {
-    background-color: #343a40;
-    border-right: 1px solid #495057;
-    color: white;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    background-color: #f8f9fa;
+    border-right: 1px solid #dddddd;
+    color: #333333;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
 
 .top-row {
-    background-color: #343a40;
-    border-bottom: 1px solid #495057;
+    background-color: #4e73df;
+    border-bottom: 1px solid #4e73df;
     justify-content: center;
-    color: white;
+    color: #ffffff;
     height: 3.5rem;
     display: flex;
     align-items: center;

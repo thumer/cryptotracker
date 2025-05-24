@@ -1,17 +1,13 @@
 ﻿@inherits LayoutComponentBase
 
 <Layout>
-    <LayoutSider Background="Background.Dark">
-        <Sidebar Background="Background.Dark" ThemeContrast="ThemeContrast.Dark" Visible>
-            <SidebarContent>
-                <NavMenu />
-            </SidebarContent>
-        </Sidebar>
-    </LayoutSider>
+    <LayoutHeader Class="bg-primary text-white px-4">
+        <h1 class="logo my-2">CryptoTracker</h1>
+    </LayoutHeader>
     <Layout>
-        <LayoutHeader Class="bg-dark text-white px-4">
-            <h1 class="logo">CryptoTracker</h1>
-        </LayoutHeader>
+        <LayoutSider Background="Background.Light">
+            <NavMenu />
+        </LayoutSider>
         <LayoutContent Class="p-4">
             @Body
         </LayoutContent>
