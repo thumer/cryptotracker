@@ -30,10 +30,15 @@ namespace CryptoTracker.Import
             var trades = new List<(CryptoTrade sellTrade, CryptoTrade buyTrade)>();
             foreach (var record in records)
             {
-                (decimal price, string symbol2) = ParseNumberAndCurrency(record.Price); 
+                (decimal price, string symbol2) = ParseNumberAndCurrency(record.Price);
+                if (string.IsNullOrEmpty(symbol2))
+                {
+                    symbol2 = record.Pair.Substring(record.Pair.Length - 4);
+                }
                 var symbol1 = record.Pair.Substring(0, record.Pair.Length - symbol2.Length);
                 TradeType tradeType = record.Side == "BUY" ? TradeType.Buy : TradeType.Sell;
 
+                decimal amount = record.Executed * price;
                 var sellTrade = new CryptoTrade
                 {
                     Wallet = args.Wallet,
@@ -42,7 +47,7 @@ namespace CryptoTracker.Import
                     OpositeSymbol = tradeType == TradeType.Sell ? symbol2 : symbol1,
                     TradeType = TradeType.Sell,
                     Price = tradeType == TradeType.Sell ? price : 1 / price,
-                    Quantity = tradeType == TradeType.Sell ? record.Executed : 1 / record.Executed,
+                    Quantity = tradeType == TradeType.Sell ? record.Executed : amount,
                     Fee = 0,
                     ForeignFee = 0,
                     ForeignFeeSymbol = string.Empty,
@@ -54,8 +59,8 @@ namespace CryptoTracker.Import
                     Symbol = tradeType == TradeType.Sell ? symbol2 : symbol1,
                     OpositeSymbol = tradeType == TradeType.Sell ? symbol1 : symbol2,
                     TradeType = TradeType.Buy,
-                    Price = 1 / sellTrade.Price,
-                    Quantity = tradeType == TradeType.Buy ? record.Executed : 1 / record.Executed,
+                    Price = tradeType == TradeType.Sell ? 1 / price : price,
+                    Quantity = tradeType == TradeType.Sell ? amount : record.Executed,
                     Fee = 0,
                     ForeignFee = 0,
                     ForeignFeeSymbol = string.Empty,
@@ -80,15 +85,30 @@ namespace CryptoTracker.Import
         private static (decimal Number, string Currency) ParseNumberAndCurrency(string input)
         {
             int splitIndex = input.IndexOf(' ');
+            string numberStr;
+            string currencyStr;
             if (splitIndex != -1)
             {
-                string numberStr = input.Substring(0, splitIndex);
-                string currencyStr = input.Substring(splitIndex + 1);
-                var number = decimal.Parse(numberStr, NumberStyles.Float);
-                return (number, currencyStr);
+                numberStr = input.Substring(0, splitIndex);
+                currencyStr = input.Substring(splitIndex + 1);
+            }
+            else
+            {
+                int i = 0;
+                while (i < input.Length && (char.IsDigit(input[i]) || input[i] == ',' || input[i] == '.' || input[i] == '-' || input[i] == 'E' || input[i] == 'e' || input[i] == '+'))
+                {
+                    i++;
+                }
+                if (i == 0)
+                {
+                    throw new ArgumentException("Die Zeichenkette enthält keine gültige Zahl oder Währungseinheit.", nameof(input));
+                }
+                numberStr = input.Substring(0, i);
+                currencyStr = i == input.Length ? string.Empty : input.Substring(i);
             }
 
-            throw new ArgumentException("Die Zeichenkette enthält keine gültige Zahl oder Währungseinheit.", nameof(input));
+            var number = decimal.Parse(numberStr, NumberStyles.Float, new CultureInfo("de-AT"));
+            return (number, currencyStr);
         }
     }
 }

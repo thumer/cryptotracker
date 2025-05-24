@@ -14,9 +14,11 @@ namespace CryptoTracker.Import
 
         protected override CsvConfiguration CreateCsvConfiguration()
             => new CsvConfiguration(new System.Globalization.CultureInfo("de-AT"))
-                    {
-                        Delimiter = ";",
-                    };
+            {
+                Delimiter = ";",
+                HeaderValidated = null,
+                MissingFieldFound = null,
+            };
 
         protected override void OnCsvReaderCreated(CsvReader reader)
         {

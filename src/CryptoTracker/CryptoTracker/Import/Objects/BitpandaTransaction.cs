@@ -23,58 +23,66 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// Datum in ISO 8601 und CET
         /// </summary>
+        [Name("Timestamp", "Date")]
         public DateTime Timestamp { get; set; }
 
         /// <summary>
         /// deposit, withdrawal, buy, sell
         /// </summary>
-        [Name("Transaction Type")]
+        [Name("Transaction Type", "Buy/Sell")]
         public string TransactionType {  get; set; } = string.Empty;
 
         /// <summary>
         /// incoming, outgoing
         /// </summary>
         [Name("In/Out")]
+        [Optional]
         public string InOut { get; set; } = string.Empty;
 
         /// <summary>
         /// Betrag in Fiat für Kauf oder Verkauf aber auch den aktuellen Wert bei Crypto Aus-/Einzahlung.
         /// </summary>
-        [Name("Amount Fiat")]
+        [Name("Amount Fiat", "Fiat Amount")]
         public decimal? AmountFiat { get; set; }
 
         /// <summary>
         /// Symbol der Fiat Währung
         /// </summary>
+        [Name("Fiat Currency")]
         public string Fiat { get; set; } = string.Empty;
 
         /// <summary>
         /// Menge an Cryptos vor Gebührenabzug bei Transaktion
         /// </summary>
-        [Name("Amount Asset")]
+        [Name("Amount Asset", "Crypto Amount")]
         public decimal? AmountAsset { get; set; }
 
         /// <summary>
         /// Symbol der Asset Währung
         /// </summary>
+        [Name("Asset", "Crypto Currency")]
         public string Asset { get; set; } = string.Empty;
 
         /// <summary>
         /// Aktuelle Preis der Cryptowährung in der {AssetMarketPriceCurrency} Währung (in der Regel Fiat Währung).
         /// </summary>
         [Name("Asset market price")]
+        [Optional]
         public decimal? AssetMarketPrice { get; set; }
 
         [Name("Asset market price currency")]
+        [Optional]
         public string AssetMarketPriceCurrency { get; set; } = string.Empty;
 
         /// <summary>
         /// Asset Class z.B. Cryptocurrency
         /// </summary>
         [Name("Asset class")]
+        [Optional]
         public string AssetClass { get; set; } = string.Empty;
 
         [Name("Product ID")]
+        [Optional]
         public int? ProductID { get; set; }
 
         /// <summary>

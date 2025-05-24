@@ -26,6 +26,7 @@ namespace CryptoTracker.Import.Objects
         /// <summary>
         /// TransactionFee in der Coin-Symbol Währung
         /// </summary>
+        [Name("Fee")]
         public decimal TransactionFee { get; set; }
         
         /// <summary>

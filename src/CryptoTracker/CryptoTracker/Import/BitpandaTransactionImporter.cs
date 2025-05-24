@@ -15,7 +15,11 @@ namespace CryptoTracker.Import
         }
 
         protected override CsvConfiguration CreateCsvConfiguration()
-            => new CsvConfiguration(new CultureInfo("en-US"));
+            => new CsvConfiguration(new CultureInfo("en-US"))
+            {
+                HeaderValidated = null,
+                MissingFieldFound = null,
+            };
 
         protected override void OnCsvReaderCreated(CsvReader reader)
         {
@@ -57,17 +61,20 @@ namespace CryptoTracker.Import
             var trades = new List<(CryptoTrade sellTrade, CryptoTrade buyTrade)>();
             foreach (var record in records)
             {
-                if (record.AssetClass == "Cryptocurrency" && (record.TransactionType == "buy" || record.TransactionType == "sell"))
+                if ((string.IsNullOrEmpty(record.AssetClass) || record.AssetClass == "Cryptocurrency") &&
+                    (string.Equals(record.TransactionType, "buy", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(record.TransactionType, "sell", StringComparison.OrdinalIgnoreCase)))
                 {
+                    var price = record.AssetMarketPrice ?? (record.AmountAsset.HasValue && record.AmountFiat.HasValue && record.AmountAsset.Value != 0 ? record.AmountFiat.Value / record.AmountAsset.Value : 0);
                     var sellTrade = new CryptoTrade
                     {
                         Wallet = args.Wallet,
                         DateTime = record.Timestamp,
-                        Symbol = record.TransactionType == "buy" ? record.Fiat : record.Asset,
-                        OpositeSymbol = record.TransactionType == "buy" ? record.Asset : record.Fiat,
+                        Symbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
+                        OpositeSymbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
                         TradeType = TradeType.Sell,
-                        Price = record.TransactionType == "buy" ? 1 / record.AssetMarketPrice!.Value : record.AssetMarketPrice!.Value,
-                        Quantity = record.TransactionType == "buy" ? record.AmountFiat!.Value : record.AmountAsset!.Value,
+                        Price = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? 1 / price : price,
+                        Quantity = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.AmountFiat!.Value : record.AmountAsset!.Value,
                         Fee = 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
@@ -77,11 +84,11 @@ namespace CryptoTracker.Import
                     {
                         Wallet = args.Wallet,
                         DateTime = record.Timestamp,
-                        Symbol = record.TransactionType == "sell" ? record.Fiat : record.Asset,
-                        OpositeSymbol = record.TransactionType == "sell" ? record.Asset : record.Fiat,
+                        Symbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
+                        OpositeSymbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
                         TradeType = TradeType.Buy,
-                        Price = record.TransactionType == "sell" ? 1 / record.AssetMarketPrice!.Value : record.AssetMarketPrice!.Value,
-                        Quantity = record.TransactionType == "buy" ? record.AmountAsset!.Value : record.AmountFiat!.Value,
+                        Price = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? 1 / price : price,
+                        Quantity = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.AmountAsset!.Value : record.AmountFiat!.Value,
                         Fee = 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
@@ -92,7 +99,9 @@ namespace CryptoTracker.Import
                     DbContext.Add(buyTrade);
                     trades.Add((sellTrade, buyTrade));
                 }
-                else if (record.AssetClass == "Cryptocurrency" && (record.TransactionType == "deposit" || record.TransactionType == "withdrawal"))
+                else if ((string.IsNullOrEmpty(record.AssetClass) || record.AssetClass == "Cryptocurrency") &&
+                         (string.Equals(record.TransactionType, "deposit", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(record.TransactionType, "withdrawal", StringComparison.OrdinalIgnoreCase)))
                 {
                     var transaction = new CryptoTransaction
                     {
@@ -100,8 +109,8 @@ namespace CryptoTracker.Import
                         Wallet = args.Wallet,
                         DateTime = record.Timestamp,
                         Symbol = record.Asset,
-                        Quantity = record.AmountAsset!.Value + record.Fee!.Value,
-                        Fee = record.Fee!.Value,
+                        Quantity = record.AmountAsset.GetValueOrDefault() + record.Fee.GetValueOrDefault(),
+                        Fee = record.Fee.GetValueOrDefault(),
                         TransactionId = record.TransactionId,
                         Address = record.Address,
                         Comment = record.Comment
