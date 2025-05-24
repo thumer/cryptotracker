@@ -41,6 +41,7 @@ module appService 'appservice/appservice.bicep' = {
     appServicePlanId: appServicePlan.id
     applicationInsightsName: applicationInsights.outputs.name
     azureDbConnectionString: azureDbConnectionString
+    tenantId: tenant().tenantId
   }
 }
 
