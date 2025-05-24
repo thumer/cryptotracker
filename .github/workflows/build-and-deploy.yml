@@ -34,11 +34,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      - name: Install EF tool
+        run: dotnet tool install --global dotnet-ef
+
       - name: dotnet build and publish
         run: |
           dotnet restore
           dotnet build --configuration Release
           dotnet publish -c Release -o ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/output/
+
+      - name: Build migrations script
+        run: >-
+          dotnet ef migrations script
+          --configuration Release
+          --idempotent
+          --output ${{ github.workspace }}/migrations.sql
+          --project src/CryptoTracker/CryptoTracker
+          --startup-project src/CryptoTracker/CryptoTracker
 
       - name: OIDC Login to Azure Public Cloud with AzPowershell
         uses: azure/login@v2
@@ -48,30 +60,12 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
-      - name: Install sqlcmd tooling
-        run: |
-          # 1. Add Microsoft’s GPG key
-          curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
-            | sudo apt-key add -
-
-          # 2. Register the MSSQL Tools repo for Ubuntu 24.04 (noble)
-          curl -sSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list \
-            | sudo tee /etc/apt/sources.list.d/mssql-release.list
-
-          # 3. Update and install
-          sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
-
-          # 4. Make sqlcmd globally available
-          sudo ln -s /opt/mssql-tools/bin/sqlcmd /usr/local/bin/sqlcmd
-
-
-      - name: Run EF Core migrations
-        run: |
-          dotnet tool install --global dotnet-ef
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          dotnet ef database update --project src/CryptoTracker/CryptoTracker/CryptoTracker.csproj --connection "${{ env.CONNECTION_STRING }}"
-
+      - name: Deploy migrations script
+        uses: azure/sql-action@v2.3
+        with:
+          path: ${{ github.workspace }}/migrations.sql
+          connection-string: ${{ env.CONNECTION_STRING }}
+          
       - name: Deploy to Azure Web apps
         uses: azure/webapps-deploy@v2
         with:
