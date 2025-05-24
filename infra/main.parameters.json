@@ -3,19 +3,16 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environmentName": {
-      "value": "${AZURE_ENV_NAME=cryptotracker}"
-    },
-    "azureFuncEnvName": {
-      "value": "${AZURE_ENV_FUNC_NAME=func-cryptotracker}"
+      "value": "cryptotracker"
     },
     "location": {
-      "value": "${AZURE_LOCATION=WestEurope}"
+      "value": "WestEurope"
     },
     "appServicePlanNameResourceGroupName": {
-      "value": "${AZURE_APP_SERVICE_PLAN_RESOURCE_GROUP_NAME=rg-shared}"
+      "value": "rg-shared"
     },
     "appServicePlanName": {
-      "value": "${AZURE_APP_SERVICE_PLAN_NAME=ASP-P0V3-default}"
+      "value": "$ASP-P0V3-default"
     }
   }
 }
