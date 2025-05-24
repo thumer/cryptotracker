@@ -18,7 +18,7 @@ namespace CryptoTracker.Client.Pages
         private string? SelectedWalletName { get; set; }
         private string? SelectedSymbol { get; set; }
 
-        private IList<FlowDTO> Flows { get; set; }
+        private IList<FlowDTO> Flows { get; set; } = new List<FlowDTO>();
         private decimal Balance { get; set; }
 
         protected override async Task OnInitializedAsync()
@@ -52,8 +52,11 @@ namespace CryptoTracker.Client.Pages
         {
             IsLoading = true;
             var response = await HttpClient.GetFromJsonAsync<FlowsResponse>($"api/Flow/GetFlows?walletName={SelectedWallet?.Name}&symbolName={SelectedSymbol}");
-            Flows = response.Flows;
-            Balance = response.Bilanz;
+            if (response != null)
+            {
+                Flows = response.Flows ?? new List<FlowDTO>();
+                Balance = response.Bilanz;
+            }
             IsLoading = false;
         }
     }

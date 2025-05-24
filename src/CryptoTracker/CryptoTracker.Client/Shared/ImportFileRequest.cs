@@ -4,6 +4,6 @@
     {
         public ImportDocumentType Type { get; set; }
 
-        public string WalletName { get; set; }
+        public string WalletName { get; set; } = string.Empty;
     }
 }
