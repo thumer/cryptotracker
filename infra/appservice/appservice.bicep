@@ -14,6 +14,9 @@ param applicationInsightsName string
 @secure()
 param azureDbConnectionString string
 
+@description('Tenant id used for restricting authentication to the current tenant')
+param tenantId string = tenant().tenantId
+
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: applicationInsightsName
   scope: resourceGroup()
@@ -69,6 +72,28 @@ resource roleAssignmentMonitoringMetricsPublisher 'Microsoft.Authorization/roleA
     roleDefinitionId: monitoringMetricsPublisher.id
     principalId: appService.identity.principalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Configure built-in authentication so only users from the current tenant have access
+resource appServiceAuth 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: '${name}/authsettingsV2'
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      requireAuthentication: true
+      unauthenticatedClientAction: 'RedirectToLoginPage'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          openIdIssuer: 'https://login.microsoftonline.com/${tenantId}/v2.0'
+        }
+      }
+    }
   }
 }
 
