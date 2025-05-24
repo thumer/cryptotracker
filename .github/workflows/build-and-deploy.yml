@@ -6,7 +6,7 @@ permissions:
 
 env:
   AZURE_WEBAPP_NAME: ${{ vars.AZURE_ENV_NAME }}
-  AZURE_WEBAPP_PACKAGE_PATH: './src/CryptoTracker/CryptoTracker'
+  AZURE_WEBAPP_PACKAGE_PATH: './src/CryptoTracker'
   DOTNET_VERSION: '9.0.x'
   CONNECTION_STRING: ${{ vars.AZURE_DB_CONNECTION_STRING }}
   SQL_SERVER: ${{ vars.AZURE_SQL_SERVER_NAME }}
@@ -49,8 +49,8 @@ jobs:
           --configuration Release
           --idempotent
           --output ${{ github.workspace }}/migrations.sql
-          --project src/CryptoTracker/CryptoTracker
-          --startup-project src/CryptoTracker/CryptoTracker
+          --project src/CryptoTracker
+          --startup-project src/CryptoTracker
 
       - name: OIDC Login to Azure Public Cloud with AzPowershell
         uses: azure/login@v2

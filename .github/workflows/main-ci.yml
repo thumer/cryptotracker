@@ -36,10 +36,11 @@ jobs:
         run: dotnet restore
 
       - name: Test
-        run: dotnet test --configuration Release \
-          --logger "trx;LogFileName=test_results.trx" \
-          --results-directory TestResults \
-          --verbosity normal
+        run: |
+          dotnet test --configuration Release \
+            --logger "trx;LogFileName=test_results.trx" \
+            --results-directory TestResults \
+            --verbosity normal
 
       - name: Summarize test results
         if: always()
@@ -54,7 +55,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: TestResults/test_results.trx
