@@ -92,19 +92,6 @@ namespace CryptoTracker
                 endpoints.MapDefaultControllerRoute();
                 endpoints.MapFallbackToFile("index.html");
             });
-            MigrateDatabase(app);
-        }
-
-        private static void MigrateDatabase(IApplicationBuilder app)
-        {
-            using (var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope())
-            {
-                var dbContext = serviceScope.ServiceProvider.GetRequiredService<CryptoTrackerDbContext>();
-
-                //TODO: Wenn das Schema steht -> Migrations anlegen!
-                if (!dbContext.Database.EnsureCreated())
-                    dbContext.Database.Migrate();
-            }
         }
     }
 }
