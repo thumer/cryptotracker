@@ -2,9 +2,11 @@
 using CryptoTracker.Import;
 using CryptoTracker.Shared;
 using CryptoTracker.Import.Objects;
+using CryptoTracker.Entities.Import;
 using CsvHelper;
 using CsvHelper.Configuration;
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
 namespace CryptoTracker.Services
@@ -20,9 +22,6 @@ namespace CryptoTracker.Services
 
         public async Task Import(ImportDocumentType type, string walletName, Func<Stream> openStreamFunc)
         {
-            await StoreRawEntries(type, openStreamFunc);
-
-            var importer = GetImporter(type);
             var wallet = await _dbContext.Wallets.FirstOrDefaultAsync(w => w.Name == walletName);
             if (wallet == null)
             {
@@ -30,55 +29,70 @@ namespace CryptoTracker.Services
                 _dbContext.Wallets.Add(wallet);
                 await _dbContext.SaveChangesAsync();
             }
+
+            await StoreRawEntries(type, openStreamFunc, wallet);
+
+            var importer = GetImporter(type);
             await importer.Import(new ImportArgs() { Wallet = wallet }, openStreamFunc);
         }
 
-        private async Task StoreRawEntries(ImportDocumentType type, Func<Stream> openStreamFunc)
+        private async Task StoreRawEntries(ImportDocumentType type, Func<Stream> openStreamFunc, Wallet wallet)
         {
             switch (type)
             {
                 case ImportDocumentType.BinanceDepositHistory:
-                    await SaveEntries<BinanceDeposit>(type, openStreamFunc);
+                    await SaveEntries<BinanceDeposit, BinanceDepositEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.BinanceWithdrawalHistory:
-                    await SaveEntries<BinanceWithdrawal>(type, openStreamFunc);
+                    await SaveEntries<BinanceWithdrawal, BinanceWithdrawalEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.BinanceTradingHistory:
-                    await SaveEntries<BinanceTrade>(type, openStreamFunc);
+                    await SaveEntries<BinanceTrade, BinanceTradeEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.BitcoinDeTransactions:
-                    await SaveEntries<BitcoinDeTransaction>(type, openStreamFunc);
+                    await SaveEntries<BitcoinDeTransaction, BitcoinDeTransactionEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.BitpandaTransaction:
-                    await SaveEntries<BitpandaTransaction>(type, openStreamFunc);
+                    await SaveEntries<BitpandaTransaction, BitpandaTransactionEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.MetamaskTradingHistory:
-                    await SaveEntries<MetamaskTrade>(type, openStreamFunc);
+                    await SaveEntries<MetamaskTrade, MetamaskTradeEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.MetamaskTransactions:
-                    await SaveEntries<MetamaskTransaction>(type, openStreamFunc);
+                    await SaveEntries<MetamaskTransaction, MetamaskTransactionEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.OkxDepositHistory:
-                    await SaveEntries<OkxDeposit>(type, openStreamFunc);
+                    await SaveEntries<OkxDeposit, OkxDepositEntity>(type, openStreamFunc, wallet);
                     break;
                 case ImportDocumentType.OkxTradingHistory:
-                    await SaveEntries<OkxTrade>(type, openStreamFunc);
+                    await SaveEntries<OkxTrade, OkxTradeEntity>(type, openStreamFunc, wallet);
                     break;
                 default:
                     break;
             }
         }
 
-        private async Task SaveEntries<T>(ImportDocumentType type, Func<Stream> openStreamFunc) where T : class
+        private async Task SaveEntries<TCsv, TEntity>(ImportDocumentType type, Func<Stream> openStreamFunc, Wallet wallet)
+            where TCsv : class
+            where TEntity : class, new()
         {
             using var stream = openStreamFunc();
             using var reader = new StreamReader(stream);
             var (config, setup) = GetCsvSetup(type);
             using var csv = new CsvReader(reader, config);
             setup?.Invoke(csv);
-            var records = csv.GetRecords<T>().ToList();
+            var records = csv.GetRecords<TCsv>().ToList();
 
-            _dbContext.Set<T>().AddRange(records);
+            var entities = records.Select(r =>
+            {
+                var json = JsonSerializer.Serialize(r);
+                var entity = JsonSerializer.Deserialize<TEntity>(json)!;
+                typeof(TEntity).GetProperty("WalletId")?.SetValue(entity, wallet.Id);
+                typeof(TEntity).GetProperty("Wallet")?.SetValue(entity, wallet);
+                return entity;
+            }).ToList();
+
+            _dbContext.Set<TEntity>().AddRange(entities);
             await _dbContext.SaveChangesAsync();
         }
 
