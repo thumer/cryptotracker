@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Components;
 using CryptoTracker.Services;
 using Finance.Net;
 using Finance.Net.Extensions;
+using Blazorise;
+using Blazorise.Bootstrap5;
+using Blazorise.Icons.FontAwesome;
 
 namespace CryptoTracker
 {
@@ -33,6 +36,10 @@ namespace CryptoTracker
             services.AddRazorComponents()
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
+
+            services.AddBlazorise(options => { options.Immediate = true; })
+                .AddBootstrap5Providers()
+                .AddFontAwesomeIcons();
 
             services.AddFinanceNet(new FinanceNetConfiguration()
             {
@@ -71,6 +78,10 @@ namespace CryptoTracker
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+
+            app.ApplicationServices
+                .UseBootstrap5Providers()
+                .UseFontAwesomeIcons();
 
             app.UseRouting();
             app.UseAntiforgery();

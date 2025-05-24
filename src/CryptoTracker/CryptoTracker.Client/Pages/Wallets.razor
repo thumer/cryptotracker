@@ -13,26 +13,17 @@
     <button class="btn btn-secondary mt-2" @onclick="NewWallet">Neu</button>
 </div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var w in WalletsList)
-        {
-            <tr>
-                <td>@w.Name</td>
-                <td>
-                    <button class="btn btn-sm btn-secondary me-1" @onclick="(() => Edit(w))">Ändern</button>
-                    <button class="btn btn-sm btn-danger" @onclick="(() => Delete(w.Id))">Löschen</button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<DataGrid TItem="WalletInfoDTO" Data="WalletsList" Sortable="true" Filterable="true" Resizable="true" ShowPager="false">
+    <DataGridColumns>
+        <DataGridColumn TItem="WalletInfoDTO" Field="@nameof(WalletInfoDTO.Name)" Caption="Name" />
+        <DataGridTemplateColumn TItem="WalletInfoDTO">
+            <Template Context="w">
+                <button class="btn btn-sm btn-secondary me-1" @onclick="(() => Edit(w))">Ändern</button>
+                <button class="btn btn-sm btn-danger" @onclick="(() => Delete(w.Id))">Löschen</button>
+            </Template>
+        </DataGridTemplateColumn>
+    </DataGridColumns>
+</DataGrid>
 
 @if (ErrorMessage != null)
 {

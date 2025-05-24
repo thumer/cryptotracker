@@ -44,34 +44,16 @@ else
     </div>
 
     <div class="mt-3">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>DateTime</th>
-                    <th>FlowType</th>
-                    <th>FlowDirection</th>
-                    <th>SourceWallet</th>
-                    <th>TargetWallet</th>
-                    <th>FlowAmount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Flows != null)
-                {
-                    foreach (var flow in Flows)
-                    {
-                        <tr>
-                            <td>@flow.DateTime</td>
-                            <td>@flow.FlowType</td>
-                            <td>@flow.FlowDirection</td>
-                            <td>@flow.SourceWallet</td>
-                            <td>@flow.TargetWallet</td>
-                            <td>@flow.FlowAmount</td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
+        <DataGrid TItem="FlowDTO" Data="Flows" Sortable="true" Filterable="true" Resizable="true" ShowPager="false">
+            <DataGridColumns>
+                <DataGridColumn TItem="FlowDTO" Field="@nameof(FlowDTO.DateTime)" Caption="DateTime" />
+                <DataGridColumn TItem="FlowDTO" Field="@nameof(FlowDTO.FlowType)" Caption="FlowType" />
+                <DataGridColumn TItem="FlowDTO" Field="@nameof(FlowDTO.FlowDirection)" Caption="FlowDirection" />
+                <DataGridColumn TItem="FlowDTO" Field="@nameof(FlowDTO.SourceWallet)" Caption="SourceWallet" />
+                <DataGridColumn TItem="FlowDTO" Field="@nameof(FlowDTO.TargetWallet)" Caption="TargetWallet" />
+                <DataGridColumn TItem="FlowDTO" Field="@nameof(FlowDTO.FlowAmount)" Caption="FlowAmount" />
+            </DataGridColumns>
+        </DataGrid>
     </div>
 
     <div class="mt-3">

@@ -1,84 +1,32 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">CryptoTracker</a>
-    </div>
-</div>
-
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Überblick
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="bilanzen">
-                <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span> Bilanzen
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="wallets">
-                <span class="bi bi-wallet2-nav-menu" aria-hidden="true"></span> Wallets
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="import">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Import
-            </NavLink>
-
-            <div class="ms-3">
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/binance-deposit">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Binance Deposit
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/binance-withdrawal">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Binance Withdrawal
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/binance-trade">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Binance Trade
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/bitcoinde-transactions">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Bitcoin.de Transactions
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/bitpanda-transactions">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Bitpanda Transactions
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/metamask-transactions">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Metamask Transactions
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/metamask-trades">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Metamask Trades
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/okx-deposit">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Okx Deposit
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="import/okx-trade">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Okx Trade
-                    </NavLink>
-                </div>
-            </div>
-        </div>
-    </nav>
-</div>
-
+<Bar Mode="BarMode.Vertical" Class="mb-4" Background="Background.Dark" ThemeContrast="ThemeContrast.Dark">
+    <BarBrand>
+        <BarItem>
+            <BarLink To="">CryptoTracker</BarLink>
+        </BarItem>
+    </BarBrand>
+    <BarMenu>
+        <BarItem>
+            <BarLink To="" Match="NavLinkMatch.All">Überblick</BarLink>
+        </BarItem>
+        <BarItem>
+            <BarLink To="bilanzen">Bilanzen</BarLink>
+        </BarItem>
+        <BarItem>
+            <BarLink To="wallets">Wallets</BarLink>
+        </BarItem>
+        <BarDropdown>
+            <BarLink To="import">Import</BarLink>
+            <BarDropdownMenu Class="ms-3">
+                <BarItem><BarLink To="import/binance-deposit">Binance Deposit</BarLink></BarItem>
+                <BarItem><BarLink To="import/binance-withdrawal">Binance Withdrawal</BarLink></BarItem>
+                <BarItem><BarLink To="import/binance-trade">Binance Trade</BarLink></BarItem>
+                <BarItem><BarLink To="import/bitcoinde-transactions">Bitcoin.de Transactions</BarLink></BarItem>
+                <BarItem><BarLink To="import/bitpanda-transactions">Bitpanda Transactions</BarLink></BarItem>
+                <BarItem><BarLink To="import/metamask-transactions">Metamask Transactions</BarLink></BarItem>
+                <BarItem><BarLink To="import/metamask-trades">Metamask Trades</BarLink></BarItem>
+                <BarItem><BarLink To="import/okx-deposit">Okx Deposit</BarLink></BarItem>
+                <BarItem><BarLink To="import/okx-trade">Okx Trade</BarLink></BarItem>
+            </BarDropdownMenu>
+        </BarDropdown>
+    </BarMenu>
+</Bar>

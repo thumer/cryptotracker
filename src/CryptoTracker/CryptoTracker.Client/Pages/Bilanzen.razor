@@ -18,25 +18,13 @@ else if (Balances != null)
     foreach (var balance in Balances)
     {
         <h5 class="mt-3">@balance.Platform</h5>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Symbol</th>
-                    <th>Menge</th>
-                    <th>Wert in EUR</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var asset in balance.Assets)
-            {
-                <tr>
-                    <td>@asset.Symbol</td>
-                    <td>@asset.Amount</td>
-                    <td>@string.Format("{0:F2}", asset.EuroValue)</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        <DataGrid TItem="AssetBalanceDTO" Data="balance.Assets" Sortable="true" Filterable="true" Resizable="true" ShowPager="false">
+            <DataGridColumns>
+                <DataGridColumn TItem="AssetBalanceDTO" Field="@nameof(AssetBalanceDTO.Symbol)" Caption="Symbol" />
+                <DataGridColumn TItem="AssetBalanceDTO" Field="@nameof(AssetBalanceDTO.Amount)" Caption="Menge" />
+                <DataGridColumn TItem="AssetBalanceDTO" Field="@nameof(AssetBalanceDTO.EuroValue)" Caption="Wert in EUR" />
+            </DataGridColumns>
+        </DataGrid>
     }
 }
 
