@@ -14,7 +14,7 @@ namespace CryptoTracker.Tests.Importers;
 
 public class OkxDepositImporterTests : DbTestBase
 {
-    private const string Wallet = "TestWallet";
+    private const string WalletName = "TestWallet";
     private const string Csv = "Date(UTC);Coin;Network;Amount;Address;Comment\n" +
         "23.01.2018 20:25;ETH;ETH;0,400000;0x55a7e...c393;von bitcoin.de\n" +
         "01.02.2018 19:46;BTC;BTC;0,026000;bc1qxy2...8kg0;von binance.com\n" +
@@ -25,7 +25,11 @@ public class OkxDepositImporterTests : DbTestBase
     {
         var importer = new OkxDepositImporter(DbContext);
 
-        await importer.Import(new ImportArgs { Wallet = Wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
+        var wallet = new Wallet { Name = WalletName };
+        DbContext.Wallets.Add(wallet);
+        DbContext.SaveChanges();
+
+        await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTransactions.Should().HaveCount(3);
         var tx = DbContext.CryptoTransactions.First();

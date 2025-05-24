@@ -11,7 +11,8 @@ public enum TradeType
 public class CryptoTrade : IFlow
 {
     public int Id { get; set; }
-    public string Wallet { get; set; } = string.Empty;
+    public int WalletId { get; set; }
+    public Wallet Wallet { get; set; } = null!;
     public DateTime DateTime { get; set; }
 
     /// <summary>
@@ -71,9 +72,9 @@ public class CryptoTrade : IFlow
         _ => throw new NotSupportedException()
     };
 
-    string IFlow.SourceWallet => Wallet;
+    string IFlow.SourceWallet => Wallet.Name;
 
-    string IFlow.TargetWallet => Wallet;
+    string IFlow.TargetWallet => Wallet.Name;
 
     FlowType IFlow.FlowType => FlowType.Trade;
 }

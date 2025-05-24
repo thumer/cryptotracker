@@ -31,7 +31,7 @@ namespace CryptoTracker.Import
                 var transaction = new CryptoTransaction
                 {
                     TransactionType = TransactionType.Receive,
-                    Wallet = args.Wallet,
+                    WalletId = args.Wallet.Id,
                     DateTime = record.Date.LocalDateTime,
                     Symbol = record.Coin,
                     Quantity = record.Amount,

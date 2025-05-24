@@ -41,7 +41,7 @@ namespace CryptoTracker.Import
                 decimal amount = record.Executed * price;
                 var sellTrade = new CryptoTrade
                 {
-                    Wallet = args.Wallet,
+                    WalletId = args.Wallet.Id,
                     DateTime = record.Date.LocalDateTime,
                     Symbol = tradeType == TradeType.Sell ? symbol1 : symbol2,
                     OpositeSymbol = tradeType == TradeType.Sell ? symbol2 : symbol1,
@@ -54,7 +54,7 @@ namespace CryptoTracker.Import
                 };
                 var buyTrade = new CryptoTrade
                 {
-                    Wallet = args.Wallet,
+                    WalletId = args.Wallet.Id,
                     DateTime = record.Date.LocalDateTime,
                     Symbol = tradeType == TradeType.Sell ? symbol2 : symbol1,
                     OpositeSymbol = tradeType == TradeType.Sell ? symbol1 : symbol2,

@@ -68,7 +68,7 @@ namespace CryptoTracker.Import
                     var price = record.AssetMarketPrice ?? (record.AmountAsset.HasValue && record.AmountFiat.HasValue && record.AmountAsset.Value != 0 ? record.AmountFiat.Value / record.AmountAsset.Value : 0);
                     var sellTrade = new CryptoTrade
                     {
-                        Wallet = args.Wallet,
+                        WalletId = args.Wallet.Id,
                         DateTime = record.Timestamp.DateTime,
                         Symbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
                         OpositeSymbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
@@ -82,7 +82,7 @@ namespace CryptoTracker.Import
                     };
                     var buyTrade = new CryptoTrade
                     {
-                        Wallet = args.Wallet,
+                        WalletId = args.Wallet.Id,
                         DateTime = record.Timestamp.DateTime,
                         Symbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
                         OpositeSymbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
@@ -106,7 +106,7 @@ namespace CryptoTracker.Import
                     var transaction = new CryptoTransaction
                     {
                         TransactionType = record.TransactionType == "deposit" ? TransactionType.Receive : TransactionType.Send,
-                        Wallet = args.Wallet,
+                        WalletId = args.Wallet.Id,
                         DateTime = record.Timestamp.DateTime,
                         Symbol = record.Asset,
                         Quantity = record.AmountAsset.GetValueOrDefault() + record.Fee.GetValueOrDefault(),

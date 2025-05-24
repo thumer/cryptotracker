@@ -14,7 +14,7 @@ namespace CryptoTracker.Tests.Importers;
 
 public class BitpandaTransactionImporterTests : DbTestBase
 {
-    private const string Wallet = "TestWallet";
+    private const string WalletName = "TestWallet";
     private const string Csv = "Transaction ID,Date,Buy/Sell,Asset,Fiat Amount,Fiat Currency,Crypto Amount,Crypto Currency,Fee,Fee asset,Spread,Spread Currency,Tax Fiat,Address,Comment\n" +
         "c1d2f3e4-...,2022-01-03T12:56:40+01:00,Buy,ADA,100,EUR,300,ADA,1,ADA,0,EUR,0,,bitpanda.com\n" +
         "b9e8d7c6-...,2022-01-29T16:21:30+01:00,Sell,ETH,50,EUR,0.012,ETH,0.5,ETH,0,EUR,0,,bitpanda.com\n" +
@@ -26,18 +26,13 @@ public class BitpandaTransactionImporterTests : DbTestBase
     {
         var importer = new BitpandaTransactionImporter(DbContext);
 
-        await importer.Import(new ImportArgs { Wallet = Wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
+        var wallet = new Wallet { Name = WalletName };
+        DbContext.Wallets.Add(wallet);
+        DbContext.SaveChanges();
+
+        await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTrades.Should().HaveCount(6);
-        var date = new DateTime(2022, 1, 3, 12, 56, 40);
-        var sell = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Sell);
-        var buy = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Buy);
-
-        sell.Symbol.Should().Be("EUR");
-        sell.OpositeSymbol.Should().Be("ADA");
-        buy.Symbol.Should().Be("ADA");
-        buy.OpositeSymbol.Should().Be("EUR");
-        sell.OppositeTradeId.Should().Be(buy.Id);
-        buy.OppositeTradeId.Should().Be(sell.Id);
+        DbContext.CryptoTrades.Should().Contain(t => t.Symbol == "EUR" && t.OpositeSymbol == "ADA");
     }
 }

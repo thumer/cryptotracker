@@ -15,7 +15,8 @@ public class CryptoTransaction : IFlow
     /// <summary>
     /// Wenn TransactionType: Receive => Zielwallet / bei Send => Quellwallet
     /// </summary>
-    public string Wallet { get; set; } = string.Empty;
+    public int WalletId { get; set; }
+    public Wallet Wallet { get; set; } = null!;
     public DateTime DateTime { get; set; }
     public TransactionType TransactionType { get; set; }
     public string Symbol { get; set; } = string.Empty;
@@ -41,7 +42,8 @@ public class CryptoTransaction : IFlow
     /// <summary>
     /// OppositeTransaction.Wallet (ist zwar redundant - vereinfacht jedoch die Abfragen).
     /// </summary>
-    public string? OppositeWallet { get; set; }
+    public int? OppositeWalletId { get; set; }
+    public Wallet? OppositeWallet { get; set; }
 
     public string? TransactionId { get; set; }
     /// <summary>
@@ -67,15 +69,15 @@ public class CryptoTransaction : IFlow
 
     string? IFlow.SourceWallet => TransactionType switch
     {
-        TransactionType.Receive => OppositeWallet,
-        TransactionType.Send => Wallet,
+        TransactionType.Receive => OppositeWallet?.Name,
+        TransactionType.Send => Wallet.Name,
         _ => throw new NotSupportedException()
     };
 
     string? IFlow.TargetWallet => TransactionType switch
     {
-        TransactionType.Receive => Wallet,
-        TransactionType.Send => OppositeWallet,
+        TransactionType.Receive => Wallet.Name,
+        TransactionType.Send => OppositeWallet?.Name,
         _ => throw new NotSupportedException()
     };
 
