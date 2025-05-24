@@ -88,7 +88,7 @@ else if (Entries.Count > 0)
             using var content = new MultipartFormDataContent();
             using var fileContent = new StreamContent(SelectedFile.OpenReadStream(MAX_REQUEST_SIZE));
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(SelectedFile.ContentType);
-            content.Add(fileContent, "\"file\"", SelectedFile.Name);
+            content.Add(fileContent, "file", SelectedFile.Name);
             content.Add(JsonContent.Create(new ImportFileRequest() { Type = DocumentType, WalletName = WalletName }), "request");
             var response = await HttpClient.PostAsync("api/DataImport/ImportFile", content);
             if (!response.IsSuccessStatusCode)
