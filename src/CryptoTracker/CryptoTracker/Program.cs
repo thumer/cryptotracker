@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore;
+using Microsoft.Extensions.Logging;
 
 namespace CryptoTracker
 {
@@ -14,7 +15,7 @@ namespace CryptoTracker
             .ConfigureLogging((hostingContext, logging)  =>
                         {
                             logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                            //logging.AddApplicationInsights();
+                            logging.AddApplicationInsights();
                         })
                 .UseConfiguration(new ConfigurationBuilder()
                     .AddCommandLine(args)
