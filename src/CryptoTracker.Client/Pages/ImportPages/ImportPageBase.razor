@@ -7,7 +7,13 @@
 <h3>@Title</h3>
 
 <InputFile OnChange="HandleFileSelected" />
-<input class="form-control mt-2" @bind="WalletName" placeholder="Wallet Name" />
+<select class="form-select mt-2" @bind="WalletName">
+    <option value="">Wallet wählen</option>
+    @foreach (var w in Wallets)
+    {
+        <option value="@w.Name">@w.Name</option>
+    }
+</select>
 <button class="btn btn-primary mt-2" @onclick="Upload">Importieren</button>
 
 @if (Entries == null)
@@ -55,6 +61,7 @@ else if (Entries.Count > 0)
     private string WalletName { get; set; } = string.Empty;
     private string? ErrorMessage { get; set; }
     private const long MAX_REQUEST_SIZE = 1024 * 1024 * 100;
+    private IList<WalletInfoDTO> Wallets { get; set; } = new List<WalletInfoDTO>();
 
     [Parameter] public ImportDocumentType DocumentType { get; set; }
 
@@ -62,6 +69,7 @@ else if (Entries.Count > 0)
     {
         await base.OnInitializedAsync();
         await LoadData();
+        Wallets = await HttpClient.GetFromJsonAsync<IList<WalletInfoDTO>>("api/Wallet/GetWalletInfos") ?? new List<WalletInfoDTO>();
     }
 
     private Task HandleFileSelected(InputFileChangeEventArgs e)

@@ -1,4 +1,4 @@
-using CryptoTracker.Import.Objects;
+using CryptoTracker.Entities.Import;
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
