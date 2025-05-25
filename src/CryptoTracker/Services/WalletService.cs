@@ -12,23 +12,24 @@ public class WalletService
         _dbContext = dbContext;
     }
 
-    public async Task<IList<(string wallet, string[] symbols)>> GetWalletAndSymbols()
+    public async Task<IList<(Wallet wallet, string[] symbols)>> GetWalletsWithSymbols()
     {
         var trades = await _dbContext.CryptoTrades
-            .Include(t => t.Wallet)
-            .Select(t => new { Wallet = t.Wallet.Name, t.Symbol })
-            .Distinct()
-            .ToListAsync();
-        var transactions = await _dbContext.CryptoTransactions
-            .Include(t => t.Wallet)
-            .Select(t => new { Wallet = t.Wallet.Name, t.Symbol })
+            .Select(t => new { t.WalletId, t.Symbol })
             .Distinct()
             .ToListAsync();
 
-        return trades.Concat(transactions)
-                     .OrderBy(t => t.Wallet)
-                     .GroupBy(f => f.Wallet)
-                    .Select(x => (x.Key, x.Select(f => f.Symbol).OrderBy(s => s).Distinct().ToArray())).ToList();
+        var transactions = await _dbContext.CryptoTransactions
+            .Select(t => new { t.WalletId, t.Symbol })
+            .Distinct()
+            .ToListAsync();
+
+        var symbolLookup = trades.Concat(transactions)
+            .GroupBy(t => t.WalletId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Symbol).OrderBy(s => s).Distinct().ToArray());
+
+        var wallets = await _dbContext.Wallets.OrderBy(w => w.Name).ToListAsync();
+        return wallets.Select(w => (w, symbolLookup.TryGetValue(w.Id, out var syms) ? syms : Array.Empty<string>())).ToList();
     }
 
     public async Task<IList<Wallet>> GetWallets()

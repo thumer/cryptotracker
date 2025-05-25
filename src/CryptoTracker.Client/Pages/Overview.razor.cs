@@ -10,10 +10,10 @@ namespace CryptoTracker.Client.Pages
         
         private string? ErrorMessage { get; set; }
 
-        private IList<WalletDTO>? Wallets { get; set; }
+        private IList<WalletWithSymbolsDTO>? Wallets { get; set; }
         private IList<string>? Symbols { get; set; }
 
-        private WalletDTO? SelectedWallet { get; set; }
+        private WalletWithSymbolsDTO? SelectedWallet { get; set; }
         private string? SelectedWalletName { get; set; }
         private string? SelectedSymbol { get; set; }
 
@@ -24,7 +24,7 @@ namespace CryptoTracker.Client.Pages
         {
             await base.OnInitializedAsync();
 
-            Wallets = await WalletApi.GetWalletsAsync();
+            Wallets = await WalletApi.GetWalletsWithSymbolsAsync();
 
             IsLoading = false;
         }
