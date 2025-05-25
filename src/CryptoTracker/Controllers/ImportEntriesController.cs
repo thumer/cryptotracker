@@ -31,31 +31,31 @@ public class ImportEntriesController : ControllerBase, IImportEntriesApi
         {
             ImportDocumentType.BinanceDepositHistory =>
                 (await _dbContext.BinanceDeposits.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<BinanceDepositDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.BinanceWithdrawalHistory =>
                 (await _dbContext.BinanceWithdrawals.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<BinanceWithdrawalDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.BinanceTradingHistory =>
                 (await _dbContext.BinanceTrades.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<BinanceTradeDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.BitcoinDeTransactions =>
                 (await _dbContext.BitcoinDeTransactions.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<BitcoinDeTransactionDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.BitpandaTransaction =>
                 (await _dbContext.BitpandaTransactions.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<BitpandaTransactionDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.MetamaskTradingHistory =>
                 (await _dbContext.MetamaskTrades.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<MetamaskTradeDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.MetamaskTransactions =>
                 (await _dbContext.MetamaskTransactions.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<MetamaskTransactionDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.OkxDepositHistory =>
                 (await _dbContext.OkxDeposits.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<OkxDepositDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.OkxTradingHistory =>
                 (await _dbContext.OkxTrades.Include(e => e.Wallet).ToListAsync())
-                    .Select(e => e.CloneToDTO<OkxTradeDTO>()).ToList(),
+                    .Select(e => e.ToDto()).ToList(),
             _ => new List<object>()
         };
     }
