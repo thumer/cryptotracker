@@ -9,6 +9,7 @@ using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
 using CryptoTracker.Shared;
 using CryptoTracker.Controllers;
+using Radzen;
 
 namespace CryptoTracker
 {
@@ -51,6 +52,8 @@ namespace CryptoTracker
                 var navigationManager = sp.GetRequiredService<NavigationManager>();
                 return new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
             });
+
+            services.AddRadzenComponents();
 
             services.AddScoped<DataImportService>();
             services.AddScoped<WalletService>();
