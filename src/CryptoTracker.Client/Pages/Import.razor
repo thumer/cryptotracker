@@ -16,24 +16,18 @@
         </div>
 
         <div class="col-md-4">
-            <select class="form-select" @bind="WalletNameDictionary[documentType]">
-                <option value="">Wallet wählen</option>
-                @foreach (var w in Wallets)
-                {
-                    <option value="@w.Name">@w.Name</option>
-                }
-            </select>
+            <RadzenDropDown Style="width:100%" Data="@Wallets" TextProperty="Name" ValueProperty="Name" @bind-Value="WalletNameDictionary[documentType]" Placeholder="Wallet wählen" />
         </div>
     </div>
 
-    <button class="btn btn-primary mt-2" @onclick="(() => UploadDocument(documentType))">Importieren</button>
+    <RadzenButton Class="mt-2" Text="Importieren" Click="(() => UploadDocument(documentType))" />
 }
 
 <h5 class="mt-3">Transaktionspaar zusammenfinden</h5>
 
 <div class="row">
     <div class="col-md-4">
-        <button class="btn btn-primary" @onclick="ProcessTransactionPairs">Process Transactions</button>
+        <RadzenButton Text="Process Transactions" Click="ProcessTransactionPairs" />
     </div>
 </div>
 

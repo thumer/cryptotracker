@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Globalization;
-using Blazorise;
-using Blazorise.Bootstrap5;
-using Blazorise.Icons.FontAwesome;
 using CryptoTracker.Shared;
 using CryptoTracker.Client.RestClients;
 using Radzen;
@@ -19,9 +16,6 @@ builder.Services.AddScoped<IImportEntriesApi, ImportEntriesRestClient>();
 builder.Services.AddRadzenComponents();
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-builder.Services.AddBlazorise(options => { options.Immediate = true; })
-    .AddBootstrap5Providers()
-    .AddFontAwesomeIcons();
 
 var culture = new CultureInfo("de");
 CultureInfo.DefaultThreadCurrentCulture = culture;
