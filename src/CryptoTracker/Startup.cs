@@ -4,9 +4,6 @@ using CryptoTracker.Client.Pages;
 using Microsoft.AspNetCore.Components;
 using CryptoTracker.Services;
 using NoobsMuc.Coinmarketcap.Client;
-using Blazorise;
-using Blazorise.Bootstrap5;
-using Blazorise.Icons.FontAwesome;
 using CryptoTracker.Shared;
 using CryptoTracker.Controllers;
 using Radzen;
@@ -39,9 +36,6 @@ namespace CryptoTracker
                 .AddInteractiveServerComponents();
                 //.AddInteractiveWebAssemblyComponents();
 
-            services.AddBlazorise(options => { options.Immediate = true; })
-                .AddBootstrap5Providers()
-                .AddFontAwesomeIcons();
 
             services.AddMemoryCache();
             services.AddSingleton<ICoinmarketcapClient>(sp =>

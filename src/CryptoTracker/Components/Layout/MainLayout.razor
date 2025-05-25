@@ -1,25 +1,28 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@using Radzen
 
-<div class="page">
-    <div class="sidebar">
+<RadzenLayout Style="min-height:100vh">
+    <RadzenSidebar @bind-Expanded="sidebarExpanded" Style="width:250px">
         <NavMenu />
-    </div>
+    </RadzenSidebar>
 
-    <main>
+    <RadzenHeader>
+        <RadzenSidebarToggle Click="ToggleSidebar" />
+        <h1 class="ms-2">CryptoTracker</h1>
+    </RadzenHeader>
 
-        <div class="top-row px-4">
-          
-        </div>
-
-
-        <article class="content px-4">
+    <RadzenBody>
+        <div class="p-4">
             @Body
-        </article>
-    </main>
-</div>
+        </div>
+    </RadzenBody>
+</RadzenLayout>
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+@code {
+    private bool sidebarExpanded = true;
+
+    void ToggleSidebar()
+    {
+        sidebarExpanded = !sidebarExpanded;
+    }
+}

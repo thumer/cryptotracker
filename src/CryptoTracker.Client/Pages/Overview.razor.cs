@@ -39,9 +39,9 @@ namespace CryptoTracker.Client.Pages
                 await LoadData();
         }
 
-        private async Task OnSelectedSymbolChanged(ChangeEventArgs e)
+        private async Task OnSelectedSymbolChanged(object value)
         {
-            SelectedSymbol = e.Value?.ToString();
+            SelectedSymbol = value?.ToString();
 
             if (SelectedWallet != null && SelectedSymbol != null)
                 await LoadData();

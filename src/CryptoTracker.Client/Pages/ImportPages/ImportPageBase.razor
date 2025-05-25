@@ -6,14 +6,8 @@
 <h3>@Title</h3>
 
 <InputFile OnChange="HandleFileSelected" />
-<select class="form-select mt-2" @bind="WalletName">
-    <option value="">Wallet wählen</option>
-    @foreach (var w in Wallets)
-    {
-        <option value="@w.Name">@w.Name</option>
-    }
-</select>
-<button class="btn btn-primary mt-2" @onclick="Upload">Importieren</button>
+<RadzenDropDown Class="mt-2" Style="width:200px" Data="@Wallets" TextProperty="Name" ValueProperty="Name" @bind-Value="WalletName" Placeholder="Wallet wählen" />
+<RadzenButton Class="mt-2" Text="Importieren" Click="Upload" />
 
 @if (Entries == null)
 {
