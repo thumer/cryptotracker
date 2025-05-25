@@ -16,6 +16,12 @@
     },
     "coinmarketcapApiKeyKVUri": {
       "value": "https://humer.vault.azure.net/secrets/CoinmarketcapApiKey/efb646621bb947109da10d8ffe45e5c1"
+    },
+    "identityProviderName": {
+      "value": "mycryptotracker"
+    },
+    "identityProviderClientId": {
+      "value": "ffa07cd3-dd3b-44e1-8968-6e95c5185423"
     }
   }
 }
