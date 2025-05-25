@@ -2,6 +2,7 @@ namespace CryptoTracker.Shared;
 
 public record BinanceTradeDTO
 {
+    public int Id { get; set; }
     public DateTimeOffset Date { get; set; }
     public string Pair { get; set; } = string.Empty;
     public string Side { get; set; } = string.Empty;
