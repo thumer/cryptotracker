@@ -47,8 +47,7 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
           }
           {
             name: 'COINMARKETCAP_API_KEY'
-            // @Microsoft.KeyVault reference to secret Uri
-            value: coinmarketcapApiKeyKVUri
+            value: '@Microsoft.KeyVault(SecretUri=${coinmarketcapApiKeyKVUri})'
           }
         ]
         connectionStrings: [
