@@ -18,18 +18,18 @@ public class FlowController : ControllerBase, IFlowApi
     }
 
     [HttpGet("GetFlows")]
-    public async Task<IActionResult> GetFlows(string walletName, string symbolName)
+    public async Task<IActionResult> GetFlows(string walletName)
     {
-        var flows = await _flowService.GetFlows(walletName, symbolName);
+        var flows = await _flowService.GetFlows(walletName);
         var bilanz = FlowService.CalculateBilanz(flows);
 
         var response = new FlowsResponse { Flows = flows.Select(f => f.CloneToDTO()).ToList(), Bilanz = bilanz };
         return Ok(response);
     }
 
-    async Task<FlowsResponse?> IFlowApi.GetFlowsAsync(string walletName, string symbolName)
+    async Task<FlowsResponse?> IFlowApi.GetFlowsAsync(string walletName)
     {
-        var flows = await _flowService.GetFlows(walletName, symbolName);
+        var flows = await _flowService.GetFlows(walletName);
         var bilanz = FlowService.CalculateBilanz(flows);
         return new FlowsResponse
         {

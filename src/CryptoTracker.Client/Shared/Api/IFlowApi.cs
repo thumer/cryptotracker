@@ -4,5 +4,5 @@ namespace CryptoTracker.Shared;
 
 public interface IFlowApi
 {
-    Task<FlowsResponse?> GetFlowsAsync(string walletName, string symbolName);
+    Task<FlowsResponse?> GetFlowsAsync(string walletName);
 }

@@ -1,7 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace CryptoTracker.Shared;
 
 public record BitcoinDeTransactionDTO
 {
+    public int WalletId { get; set; }
+    public string Wallet { get; set; } = string.Empty;
+
     public DateTimeOffset Datum { get; set; }
     public string Typ { get; set; } = string.Empty;
     public string Waehrung { get; set; } = string.Empty;

@@ -102,6 +102,20 @@ else if (Entries.Count > 0)
             Entries = jsonEntries
                 .Select(e => JsonSerializer.Deserialize<TEntry>(e.GetRawText(), options)!)
                 .ToList();
+
+
+            var dateProp = typeof(TEntry).GetProperties()
+                .FirstOrDefault(p => p.PropertyType == typeof(DateTimeOffset) || p.PropertyType == typeof(DateTime));
+            if (dateProp != null)
+            {
+                Entries = Entries.OrderBy(e =>
+                {
+                    var val = dateProp.GetValue(e);
+                    if (val is DateTimeOffset dto) return dto;
+                    if (val is DateTime dt) return (DateTimeOffset)dt;
+                    return DateTimeOffset.MinValue;
+                }).ToList();
+            }
         }
         else
         {
