@@ -26,14 +26,14 @@ else if (Entries.Count > 0)
         .Where(p => p.Name != "Id")
         .Select(p => p.Name)
         .ToList();
-    <DataGrid TItem="TEntry" Data="Entries" Filterable="true" FilterMode="DataGridFilterMode.Menu" ShowPager="false">
-        <DataGridColumns>
+    <RadzenDataGrid TItem="TEntry" Data="Entries" AllowFiltering="true" AllowPaging="false">
+        <Columns>
             @foreach (var h in headers)
             {
-                <DataGridColumn TItem="TEntry" Field="@h" Caption="@h" />
+                <RadzenDataGridColumn TItem="TEntry" Property="@h" Title="@h" />
             }
-        </DataGridColumns>
-    </DataGrid>
+        </Columns>
+    </RadzenDataGrid>
 }
 
 @if (ErrorMessage != null)
