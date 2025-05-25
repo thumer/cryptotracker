@@ -11,11 +11,9 @@ namespace CryptoTracker.Client.Pages
         private string? ErrorMessage { get; set; }
 
         private IList<WalletWithSymbolsDTO>? Wallets { get; set; }
-        private IList<string>? Symbols { get; set; }
 
         private WalletWithSymbolsDTO? SelectedWallet { get; set; }
         private string? SelectedWalletName { get; set; }
-        private string? SelectedSymbol { get; set; }
 
         private IList<FlowDTO> Flows { get; set; } = new List<FlowDTO>();
         private decimal Balance { get; set; }
@@ -33,24 +31,15 @@ namespace CryptoTracker.Client.Pages
         {
             SelectedWalletName = walletName;
             SelectedWallet = Wallets?.FirstOrDefault(w => w.Name == walletName);
-            Symbols = SelectedWallet?.Symbols.ToList();
 
-            if (SelectedWallet != null && SelectedSymbol != null)
-                await LoadData();
-        }
-
-        private async Task OnSelectedSymbolChanged(object value)
-        {
-            SelectedSymbol = value?.ToString();
-
-            if (SelectedWallet != null && SelectedSymbol != null)
+            if (SelectedWallet != null)
                 await LoadData();
         }
 
         private async Task LoadData()
         {
             IsLoading = true;
-            var response = await FlowApi.GetFlowsAsync(SelectedWallet?.Name ?? string.Empty, SelectedSymbol ?? string.Empty);
+            var response = await FlowApi.GetFlowsAsync(SelectedWallet?.Name ?? string.Empty);
             if (response != null)
             {
                 Flows = response.Flows ?? new List<FlowDTO>();

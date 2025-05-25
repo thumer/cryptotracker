@@ -1,7 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace CryptoTracker.Shared;
 
 public record BinanceWithdrawalDTO
 {
+    public int WalletId { get; set; }
+    public string Wallet { get; set; } = string.Empty;
+
     public DateTimeOffset Date { get; set; }
     public string Coin { get; set; } = string.Empty;
     public string Network { get; set; } = string.Empty;

@@ -13,6 +13,6 @@ public class FlowRestClient : IFlowApi
         _http = http;
     }
 
-    public Task<FlowsResponse?> GetFlowsAsync(string walletName, string symbolName)
-        => _http.GetFromJsonAsync<FlowsResponse>($"api/Flow/GetFlows?walletName={walletName}&symbolName={symbolName}");
+    public Task<FlowsResponse?> GetFlowsAsync(string walletName)
+        => _http.GetFromJsonAsync<FlowsResponse>($"api/Flow/GetFlows?walletName={walletName}");
 }

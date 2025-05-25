@@ -1,5 +1,6 @@
 using CryptoTracker.Entities.Import;
 using CryptoTracker.Shared;
+using CryptoTracker.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -28,15 +29,33 @@ public class ImportEntriesController : ControllerBase, IImportEntriesApi
     {
         return type switch
         {
-            ImportDocumentType.BinanceDepositHistory => await _dbContext.BinanceDeposits.ToListAsync(),
-            ImportDocumentType.BinanceWithdrawalHistory => await _dbContext.BinanceWithdrawals.ToListAsync(),
-            ImportDocumentType.BinanceTradingHistory => await _dbContext.BinanceTrades.ToListAsync(),
-            ImportDocumentType.BitcoinDeTransactions => await _dbContext.BitcoinDeTransactions.ToListAsync(),
-            ImportDocumentType.BitpandaTransaction => await _dbContext.BitpandaTransactions.ToListAsync(),
-            ImportDocumentType.MetamaskTradingHistory => await _dbContext.MetamaskTrades.ToListAsync(),
-            ImportDocumentType.MetamaskTransactions => await _dbContext.MetamaskTransactions.ToListAsync(),
-            ImportDocumentType.OkxDepositHistory => await _dbContext.OkxDeposits.ToListAsync(),
-            ImportDocumentType.OkxTradingHistory => await _dbContext.OkxTrades.ToListAsync(),
+            ImportDocumentType.BinanceDepositHistory =>
+                (await _dbContext.BinanceDeposits.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<BinanceDepositDTO>()).ToList(),
+            ImportDocumentType.BinanceWithdrawalHistory =>
+                (await _dbContext.BinanceWithdrawals.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<BinanceWithdrawalDTO>()).ToList(),
+            ImportDocumentType.BinanceTradingHistory =>
+                (await _dbContext.BinanceTrades.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<BinanceTradeDTO>()).ToList(),
+            ImportDocumentType.BitcoinDeTransactions =>
+                (await _dbContext.BitcoinDeTransactions.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<BitcoinDeTransactionDTO>()).ToList(),
+            ImportDocumentType.BitpandaTransaction =>
+                (await _dbContext.BitpandaTransactions.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<BitpandaTransactionDTO>()).ToList(),
+            ImportDocumentType.MetamaskTradingHistory =>
+                (await _dbContext.MetamaskTrades.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<MetamaskTradeDTO>()).ToList(),
+            ImportDocumentType.MetamaskTransactions =>
+                (await _dbContext.MetamaskTransactions.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<MetamaskTransactionDTO>()).ToList(),
+            ImportDocumentType.OkxDepositHistory =>
+                (await _dbContext.OkxDeposits.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<OkxDepositDTO>()).ToList(),
+            ImportDocumentType.OkxTradingHistory =>
+                (await _dbContext.OkxTrades.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.CloneToDTO<OkxTradeDTO>()).ToList(),
             _ => new List<object>()
         };
     }

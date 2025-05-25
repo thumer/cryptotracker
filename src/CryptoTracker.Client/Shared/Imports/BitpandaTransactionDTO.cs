@@ -1,7 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace CryptoTracker.Shared;
 
 public record BitpandaTransactionDTO
 {
+    public int WalletId { get; set; }
+    public string Wallet { get; set; } = string.Empty;
+
     public string TransactionId { get; set; } = string.Empty;
     public DateTimeOffset Timestamp { get; set; }
     public string TransactionType { get; set; } = string.Empty;
