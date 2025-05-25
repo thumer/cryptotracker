@@ -1,13 +1,15 @@
 ﻿using CryptoTracker.Services;
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Components.Forms;
+using System.IO;
 using System.Text.Json;
 
 namespace CryptoTracker.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class DataImportController : ControllerBase
+[ApiController]
+[Route("api/[controller]")]
+    public class DataImportController : ControllerBase, IDataImportApi
     {
         private readonly DataImportService _dataImportService;
 
@@ -35,5 +37,17 @@ namespace CryptoTracker.Controllers
             await _dataImportService.ProcessTransactionPairs();
             return Ok("Transaktionen wurden erfolgreich zusammengeführt");
         }
+
+        private const long MAX_REQUEST_SIZE = 1024 * 1024 * 100;
+
+        async Task IDataImportApi.ImportFileAsync(ImportDocumentType type, string walletName, IBrowserFile file)
+        {
+            using var memory = new MemoryStream();
+            await file.OpenReadStream(MAX_REQUEST_SIZE).CopyToAsync(memory);
+            await _dataImportService.Import(type, walletName, () => new MemoryStream(memory.ToArray()));
+        }
+
+        Task IDataImportApi.ProcessTransactionPairsAsync()
+            => _dataImportService.ProcessTransactionPairs();
     }
 }

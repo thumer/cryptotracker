@@ -8,7 +8,7 @@ namespace CryptoTracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class FlowController : ControllerBase
+public class FlowController : ControllerBase, IFlowApi
 {
     private readonly FlowService _flowService;
 
@@ -25,5 +25,16 @@ public class FlowController : ControllerBase
 
         var response = new FlowsResponse { Flows = flows.Select(f => f.CloneToDTO()).ToList(), Bilanz = bilanz };
         return Ok(response);
+    }
+
+    async Task<FlowsResponse?> IFlowApi.GetFlowsAsync(string walletName, string symbolName)
+    {
+        var flows = await _flowService.GetFlows(walletName, symbolName);
+        var bilanz = FlowService.CalculateBilanz(flows);
+        return new FlowsResponse
+        {
+            Flows = flows.Select(f => f.CloneToDTO()).ToList(),
+            Bilanz = bilanz
+        };
     }
 }

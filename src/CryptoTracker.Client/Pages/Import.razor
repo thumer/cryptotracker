@@ -1,6 +1,7 @@
 ﻿@page "/import"
 @using CryptoTracker.Shared
-@inject HttpClient HttpClient
+@inject IWalletApi WalletApi
+@inject IDataImportApi DataImportApi
 
 <PageTitle>Import</PageTitle>
 

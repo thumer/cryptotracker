@@ -1,6 +1,5 @@
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
 
 namespace CryptoTracker.Client.Pages;
 
@@ -31,34 +30,34 @@ public partial class Wallets
     private async Task Save()
     {
         var wallet = new WalletInfoDTO(EditId, EditName);
-        var response = await HttpClient.PostAsJsonAsync("api/Wallet/SaveWallet", wallet);
-        if (response.IsSuccessStatusCode)
+        try
         {
+            await WalletApi.SaveWalletAsync(wallet);
             EditId = 0;
             EditName = string.Empty;
             await LoadData();
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = await response.Content.ReadAsStringAsync();
+            ErrorMessage = ex.Message;
         }
     }
 
     private async Task Delete(int id)
     {
-        var response = await HttpClient.DeleteAsync($"api/Wallet/{id}");
-        if (response.IsSuccessStatusCode)
+        try
         {
+            await WalletApi.DeleteWalletAsync(id);
             await LoadData();
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = await response.Content.ReadAsStringAsync();
+            ErrorMessage = ex.Message;
         }
     }
 
     private async Task LoadData()
     {
-        WalletsList = await HttpClient.GetFromJsonAsync<IList<WalletInfoDTO>>("api/Wallet/GetWalletInfos") ?? new List<WalletInfoDTO>();
+        WalletsList = await WalletApi.GetWalletInfosAsync();
     }
 }
