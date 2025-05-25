@@ -12,17 +12,17 @@
     <button class="btn btn-secondary mt-2" @onclick="NewWallet">Neu</button>
 </div>
 
-<DataGrid TItem="WalletInfoDTO" Data="WalletsList" Sortable="true" Filterable="true" Resizable="true" ShowPager="false">
-    <DataGridColumns>
-        <DataGridColumn TItem="WalletInfoDTO" Field="@nameof(WalletInfoDTO.Name)" Caption="Name" />
-        <DataGridColumn TItem="WalletInfoDTO">
-            <DisplayTemplate Context="w">
+<RadzenDataGrid TItem="WalletInfoDTO" Data="WalletsList" AllowSorting="true" AllowFiltering="true" AllowColumnResize="true" AllowPaging="false">
+    <Columns>
+        <RadzenDataGridColumn TItem="WalletInfoDTO" Property="@nameof(WalletInfoDTO.Name)" Title="Name" />
+        <RadzenDataGridColumn TItem="WalletInfoDTO">
+            <Template Context="w">
                 <button class="btn btn-sm btn-secondary me-1" @onclick="(() => Edit(w))">Ändern</button>
                 <button class="btn btn-sm btn-danger" @onclick="(() => Delete(w.Id))">Löschen</button>
-            </DisplayTemplate>
-        </DataGridColumn>
-    </DataGridColumns>
-</DataGrid>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
 
 @if (ErrorMessage != null)
 {
