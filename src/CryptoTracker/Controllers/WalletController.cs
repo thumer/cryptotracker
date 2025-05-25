@@ -7,7 +7,7 @@ namespace CryptoTracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class WalletController : ControllerBase
+public class WalletController : ControllerBase, IWalletApi
 {
     private readonly WalletService _walletService;
 
@@ -38,5 +38,25 @@ public class WalletController : ControllerBase
     {
         await _walletService.DeleteWallet(id);
         return Ok();
+    }
+
+    async Task<IList<WalletDTO>> IWalletApi.GetWalletsAsync()
+    {
+        var wallets = await _walletService.GetWalletAndSymbols();
+        return wallets.Select(w => new WalletDTO(w.wallet, w.symbols)).ToList();
+    }
+
+    async Task<IList<WalletInfoDTO>> IWalletApi.GetWalletInfosAsync()
+        => (await _walletService.GetWallets()).Select(w => new WalletInfoDTO(w.Id, w.Name)).ToList();
+
+    async Task<WalletInfoDTO> IWalletApi.SaveWalletAsync(WalletInfoDTO wallet)
+    {
+        var entity = await _walletService.SaveWallet(new Wallet { Id = wallet.Id, Name = wallet.Name });
+        return new WalletInfoDTO(entity.Id, entity.Name);
+    }
+
+    Task IWalletApi.DeleteWalletAsync(int id)
+    {
+        return _walletService.DeleteWallet(id);
     }
 }

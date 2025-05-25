@@ -6,7 +6,7 @@ namespace CryptoTracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class BalanceController : ControllerBase
+public class BalanceController : ControllerBase, IBalanceApi
 {
     private readonly BalanceService _balanceService;
 
@@ -20,4 +20,7 @@ public class BalanceController : ControllerBase
     {
         return await _balanceService.GetBalances();
     }
+
+    Task<IList<PlatformBalanceDTO>> IBalanceApi.GetBalancesAsync()
+        => _balanceService.GetBalances();
 }

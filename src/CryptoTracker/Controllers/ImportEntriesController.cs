@@ -2,12 +2,13 @@ using CryptoTracker.Entities.Import;
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CryptoTracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ImportEntriesController : ControllerBase
+public class ImportEntriesController : ControllerBase, IImportEntriesApi
 {
     private readonly CryptoTrackerDbContext _dbContext;
 
@@ -19,7 +20,13 @@ public class ImportEntriesController : ControllerBase
     [HttpGet("GetEntries")]
     public async Task<IActionResult> GetEntries(ImportDocumentType type)
     {
-        object result = type switch
+        var result = await LoadEntries(type);
+        return Ok(result);
+    }
+
+    private async Task<object> LoadEntries(ImportDocumentType type)
+    {
+        return type switch
         {
             ImportDocumentType.BinanceDepositHistory => await _dbContext.BinanceDeposits.ToListAsync(),
             ImportDocumentType.BinanceWithdrawalHistory => await _dbContext.BinanceWithdrawals.ToListAsync(),
@@ -32,7 +39,12 @@ public class ImportEntriesController : ControllerBase
             ImportDocumentType.OkxTradingHistory => await _dbContext.OkxTrades.ToListAsync(),
             _ => new List<object>()
         };
+    }
 
-        return Ok(result);
+    async Task<IList<JsonElement>> IImportEntriesApi.GetEntriesAsync(ImportDocumentType type)
+    {
+        var result = await LoadEntries(type);
+        var json = JsonSerializer.Serialize(result);
+        return JsonSerializer.Deserialize<IList<JsonElement>>(json) ?? new List<JsonElement>();
     }
 }

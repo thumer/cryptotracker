@@ -1,6 +1,5 @@
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
 
 namespace CryptoTracker.Client.Pages;
 
@@ -15,7 +14,7 @@ public partial class Bilanzen
         await base.OnInitializedAsync();
         try
         {
-            Balances = await HttpClient.GetFromJsonAsync<IList<PlatformBalanceDTO>>("api/Balance/GetBalances");
+            Balances = await BalanceApi.GetBalancesAsync();
         }
         catch (Exception ex)
         {

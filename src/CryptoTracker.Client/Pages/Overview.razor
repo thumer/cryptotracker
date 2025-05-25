@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using CryptoTracker.Shared
-@inject HttpClient HttpClient
+@inject IWalletApi WalletApi
+@inject IFlowApi FlowApi
 
 <PageTitle>Überblick</PageTitle>
 

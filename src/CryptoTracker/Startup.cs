@@ -7,6 +7,8 @@ using NoobsMuc.Coinmarketcap.Client;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
+using CryptoTracker.Shared;
+using CryptoTracker.Controllers;
 
 namespace CryptoTracker
 {
@@ -55,6 +57,12 @@ namespace CryptoTracker
             services.AddScoped<FlowService>();
             services.AddScoped<IFinanceValueProvider, FinanceValueProvider>();
             services.AddScoped<BalanceService>();
+
+            services.AddScoped<IWalletApi, WalletController>();
+            services.AddScoped<IFlowApi, FlowController>();
+            services.AddScoped<IBalanceApi, BalanceController>();
+            services.AddScoped<IDataImportApi, DataImportController>();
+            services.AddScoped<IImportEntriesApi, ImportEntriesController>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

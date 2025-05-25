@@ -1,5 +1,4 @@
 ﻿using CryptoTracker.Shared;
-using System.Net.Http.Json;
 using CryptoTracker.Client.Shared;
 using Microsoft.AspNetCore.Components;
 
@@ -25,7 +24,7 @@ namespace CryptoTracker.Client.Pages
         {
             await base.OnInitializedAsync();
 
-            Wallets = await HttpClient.GetFromJsonAsync<IList<WalletDTO>>("api/Wallet/GetWallets");
+            Wallets = await WalletApi.GetWalletsAsync();
 
             IsLoading = false;
         }
@@ -51,7 +50,7 @@ namespace CryptoTracker.Client.Pages
         private async Task LoadData()
         {
             IsLoading = true;
-            var response = await HttpClient.GetFromJsonAsync<FlowsResponse>($"api/Flow/GetFlows?walletName={SelectedWallet?.Name}&symbolName={SelectedSymbol}");
+            var response = await FlowApi.GetFlowsAsync(SelectedWallet?.Name ?? string.Empty, SelectedSymbol ?? string.Empty);
             if (response != null)
             {
                 Flows = response.Flows ?? new List<FlowDTO>();

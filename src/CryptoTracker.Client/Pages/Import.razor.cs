@@ -1,9 +1,5 @@
 ﻿using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Components.Forms;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
-using System.Xml.Linq;
 
 namespace CryptoTracker.Client.Pages
 {
@@ -20,7 +16,7 @@ namespace CryptoTracker.Client.Pages
         protected override async Task OnInitializedAsync()
         {
             await base.OnInitializedAsync();
-            Wallets = await HttpClient.GetFromJsonAsync<IList<WalletInfoDTO>>("api/Wallet/GetWalletInfos") ?? new List<WalletInfoDTO>();
+            Wallets = await WalletApi.GetWalletInfosAsync();
         }
 
         private Task HandleFileSelected(ImportDocumentType documentType, InputFileChangeEventArgs e)
@@ -43,23 +39,13 @@ namespace CryptoTracker.Client.Pages
             {
                 WalletNameDictionary.TryGetValue(documentType, out var walletName);
 
-                using var content = new MultipartFormDataContent();
-                using var fileContent = new StreamContent(selectedFile.OpenReadStream(MAX_REQUEST_SIZE));
-
-                fileContent.Headers.ContentType =
-                    new MediaTypeHeaderValue(selectedFile.ContentType);
-
-                content.Add(
-                    content: fileContent,
-                    name: "\"file\"",
-                    fileName: selectedFile.Name);
-                content.Add(JsonContent.Create(new ImportFileRequest() { Type = documentType, WalletName = walletName ?? string.Empty }), "request");
-
-                var response = await HttpClient.PostAsync($"api/DataImport/ImportFile", content);
-
-                if (!response.IsSuccessStatusCode)
+                try
                 {
-                    ErrorMessage = "Fehler beim Hochladen der Dokumente: " + response.Content.ReadAsStringAsync().Result;
+                    await DataImportApi.ImportFileAsync(documentType, walletName ?? string.Empty, selectedFile);
+                }
+                catch (Exception ex)
+                {
+                    ErrorMessage = "Fehler beim Hochladen der Dokumente: " + ex.Message;
                     return;
                 }
 
@@ -70,14 +56,13 @@ namespace CryptoTracker.Client.Pages
 
         private async Task ProcessTransactionPairs()
         {
-            using var content = new MultipartFormDataContent();
-
-            var response = await HttpClient.PostAsync($"api/DataImport/ProcessTransactionPairs", content);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                ErrorMessage = "Fehler beim Hochladen der Dokumente: " + response.Content.ReadAsStringAsync().Result;
-                return;
+                await DataImportApi.ProcessTransactionPairsAsync();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = "Fehler beim Hochladen der Dokumente: " + ex.Message;
             }
         }
     }
