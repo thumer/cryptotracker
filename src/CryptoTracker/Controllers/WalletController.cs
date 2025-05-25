@@ -19,8 +19,17 @@ public class WalletController : ControllerBase, IWalletApi
     [HttpGet("GetWallets")]
     public async Task<IActionResult> GetWallets()
     {
-        var wallets = await _walletService.GetWalletAndSymbols();
-        var walletDTOs = wallets.Select(w => new WalletDTO(w.wallet, w.symbols)).ToList();
+        var wallets = await _walletService.GetWallets();
+        var walletDTOs = wallets.Select(w => new WalletDTO(w.Name)).ToList();
+
+        return Ok(walletDTOs);
+    }
+
+    [HttpGet("GetWalletsWithSymbols")]
+    public async Task<IActionResult> GetWalletsWithSymbols()
+    {
+        var wallets = await _walletService.GetWalletsWithSymbols();
+        var walletDTOs = wallets.Select(w => new WalletWithSymbolsDTO(w.wallet.Name, w.symbols)).ToList();
 
         return Ok(walletDTOs);
     }
@@ -41,9 +50,12 @@ public class WalletController : ControllerBase, IWalletApi
     }
 
     async Task<IList<WalletDTO>> IWalletApi.GetWalletsAsync()
+        => (await _walletService.GetWallets()).Select(w => new WalletDTO(w.Name)).ToList();
+
+    async Task<IList<WalletWithSymbolsDTO>> IWalletApi.GetWalletsWithSymbolsAsync()
     {
-        var wallets = await _walletService.GetWalletAndSymbols();
-        return wallets.Select(w => new WalletDTO(w.wallet, w.symbols)).ToList();
+        var wallets = await _walletService.GetWalletsWithSymbols();
+        return wallets.Select(w => new WalletWithSymbolsDTO(w.wallet.Name, w.symbols)).ToList();
     }
 
     async Task<IList<WalletInfoDTO>> IWalletApi.GetWalletInfosAsync()

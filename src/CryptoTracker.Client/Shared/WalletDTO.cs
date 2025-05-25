@@ -1,3 +1,3 @@
-﻿namespace CryptoTracker.Shared;
+namespace CryptoTracker.Shared;
 
-public record WalletDTO(string Name, string[] Symbols);
+public record WalletDTO(string Name);

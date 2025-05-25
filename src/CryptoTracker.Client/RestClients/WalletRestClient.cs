@@ -15,6 +15,9 @@ public class WalletRestClient : IWalletApi
     public async Task<IList<WalletDTO>> GetWalletsAsync()
         => await _http.GetFromJsonAsync<IList<WalletDTO>>("api/Wallet/GetWallets") ?? new List<WalletDTO>();
 
+    public async Task<IList<WalletWithSymbolsDTO>> GetWalletsWithSymbolsAsync()
+        => await _http.GetFromJsonAsync<IList<WalletWithSymbolsDTO>>("api/Wallet/GetWalletsWithSymbols") ?? new List<WalletWithSymbolsDTO>();
+
     public async Task<IList<WalletInfoDTO>> GetWalletInfosAsync()
         => await _http.GetFromJsonAsync<IList<WalletInfoDTO>>("api/Wallet/GetWalletInfos") ?? new List<WalletInfoDTO>();
 
