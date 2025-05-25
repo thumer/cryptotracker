@@ -15,19 +15,35 @@
 }
 else if (Entries.Count > 0)
 {
-    var headers = typeof(TEntry)
-        .GetProperties()
-        .Where(p => p.Name != "Id")
+    var props = typeof(TEntry).GetProperties();
+    var dateProp = props.FirstOrDefault(p => p.PropertyType == typeof(DateTimeOffset) || p.PropertyType == typeof(DateTime));
+
+    var headers = props
+        .Where(p => p.Name != "Id" && p.Name != "WalletId")
         .Select(p => p.Name)
         .ToList();
-    <RadzenDataGrid TItem="TEntry" Data="Entries" AllowFiltering="true" AllowPaging="false">
-        <Columns>
-            @foreach (var h in headers)
-            {
-                <RadzenDataGridColumn TItem="TEntry" Property="@h" Title="@h" />
-            }
-        </Columns>
-    </RadzenDataGrid>
+
+    if (dateProp != null)
+    {
+        headers.Remove(dateProp.Name);
+        headers.Insert(0, dateProp.Name);
+    }
+
+    if (headers.Remove("Wallet"))
+    {
+        headers.Insert(1, "Wallet");
+    }
+
+    <div style="overflow-x:auto">
+        <RadzenDataGrid TItem="TEntry" Data="Entries" AllowFiltering="true" AllowPaging="false" AllowColumnResize="true">
+            <Columns>
+                @foreach (var h in headers)
+                {
+                    <RadzenDataGridColumn TItem="TEntry" Property="@h" Title="@h" />
+                }
+            </Columns>
+        </RadzenDataGrid>
+    </div>
 }
 
 @if (ErrorMessage != null)
