@@ -20,6 +20,12 @@ param coinmarketcapApiKeyKVUri string
 @description('Tenant id used for restricting authentication to the current tenant')
 param tenantId string = tenant().tenantId
 
+@description('Azure AD application (client) ID for authentication')
+param identityProviderClientId string
+
+@description('Name of the Azure AD application used for authentication')
+param identityProviderName string
+
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: applicationInsightsName
   scope: resourceGroup()
@@ -28,7 +34,7 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing
 resource appService 'Microsoft.Web/sites@2022-03-01' = {
   name: name
   location: location
-  tags: tags
+  tags: union(tags, { identityProviderName: identityProviderName })
   identity: {
     type: 'SystemAssigned'
   }
@@ -97,6 +103,7 @@ resource appServiceAuth 'Microsoft.Web/sites/config@2022-03-01' = {
       azureActiveDirectory: {
         enabled: true
         registration: {
+          clientId: identityProviderClientId
           openIdIssuer: 'https://login.microsoftonline.com/${tenantId}/v2.0'
         }
       }

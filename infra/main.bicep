@@ -18,6 +18,12 @@ param azureDbConnectionString string
 @description('Key Vault reference to the CoinMarketCap API key')
 param coinmarketcapApiKeyKVUri string
 
+@description('Name of the Azure AD application used for authentication')
+param identityProviderName string
+
+@description('Azure AD application (client) ID for authentication')
+param identityProviderClientId string
+
 var tags = { 'azd-env-name': environmentName }
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' existing = {
@@ -46,6 +52,8 @@ module appService 'appservice/appservice.bicep' = {
     azureDbConnectionString: azureDbConnectionString
     coinmarketcapApiKeyKVUri: coinmarketcapApiKeyKVUri
     tenantId: tenant().tenantId
+    identityProviderName: identityProviderName
+    identityProviderClientId: identityProviderClientId
   }
 }
 
