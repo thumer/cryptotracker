@@ -3,8 +3,7 @@ using CryptoTracker.Components;
 using CryptoTracker.Client.Pages;
 using Microsoft.AspNetCore.Components;
 using CryptoTracker.Services;
-using Finance.Net;
-using Finance.Net.Extensions;
+using NoobsMuc.Coinmarketcap.Client;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
@@ -41,10 +40,9 @@ namespace CryptoTracker
                 .AddBootstrap5Providers()
                 .AddFontAwesomeIcons();
 
-            services.AddFinanceNet(new FinanceNetConfiguration()
-            {
-                HttpRetryCount = 3
-            });
+            services.AddMemoryCache();
+            services.AddSingleton<ICoinmarketcapClient>(sp =>
+                new CoinmarketcapClient(Configuration["COINMARKETCAP_API_KEY"]!));
 
             services.AddScoped<HttpClient>(sp =>
             {

@@ -15,6 +15,9 @@ param logAnalyticsWorkspaceName string = 'log-${environmentName}'
 @secure()
 param azureDbConnectionString string
 
+@description('Key Vault reference to the CoinMarketCap API key')
+param coinmarketcapApiKeyKVUri string
+
 var tags = { 'azd-env-name': environmentName }
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' existing = {
@@ -41,6 +44,7 @@ module appService 'appservice/appservice.bicep' = {
     appServicePlanId: appServicePlan.id
     applicationInsightsName: applicationInsights.outputs.name
     azureDbConnectionString: azureDbConnectionString
+    coinmarketcapApiKeyKVUri: coinmarketcapApiKeyKVUri
     tenantId: tenant().tenantId
   }
 }

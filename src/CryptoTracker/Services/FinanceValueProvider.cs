@@ -1,28 +1,41 @@
-using Finance.Net.Interfaces;
-using Finance.Net.Models.Yahoo;
-using Finance.Net.Exceptions;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using NoobsMuc.Coinmarketcap.Client;
 
 namespace CryptoTracker.Services;
 
 public class FinanceValueProvider : IFinanceValueProvider
 {
-    private readonly IYahooFinanceService _financeService;
+    private readonly ICoinmarketcapClient _client;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<FinanceValueProvider> _logger;
 
-    public FinanceValueProvider(IYahooFinanceService financeService)
+    public FinanceValueProvider(ICoinmarketcapClient client, IMemoryCache cache, ILogger<FinanceValueProvider> logger)
     {
-        _financeService = financeService;
+        _client = client;
+        _cache = cache;
+        _logger = logger;
     }
 
     public async Task<decimal> GetCurrentEuroValueAsync(string symbol)
     {
+        if (_cache.TryGetValue(symbol, out decimal cached))
+        {
+            return cached;
+        }
+
+        decimal price = 0;
         try
         {
-            Quote quote = await _financeService.GetQuoteAsync($"{symbol}-EUR");
-            return Convert.ToDecimal(quote.RegularMarketPrice ?? 0d);
+            var response = _client.GetCurrencyBySymbol(symbol, "EUR");
+            price = response.Price;
         }
-        catch (FinanceNetException)
+        catch (Exception ex)
         {
-            return 0m;
+            _logger.LogWarning(ex, "Could not retrieve value for {Symbol}", symbol);
         }
+        _cache.Set(symbol, price, TimeSpan.FromMinutes(15));
+        return price;
     }
 }
