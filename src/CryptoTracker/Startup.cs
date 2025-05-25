@@ -34,8 +34,8 @@ namespace CryptoTracker
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
             services.AddRazorComponents()
-                .AddInteractiveServerComponents()
-                .AddInteractiveWebAssemblyComponents();
+                .AddInteractiveServerComponents();
+                //.AddInteractiveWebAssemblyComponents();
 
             services.AddBlazorise(options => { options.Immediate = true; })
                 .AddBootstrap5Providers()
@@ -74,7 +74,8 @@ namespace CryptoTracker
                 app.UseHsts();
             }
 
-            app.UseBlazorFrameworkFiles();
+
+            //app.UseBlazorFrameworkFiles();
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
@@ -86,7 +87,7 @@ namespace CryptoTracker
             {
                 endpoints.MapRazorComponents<App>()
                     .AddInteractiveServerRenderMode()
-                    .AddInteractiveWebAssemblyRenderMode()
+                    //.AddInteractiveWebAssemblyRenderMode()
                     .AddAdditionalAssemblies(typeof(Overview).Assembly);
                 endpoints.MapControllers();
                 endpoints.MapDefaultControllerRoute();
