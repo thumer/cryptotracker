@@ -20,33 +20,22 @@ public class FinanceValueProvider : IFinanceValueProvider
 
     public async Task<decimal> GetCurrentEuroValueAsync(string symbol)
     {
-        var cacheKey = $"eur-price-{symbol}";
-        if (_cache.TryGetValue(cacheKey, out decimal cached))
+        if (_cache.TryGetValue(symbol, out decimal cached))
         {
             return cached;
         }
 
+        decimal price = 0;
         try
         {
-            dynamic dynamicClient = _client;
-            var response = await dynamicClient.GetCurrencyBySymbol(symbol);
-            string json = JsonConvert.SerializeObject(response);
-            using var doc = System.Text.Json.JsonDocument.Parse(json);
-            var price = doc.RootElement
-                .GetProperty("data")
-                .EnumerateObject().First().Value
-                .GetProperty("quote")
-                .GetProperty("EUR")
-                .GetProperty("price")
-                .GetDecimal();
-
-            _cache.Set(cacheKey, price, TimeSpan.FromMinutes(15));
-            return price;
+            var response = _client.GetCurrencyBySymbol(symbol, "EUR");
+            price = response.Price;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not retrieve value for {Symbol}", symbol);
-            return 0m;
         }
+        _cache.Set(symbol, price, TimeSpan.FromMinutes(15));
+        return price;
     }
 }
