@@ -1,7 +1,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using CryptoTracker.Shared
 @using System.Text.Json
-@using System.Dynamic
+@typeparam TEntry
 
 <h3>@Title</h3>
 
@@ -21,16 +21,16 @@
 }
 else if (Entries.Count > 0)
 {
-    var headers = ((IDictionary<string, object?>)Entries[0]).Keys.ToList();
-    <DataGrid TItem="ExpandoObject" Data="Entries" Filterable="true" FilterMode="DataGridFilterMode.Menu" ShowPager="false">
+    var headers = typeof(TEntry)
+        .GetProperties()
+        .Where(p => p.Name != "Id")
+        .Select(p => p.Name)
+        .ToList();
+    <DataGrid TItem="TEntry" Data="Entries" Filterable="true" FilterMode="DataGridFilterMode.Menu" ShowPager="false">
         <DataGridColumns>
             @foreach (var h in headers)
             {
-                <DataGridColumn Field="@h" Caption="@h">
-                    <DisplayTemplate Context="entry">
-                        @((IDictionary<string, object?>)entry)[h]
-                    </DisplayTemplate>
-                </DataGridColumn>
+                <DataGridColumn TItem="TEntry" Field="@h" Caption="@h" />
             }
         </DataGridColumns>
     </DataGrid>
@@ -48,7 +48,7 @@ else if (Entries.Count > 0)
     [Inject] private IDataImportApi DataImportApi { get; set; } = default!;
     [Inject] private IImportEntriesApi ImportEntriesApi { get; set; } = default!;
 
-    private IList<ExpandoObject>? Entries;
+    private IList<TEntry>? Entries;
     private IBrowserFile? SelectedFile;
     private string WalletName { get; set; } = string.Empty;
     private string? ErrorMessage { get; set; }
@@ -104,23 +104,14 @@ else if (Entries.Count > 0)
         var jsonEntries = await ImportEntriesApi.GetEntriesAsync(DocumentType);
         if (jsonEntries is not null)
         {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             Entries = jsonEntries
-                .Select(e =>
-                {
-                    var obj = new ExpandoObject() as IDictionary<string, object?>;
-                    foreach (var p in e.EnumerateObject())
-                    {
-                        if (p.Name == "Id")
-                            continue;
-                        obj[p.Name] = p.Value.ToString();
-                    }
-                    return (ExpandoObject)obj;
-                })
+                .Select(e => JsonSerializer.Deserialize<TEntry>(e.GetRawText(), options)!)
                 .ToList();
         }
         else
         {
-            Entries = new List<ExpandoObject>();
+            Entries = new List<TEntry>();
         }
     }
 }
