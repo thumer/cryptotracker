@@ -13,6 +13,9 @@
     },
     "appServicePlanName": {
       "value": "ASP-P0V3-default"
+    },
+    "coinmarketcapApiKeyKVUri": {
+      "value": "@Microsoft.KeyVault(SecretUri=https://humer.vault.azure.net/secrets/CoinmarketcapApiKey/efb646621bb947109da10d8ffe45e5c1)"
     }
   }
 }

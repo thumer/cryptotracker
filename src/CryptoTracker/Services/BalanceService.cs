@@ -43,17 +43,12 @@ public class BalanceService
             .ToList();
 
         var result = new List<PlatformBalanceDTO>();
-        var rateCache = new Dictionary<string, decimal>();
         foreach (var walletGroup in all.GroupBy(x => x.Wallet))
         {
             var assets = new List<AssetBalanceDTO>();
             foreach (var asset in walletGroup)
             {
-                if (!rateCache.TryGetValue(asset.Symbol, out var rate))
-                {
-                    rate = await _valueProvider.GetCurrentEuroValueAsync(asset.Symbol);
-                    rateCache[asset.Symbol] = rate;
-                }
+                var rate = await _valueProvider.GetCurrentEuroValueAsync(asset.Symbol);
 
                 assets.Add(new AssetBalanceDTO(asset.Symbol, asset.Amount, asset.Amount * rate
                 ));

@@ -14,6 +14,9 @@ param applicationInsightsName string
 @secure()
 param azureDbConnectionString string
 
+@description('Key Vault reference to the CoinMarketCap API key')
+param coinmarketcapApiKeyKVUri string
+
 @description('Tenant id used for restricting authentication to the current tenant')
 param tenantId string = tenant().tenantId
 
@@ -41,6 +44,11 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
           {
             name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
             value: applicationInsights.properties.ConnectionString
+          }
+          {
+            name: 'COINMARKETCAP_API_KEY'
+            // @Microsoft.KeyVault reference to secret Uri
+            value: coinmarketcapApiKeyKVUri
           }
         ]
         connectionStrings: [
