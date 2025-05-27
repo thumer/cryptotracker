@@ -33,6 +33,6 @@ C1ca8a52b-3672-4ced-954f-ad2929be66f9,2022-03-21T18:56:17+01:00,withdrawal,outgo
         await importer.Import(new ImportArgs { Wallet = wallet }, () => new MemoryStream(Encoding.UTF8.GetBytes(Csv)));
 
         DbContext.CryptoTrades.Should().HaveCount(2);
-        DbContext.CryptoTrades.Should().Contain(t => t.Symbol == "EUR" && t.OpositeSymbol == "ETH");
+        DbContext.CryptoTrades.Should().Contain(t => t.Symbol == "EUR" && t.OppositeSymbol == "ETH");
     }
 }

@@ -37,9 +37,9 @@ public class MetamaskTradeImporterTests : DbTestBase
         var buy = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Buy);
 
         sell.Symbol.Should().Be("ETH");
-        sell.OpositeSymbol.Should().Be("BabyDo");
+        sell.OppositeSymbol.Should().Be("BabyDo");
         buy.Symbol.Should().Be("BabyDo");
-        buy.OpositeSymbol.Should().Be("ETH");
+        buy.OppositeSymbol.Should().Be("ETH");
         sell.OppositeTradeId.Should().Be(buy.Id);
         buy.OppositeTradeId.Should().Be(sell.Id);
     }

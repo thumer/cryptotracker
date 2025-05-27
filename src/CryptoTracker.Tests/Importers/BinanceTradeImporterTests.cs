@@ -41,7 +41,7 @@ public class BinanceTradeImporterTests : DbTestBase
 
         sell.Wallet.Name.Should().Be(WalletName);
         sell.Symbol.Should().Be("ETH");
-        sell.OpositeSymbol.Should().Be("LTC");
+        sell.OppositeSymbol.Should().Be("LTC");
         sell.Price.Should().Be(1m / 0.0508376m);
         sell.Quantity.Should().Be(0.06m);
         sell.Fee.Should().Be(0m);
@@ -51,7 +51,7 @@ public class BinanceTradeImporterTests : DbTestBase
 
         buy.Wallet.Name.Should().Be(WalletName);
         buy.Symbol.Should().Be("LTC");
-        buy.OpositeSymbol.Should().Be("ETH");
+        buy.OppositeSymbol.Should().Be("ETH");
         buy.Price.Should().Be(0.0508376m);
         buy.Quantity.Should().Be(1.63850661m);
         buy.Fee.Should().Be(0m);
