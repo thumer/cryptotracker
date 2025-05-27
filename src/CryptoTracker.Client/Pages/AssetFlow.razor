@@ -1,0 +1,75 @@
+@page "/assetflow"
+@using CryptoTracker.Shared
+@inject IBalanceApi BalanceApi
+@inject IAssetFlowApi AssetFlowApi
+
+<PageTitle>Asset Flow</PageTitle>
+
+<h1>Asset Flow</h1>
+
+@if (IsLoading)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border" role="status"></div>
+    </div>
+}
+else
+{
+    <div class="mb-3" style="max-width:200px">
+        <label>Wallet</label>
+        <RadzenDropDown Style="width:100%" Data="@WalletNames" @bind-Value="SelectedWallet" Change="@(args => OnWalletChanged(args?.ToString() ?? string.Empty))" Placeholder="Select Wallet" />
+    </div>
+    @if (SelectedWallet != null)
+    {
+        <div class="mb-3" style="max-width:200px">
+            <label>Asset</label>
+            <RadzenDropDown Style="width:100%" Data="@WalletAssetOptions" TextProperty="Display" ValueProperty="Symbol" @bind-Value="SelectedAsset" Change="@(args => OnAssetChanged(args?.ToString() ?? string.Empty))" Placeholder="Select Asset" />
+        </div>
+    }
+    @if (SelectedAsset != null)
+    {
+        <div class="mb-3" style="max-width:200px">
+            <label>Menge</label>
+            <div class="d-flex">
+                <RadzenNumeric style="width:100%" TValue="decimal" @bind-Value="SelectedAmount" />
+                <RadzenButton class="ms-2" Text="Max" Click="SetMax" />
+            </div>
+        </div>
+        <RadzenButton Text="Load Flows" Click="LoadFlows" Disabled="SelectedAmount <= 0" />
+    }
+}
+
+@if (FlowLines != null && FlowLines.Count > 0)
+{
+    <div class="mt-4" style="overflow-x:auto">
+        <svg width="@SvgWidth" height="@SvgHeight">
+            <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+                </marker>
+            </defs>
+            @foreach (var wp in WalletPositions)
+            {
+                @((MarkupString)$"<text x='{wp.Value}' y='20' text-anchor='middle'>{wp.Key}</text>")
+            }
+            @for (int i = 0; i < FlowLines.Count; i++)
+            {
+                var line = FlowLines[i];
+                var y = 40 + i * RowSpacing;
+                var x1 = WalletPositions[line.SourceWallet ?? string.Empty];
+                var x2 = WalletPositions[line.TargetWallet ?? string.Empty];
+                <line x1="@x1" y1="@y" x2="@x2" y2="@y" stroke="black" marker-end="url(#arrow)" />
+                @((MarkupString)$"<text x='{(x1 + x2) / 2}' y='{y - 5}' text-anchor='middle' style='font-size:smaller'>{line.DateTime:g} {line.Symbol} {line.Amount}</text>")
+            }
+        </svg>
+    </div>
+    <div class="mt-3">
+        <p>Aktueller Wert: @CurrentValue.ToString("0.00") EUR</p>
+        <p>Gewinn/Verlust: @(CurrentValue - TotalCost).ToString("0.00") EUR</p>
+    </div>
+}
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert">@ErrorMessage</div>
+}

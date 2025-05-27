@@ -52,11 +52,13 @@ namespace CryptoTracker
             services.AddScoped<DataImportService>();
             services.AddScoped<WalletService>();
             services.AddScoped<FlowService>();
+            services.AddScoped<AssetFlowService>();
             services.AddScoped<IFinanceValueProvider, FinanceValueProvider>();
             services.AddScoped<BalanceService>();
 
             services.AddScoped<IWalletApi, WalletController>();
             services.AddScoped<IFlowApi, FlowController>();
+            services.AddScoped<IAssetFlowApi, AssetFlowController>();
             services.AddScoped<IBalanceApi, BalanceController>();
             services.AddScoped<IDataImportApi, DataImportController>();
             services.AddScoped<IImportEntriesApi, ImportEntriesController>();
