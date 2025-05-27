@@ -37,12 +37,12 @@ public class OkxTradeImporterTests : DbTestBase
         var buy = DbContext.CryptoTrades.Single(t => t.DateTime == date && t.TradeType == TradeType.Buy);
 
         sell.Symbol.Should().Be("USDT");
-        sell.OpositeSymbol.Should().Be("IOTA");
+        sell.OppositeSymbol.Should().Be("IOTA");
         sell.Price.Should().Be(1m / 2.37m);
         sell.Quantity.Should().Be(2370m);
 
         buy.Symbol.Should().Be("IOTA");
-        buy.OpositeSymbol.Should().Be("USDT");
+        buy.OppositeSymbol.Should().Be("USDT");
         buy.Price.Should().Be(2.37m);
         buy.Quantity.Should().Be(1000m);
 

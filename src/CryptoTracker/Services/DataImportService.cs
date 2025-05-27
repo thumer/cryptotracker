@@ -34,6 +34,8 @@ namespace CryptoTracker.Services
 
             var importer = GetImporter(type);
             await importer.Import(new ImportArgs() { Wallet = wallet }, openStreamFunc);
+
+            await ProcessTransactionPairs();
         }
 
         private async Task StoreRawEntries(ImportDocumentType type, Func<Stream> openStreamFunc, Wallet wallet)
@@ -150,13 +152,15 @@ namespace CryptoTracker.Services
         {
             var transactions = await _dbContext.CryptoTransactions.ToListAsync();
 
-            foreach (var transaction in transactions.Where(t => t.TransactionType == TransactionType.Send))
+            foreach (var transaction in transactions.Where(t => t.TransactionType == TransactionType.Send && t.OppositeTransactionId == null))
             {
                 var oppositeTransaction = transactions
                     .Where(t => t.TransactionType == TransactionType.Receive &&
+                                t.OppositeTransactionId == null &&
+                                t.Symbol == transaction.Symbol &&
                                 t.QuantityAfterFee == transaction.QuantityAfterFee &&
-                                t.DateTime >= transaction.DateTime.AddMinutes(-1) /* die Sekunden müssen nicht immer stimmen */ &&
-                                t.DateTime <= transaction.DateTime.AddHours(5))
+                                t.DateTime >= transaction.DateTime.AddMinutes(-5) &&
+                                t.DateTime <= transaction.DateTime.AddMinutes(5))
                     .FirstOrDefault();
 
                 if (oppositeTransaction != null)

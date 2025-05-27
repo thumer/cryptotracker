@@ -23,12 +23,12 @@ public class CryptoTrade : IFlow
     /// <summary>
     /// Mit welchen Coin wurde bezahlt / Betrag erhalten.
     /// </summary>
-    public string OpositeSymbol { get; set; } = string.Empty;
+    public string OppositeSymbol { get; set; } = string.Empty;
 
     public TradeType TradeType { get; set; }
 
     /// <summary>
-    /// Preis ausgehend von Symbol (1 {Symbol} kostet x  {OpositeSymbol})
+    /// Preis ausgehend von Symbol (1 {Symbol} kostet x  {OppositeSymbol})
     /// </summary>
     public decimal Price { get; set; }
     /// <summary>
