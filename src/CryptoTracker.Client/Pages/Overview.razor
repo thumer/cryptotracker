@@ -22,10 +22,11 @@ else
 
 
     <div class="mt-3">
-        <RadzenDataGrid TItem="FlowDTO" Data="Flows" AllowSorting="true" AllowFiltering="true" AllowColumnResize="true" AllowPaging="false">
+        <RadzenDataGrid TItem="FlowDTO" Data="Flows" AllowSorting="true" AllowFiltering="true" AllowColumnResize="true" AllowPaging="true" PageSize="50">
             <Columns>
                 <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.DateTime)" Title="DateTime" />
                 <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.FlowType)" Title="FlowType" />
+                <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.Symbol)" Title="Symbol" />
                 <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.FlowDirection)" Title="FlowDirection" />
                 <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.SourceWallet)" Title="SourceWallet" />
                 <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.TargetWallet)" Title="TargetWallet" />
