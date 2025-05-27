@@ -9,6 +9,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 builder.Services.AddScoped<IWalletApi, WalletRestClient>();
 builder.Services.AddScoped<IFlowApi, FlowRestClient>();
+builder.Services.AddScoped<IAssetFlowApi, AssetFlowRestClient>();
 builder.Services.AddScoped<IBalanceApi, BalanceRestClient>();
 builder.Services.AddScoped<IDataImportApi, DataImportRestClient>();
 builder.Services.AddScoped<IImportEntriesApi, ImportEntriesRestClient>();
