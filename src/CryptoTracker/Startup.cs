@@ -23,6 +23,7 @@ namespace CryptoTracker
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             services.AddApplicationInsightsTelemetry();
             services.AddControllersWithViews();
 
@@ -56,6 +57,7 @@ namespace CryptoTracker
             services.AddRadzenComponents();
 
             services.AddScoped<DataImportService>();
+            services.AddScoped<ImportAutoService>();
             services.AddScoped<WalletService>();
             services.AddScoped<FlowService>();
             services.AddScoped<IFinanceValueProvider, FinanceValueProvider>();
@@ -73,6 +75,7 @@ namespace CryptoTracker
             services.AddScoped<ICoinRatesApi, CoinRatesController>();
             services.AddScoped<IDataImportApi, DataImportController>();
             services.AddScoped<IImportEntriesApi, ImportEntriesController>();
+            services.AddScoped<IImportOverviewApi, ImportOverviewController>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -12,10 +12,12 @@ namespace CryptoTracker.Controllers
     public class DataImportController : ControllerBase, IDataImportApi
     {
         private readonly DataImportService _dataImportService;
+        private readonly ImportAutoService _importAutoService;
 
-        public DataImportController(DataImportService dataImportService)
+        public DataImportController(DataImportService dataImportService, ImportAutoService importAutoService)
         {
             _dataImportService = dataImportService;
+            _importAutoService = importAutoService;
         }
 
         [HttpPost("[action]")]
@@ -32,6 +34,35 @@ namespace CryptoTracker.Controllers
         }
 
         [HttpPost("[action]")]
+        public async Task<IActionResult> ImportAuto([FromForm(Name = "request")] string requestJson, [FromForm] IFormFile file)
+        {
+            var request = JsonSerializer.Deserialize<ImportAutoRequest>(requestJson, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+            if (file == null)
+                throw new ArgumentNullException(nameof(file));
+
+            using var memory = new MemoryStream();
+            await file.CopyToAsync(memory);
+            var bytes = memory.ToArray();
+            await _importAutoService.ImportAsync(request.WalletName, () => new MemoryStream(bytes), file.FileName, request.DocumentType);
+            return Ok("Import erfolgreich");
+        }
+
+        [HttpPost("[action]")]
+        public async Task<IActionResult> PreviewImport([FromForm] IFormFile file)
+        {
+            if (file == null)
+                throw new ArgumentNullException(nameof(file));
+
+            using var memory = new MemoryStream();
+            await file.CopyToAsync(memory);
+            var bytes = memory.ToArray();
+            var result = _importAutoService.Preview(() => new MemoryStream(bytes), file.FileName);
+            return Ok(result);
+        }
+
+        [HttpPost("[action]")]
         public async Task<IActionResult> ProcessTransactionPairs()
         {
             await _dataImportService.ProcessTransactionPairs();
@@ -45,6 +76,20 @@ namespace CryptoTracker.Controllers
             using var memory = new MemoryStream();
             await file.OpenReadStream(MAX_REQUEST_SIZE).CopyToAsync(memory);
             await _dataImportService.Import(type, walletName, () => new MemoryStream(memory.ToArray()));
+        }
+
+        async Task<ImportPreviewResult> IDataImportApi.PreviewImportAsync(IBrowserFile file)
+        {
+            using var memory = new MemoryStream();
+            await file.OpenReadStream(MAX_REQUEST_SIZE).CopyToAsync(memory);
+            return _importAutoService.Preview(() => new MemoryStream(memory.ToArray()), file.Name);
+        }
+
+        async Task IDataImportApi.ImportAutoAsync(string walletName, IBrowserFile file, ImportDocumentType? documentType)
+        {
+            using var memory = new MemoryStream();
+            await file.OpenReadStream(MAX_REQUEST_SIZE).CopyToAsync(memory);
+            await _importAutoService.ImportAsync(walletName, () => new MemoryStream(memory.ToArray()), file.Name, documentType);
         }
 
         Task IDataImportApi.ProcessTransactionPairsAsync()

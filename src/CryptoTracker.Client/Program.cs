@@ -15,6 +15,7 @@ builder.Services.AddScoped<ITransactionsApi, TransactionsRestClient>();
 builder.Services.AddScoped<ICoinRatesApi, CoinRatesRestClient>();
 builder.Services.AddScoped<IDataImportApi, DataImportRestClient>();
 builder.Services.AddScoped<IImportEntriesApi, ImportEntriesRestClient>();
+builder.Services.AddScoped<IImportOverviewApi, ImportOverviewRestClient>();
 
 builder.Services.AddRadzenComponents();
 

@@ -1,39 +1,380 @@
-﻿@page "/import"
+@page "/import"
 @using CryptoTracker.Shared
 @inject IWalletApi WalletApi
 @inject IDataImportApi DataImportApi
+@inject IImportOverviewApi ImportOverviewApi
 
 <PageTitle>Import</PageTitle>
 
-<h1>Import</h1>
-
-@foreach (ImportDocumentType documentType in Enum.GetValues(typeof(ImportDocumentType)))
-{
-    <h5 class="mt-3">@documentType.GetDisplayName()</h5>
-    <div class="row">
-        <div class="col-md-4">
-            <InputFile @key="InputFileIdDictionary[documentType]" OnChange="@(e => HandleFileSelected(documentType, e))" />
-        </div>
-
-        <div class="col-md-4">
-            <RadzenDropDown Style="width:100%" Data="@Wallets" TextProperty="Name" ValueProperty="Name" @bind-Value="WalletNameDictionary[documentType]" Placeholder="Wallet wählen" />
-        </div>
-    </div>
-
-    <RadzenButton Class="mt-2" Text="Importieren" Click="(() => UploadDocument(documentType))" />
-}
-
-<h5 class="mt-3">Transaktionspaar zusammenfinden</h5>
-
-<div class="row">
-    <div class="col-md-4">
-        <RadzenButton Text="Process Transactions" Click="ProcessTransactionPairs" />
+<div class="page-header">
+    <div>
+        <h1>Import</h1>
+        <p class="page-subtitle">Wähle eine Datei und prüfe die Vorschau, bevor du die Daten importierst.</p>
     </div>
 </div>
 
+<div class="mb-4">
+    <div class="row">
+        <div class="col-md-6">
+            <label>Datei auswählen (CSV/XLSX)</label>
+            <InputFile OnChange="HandleFileSelected" />
+            @if (SelectedFile != null)
+            {
+                <div class="form-text">@SelectedFile.Name</div>
+            }
+        </div>
+        <div class="col-md-6">
+            <label>Wallet</label>
+            <RadzenDropDown Style="width:100%" Data="@Wallets" TextProperty="Name" ValueProperty="Name" @bind-Value="WalletName" Placeholder="Wallet wählen" />
+        </div>
+    </div>
+
+    @if (SelectedFile != null)
+    {
+        <div class="mt-3">
+            <RadzenButton Text="Vorschau öffnen" Click="OpenPreview" Disabled="IsPreviewLoading" />
+        </div>
+    }
+</div>
+
+<LoadingOverlay IsLoading="IsLoading" Text="Lade Importe…" />
+
+@if (!IsLoading)
+{
+    <RadzenTabs>
+        <Tabs>
+            <RadzenTabsItem Text="Einzahlungen">
+                <RadzenDataGrid TItem="ImportTransactionRowDTO" Data="Deposits" KeyProperty="@nameof(ImportTransactionRowDTO.RowKey)" AllowPaging="false" AllowFiltering="false" AllowColumnResize="true" Class="styled-grid">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Datum (UTC)">
+                            <Template Context="row">@FormatHelper.FormatUtc(row.DateTime)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Coin">
+                            <Template Context="row">
+                                <CoinLink Symbol="@row.Symbol" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Menge">
+                            <Template Context="row">@FormatHelper.FormatAmount(row.Amount) @row.Symbol</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Gebühr">
+                            <Template Context="row">@FormatHelper.FormatAmount(row.Fee) @row.Symbol</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Wallet" Title="Wallet" />
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Network" Title="Netzwerk" />
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Address" Title="Adresse" />
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Comment" Title="Kommentar" />
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenTabsItem>
+            <RadzenTabsItem Text="Auszahlungen">
+                <RadzenDataGrid TItem="ImportTransactionRowDTO" Data="Withdrawals" KeyProperty="@nameof(ImportTransactionRowDTO.RowKey)" AllowPaging="false" AllowFiltering="false" AllowColumnResize="true" Class="styled-grid">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Datum (UTC)">
+                            <Template Context="row">@FormatHelper.FormatUtc(row.DateTime)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Coin">
+                            <Template Context="row">
+                                <CoinLink Symbol="@row.Symbol" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Menge">
+                            <Template Context="row">@FormatHelper.FormatAmount(row.Amount) @row.Symbol</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Gebühr">
+                            <Template Context="row">@FormatHelper.FormatAmount(row.Fee) @row.Symbol</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Wallet" Title="Wallet" />
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Network" Title="Netzwerk" />
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Address" Title="Adresse" />
+                        <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Property="Comment" Title="Kommentar" />
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenTabsItem>
+            <RadzenTabsItem Text="Trades">
+                <RadzenDataGrid TItem="ImportTradeRowDTO" Data="Trades" KeyProperty="@nameof(ImportTradeRowDTO.RowKey)" AllowPaging="false" AllowFiltering="false" AllowColumnResize="true" Class="styled-grid">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Title="Datum (UTC)">
+                            <Template Context="row">@FormatHelper.FormatUtc(row.DateTime)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Property="Side" Title="Seite" />
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Title="Coin">
+                            <Template Context="row">
+                                <CoinLink Symbol="@row.Symbol" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Property="OppositeSymbol" Title="Gegen-Coin" />
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Title="Preis">
+                            <Template Context="row">@FormatHelper.FormatAmount(row.Price)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Title="Menge">
+                            <Template Context="row">@FormatHelper.FormatAmount(row.Quantity) @row.Symbol</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Title="Gebühr">
+                            <Template Context="row">@FormatHelper.FormatAmount(row.Fee) @row.Symbol</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Property="Wallet" Title="Wallet" />
+                        <RadzenDataGridColumn TItem="ImportTradeRowDTO" Property="Comment" Title="Kommentar" />
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+}
+
 @if (ErrorMessage != null)
 {
-    <div class="alert alert-danger" role="alert">
-        @ErrorMessage
+    <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
+}
+
+@if (IsPreviewOpen && PreviewResult != null)
+{
+    <div class="modal-overlay" @onclick="ClosePreview">
+        <div class="modal-card details-modal" @onclick:stopPropagation="true">
+            <div class="details-header">
+                <div>
+                    <h3>Import-Vorschau</h3>
+                    @if (!string.IsNullOrWhiteSpace(PreviewResult.DocumentTypeDisplayName))
+                    {
+                        <div class="page-subtitle">Erkannt als @PreviewResult.DocumentTypeDisplayName (@PreviewResult.DetectedSource)</div>
+                    }
+                </div>
+                <button class="details-close" @onclick="ClosePreview">×</button>
+            </div>
+
+            @if (!PreviewResult.Success)
+            {
+                <div class="alert alert-danger" role="alert">@PreviewResult.ErrorMessage</div>
+            }
+            else
+            {
+                @if (HasTransactions && HasTrades)
+                {
+                    <RadzenTabs>
+                        <Tabs>
+                            <RadzenTabsItem Text="Transaktionen">
+                                <RadzenDataGrid TItem="ImportPreviewTransactionRowDTO" Data="PreviewResult!.TransactionRows" AllowPaging="false" AllowFiltering="false" AllowColumnResize="true" Class="styled-grid">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Title="Datum (UTC)">
+                                            <Template Context="row">@FormatHelper.FormatUtc(row.DateTime)</Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Type" Title="Typ" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Title="Coin">
+                                            <Template Context="row">
+                                                <CoinLink Symbol="@row.Coin" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Amount" Title="Menge" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Fee" Title="Gebühr" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Network" Title="Netzwerk" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Address" Title="Adresse" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Comment" Title="Kommentar" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Source" Title="Quelle" />
+                                    </Columns>
+                                </RadzenDataGrid>
+                            </RadzenTabsItem>
+                            <RadzenTabsItem Text="Trades">
+                                <RadzenDataGrid TItem="ImportPreviewTradeRowDTO" Data="PreviewResult!.TradeRows" AllowPaging="false" AllowFiltering="false" AllowColumnResize="true" Class="styled-grid">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Title="Datum (UTC)">
+                                            <Template Context="row">@FormatHelper.FormatUtc(row.DateTime)</Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Side" Title="Seite" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Pair" Title="Pair" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Price" Title="Preis" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Executed" Title="Executed" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Amount" Title="Amount" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Fee" Title="Fee" />
+                                        <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Source" Title="Quelle" />
+                                    </Columns>
+                                </RadzenDataGrid>
+                            </RadzenTabsItem>
+                        </Tabs>
+                    </RadzenTabs>
+                }
+                else if (HasTransactions)
+                {
+                    <RadzenDataGrid TItem="ImportPreviewTransactionRowDTO" Data="PreviewResult!.TransactionRows" AllowPaging="false" AllowFiltering="false" AllowColumnResize="true" Class="styled-grid">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Title="Datum (UTC)">
+                                <Template Context="row">@FormatHelper.FormatUtc(row.DateTime)</Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Type" Title="Typ" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Title="Coin">
+                                <Template Context="row">
+                                    <CoinLink Symbol="@row.Coin" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Amount" Title="Menge" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Fee" Title="Gebühr" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Network" Title="Netzwerk" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Address" Title="Adresse" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Comment" Title="Kommentar" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Source" Title="Quelle" />
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+                else if (HasTrades)
+                {
+                    <RadzenDataGrid TItem="ImportPreviewTradeRowDTO" Data="PreviewResult!.TradeRows" AllowPaging="false" AllowFiltering="false" AllowColumnResize="true" Class="styled-grid">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Title="Datum (UTC)">
+                                <Template Context="row">@FormatHelper.FormatUtc(row.DateTime)</Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Side" Title="Seite" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Pair" Title="Pair" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Price" Title="Preis" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Executed" Title="Executed" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Amount" Title="Amount" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Fee" Title="Fee" />
+                            <RadzenDataGridColumn TItem="ImportPreviewTradeRowDTO" Property="Source" Title="Quelle" />
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+                else
+                {
+                    <div class="empty-state">Keine Vorschau-Daten gefunden.</div>
+                }
+
+                @if (PreviewResult.TransactionsTruncated || PreviewResult.TradesTruncated)
+                {
+                    <div class="form-text">Vorschau ist gekürzt. Der Import lädt alle Zeilen.</div>
+                }
+
+                @if (string.IsNullOrWhiteSpace(WalletName))
+                {
+                    <div class="alert alert-warning" role="alert">Bitte wähle ein Wallet, bevor du importierst.</div>
+                }
+            }
+
+            <div class="modal-actions" style="margin-top:1.2rem;">
+                <RadzenButton Text="Importieren" Click="ConfirmImportAsync" Disabled="!CanImport" />
+                <RadzenButton Text="Abbrechen" ButtonStyle="ButtonStyle.Secondary" Click="ClosePreview" />
+            </div>
+        </div>
     </div>
+}
+
+@code {
+    private IList<WalletInfoDTO> Wallets { get; set; } = new List<WalletInfoDTO>();
+    private string WalletName { get; set; } = string.Empty;
+    private IBrowserFile? SelectedFile { get; set; }
+    private ImportPreviewResult? PreviewResult { get; set; }
+    private bool IsPreviewOpen { get; set; }
+    private bool IsPreviewLoading { get; set; }
+    private bool IsLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+
+    private IList<ImportTransactionRowDTO> Deposits { get; set; } = new List<ImportTransactionRowDTO>();
+    private IList<ImportTransactionRowDTO> Withdrawals { get; set; } = new List<ImportTransactionRowDTO>();
+    private IList<ImportTradeRowDTO> Trades { get; set; } = new List<ImportTradeRowDTO>();
+
+    private bool HasTransactions => PreviewResult?.TransactionRows?.Count > 0;
+    private bool HasTrades => PreviewResult?.TradeRows?.Count > 0;
+    private bool CanImport => PreviewResult?.Success == true && SelectedFile != null && !string.IsNullOrWhiteSpace(WalletName);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Wallets = await WalletApi.GetWalletInfosAsync();
+        await LoadOverviewAsync();
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        SelectedFile = e.File;
+        ErrorMessage = null;
+        PreviewResult = null;
+        IsPreviewOpen = false;
+
+        TrySetWalletFromFileName(e.File.Name);
+        await OpenPreview();
+    }
+
+    private async Task OpenPreview()
+    {
+        if (SelectedFile == null)
+        {
+            return;
+        }
+
+        IsPreviewLoading = true;
+        try
+        {
+            PreviewResult = await DataImportApi.PreviewImportAsync(SelectedFile);
+            IsPreviewOpen = true;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsPreviewLoading = false;
+        }
+    }
+
+    private void ClosePreview()
+    {
+        IsPreviewOpen = false;
+    }
+
+    private async Task ConfirmImportAsync()
+    {
+        if (!CanImport || SelectedFile == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await DataImportApi.ImportAutoAsync(WalletName, SelectedFile, PreviewResult?.DocumentType);
+            ClosePreview();
+            SelectedFile = null;
+            Wallets = await WalletApi.GetWalletInfosAsync();
+            await LoadOverviewAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task LoadOverviewAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var overview = await ImportOverviewApi.GetOverviewAsync();
+            Deposits = overview.Deposits;
+            Withdrawals = overview.Withdrawals;
+            Trades = overview.Trades;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void TrySetWalletFromFileName(string fileName)
+    {
+        var indexOfHash = fileName.IndexOf('#');
+        if (indexOfHash < 0)
+        {
+            return;
+        }
+
+        var indexOfDot = fileName.LastIndexOf('.');
+        if (indexOfDot <= indexOfHash)
+        {
+            return;
+        }
+
+        WalletName = fileName.Substring(indexOfHash + 1, indexOfDot - indexOfHash - 1);
+    }
+
 }

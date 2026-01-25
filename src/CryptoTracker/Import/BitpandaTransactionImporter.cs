@@ -55,8 +55,21 @@ namespace CryptoTracker.Import
         protected override async Task OnImport(ImportArgs args, IEnumerable<BitpandaTransaction> records)
         {
             var trades = new List<(CryptoTrade sellTrade, CryptoTrade buyTrade)>();
+            var existingIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            existingIds.UnionWith(DbContext.CryptoTransactions
+                .Where(t => t.WalletId == args.Wallet.Id && t.TransactionId != null)
+                .Select(t => t.TransactionId!));
+            existingIds.UnionWith(DbContext.CryptoTrades
+                .Where(t => t.WalletId == args.Wallet.Id && t.Referenz != null)
+                .Select(t => t.Referenz!));
             foreach (var record in records)
             {
+                var transactionId = record.TransactionId?.Trim();
+                if (!string.IsNullOrWhiteSpace(transactionId) && existingIds.Contains(transactionId))
+                {
+                    continue;
+                }
+
                 if ((string.IsNullOrEmpty(record.AssetClass) || record.AssetClass == "Cryptocurrency") &&
                     (string.Equals(record.TransactionType, "buy", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(record.TransactionType, "sell", StringComparison.OrdinalIgnoreCase)))
@@ -97,11 +110,23 @@ namespace CryptoTracker.Import
                 }
                 else if ((string.IsNullOrEmpty(record.AssetClass) || record.AssetClass == "Cryptocurrency") &&
                          (string.Equals(record.TransactionType, "deposit", StringComparison.OrdinalIgnoreCase) ||
-                          string.Equals(record.TransactionType, "withdrawal", StringComparison.OrdinalIgnoreCase)))
+                          string.Equals(record.TransactionType, "withdrawal", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(record.TransactionType, "transfer", StringComparison.OrdinalIgnoreCase)))
                 {
+                    var inOut = record.InOut?.Trim().ToLowerInvariant();
+                    var type = record.TransactionType?.Trim().ToLowerInvariant();
+                    var isIncoming = string.Equals(inOut, "incoming", StringComparison.OrdinalIgnoreCase);
+                    var transactionType = type switch
+                    {
+                        "deposit" => TransactionType.Receive,
+                        "withdrawal" => TransactionType.Send,
+                        "transfer" => isIncoming ? TransactionType.Receive : TransactionType.Send,
+                        _ => TransactionType.Receive
+                    };
+
                     var transaction = new CryptoTransaction
                     {
-                        TransactionType = record.TransactionType == "deposit" ? TransactionType.Receive : TransactionType.Send,
+                        TransactionType = transactionType,
                         WalletId = args.Wallet.Id,
                         DateTime = record.Timestamp,
                         Symbol = record.Asset,
@@ -112,6 +137,11 @@ namespace CryptoTracker.Import
                         Comment = record.Comment
                     };
                     DbContext.Add(transaction);
+                }
+
+                if (!string.IsNullOrWhiteSpace(transactionId))
+                {
+                    existingIds.Add(transactionId);
                 }
             }
 
