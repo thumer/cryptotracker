@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/tests/">
+    <Project Path="src/CryptoTracker.Tests/CryptoTracker.Tests.csproj" />
+  </Folder>
+  <Project Path="src/CryptoTracker.Client/CryptoTracker.Client.csproj" />
+  <Project Path="src/CryptoTracker/CryptoTracker.csproj" />
+</Solution>

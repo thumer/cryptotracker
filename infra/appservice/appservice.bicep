@@ -7,7 +7,7 @@ param appServicePlanId string
 param kind string = 'app,linux'
 param alwaysOn bool = true
 
-param linuxFxVersion string = 'DOTNETCORE|9.0'
+param linuxFxVersion string = 'DOTNETCORE|10.0'
 
 param applicationInsightsName string
 

@@ -7,7 +7,7 @@ permissions:
 env:
   AZURE_WEBAPP_NAME: ${{ vars.AZURE_ENV_NAME }}
   AZURE_WEBAPP_PACKAGE_PATH: './src/CryptoTracker'
-  DOTNET_VERSION: '9.0.x'
+  DOTNET_VERSION: '10.0.x'
   CONNECTION_STRING: ${{ vars.AZURE_DB_CONNECTION_STRING }}
   SQL_SERVER: ${{ vars.AZURE_SQL_SERVER_NAME }}
   SQL_DATABASE: ${{ vars.AZURE_SQL_DATABASE_NAME }}
@@ -39,9 +39,9 @@ jobs:
 
       - name: dotnet build and publish
         run: |
-          dotnet restore
-          dotnet build --configuration Release
-          dotnet publish -c Release -o ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/output/
+          dotnet restore CryptoTracker.slnx
+          dotnet build CryptoTracker.slnx --configuration Release
+          dotnet publish src/CryptoTracker/CryptoTracker.csproj -c Release -o ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/output/
 
       - name: Build migrations script
         run: >-

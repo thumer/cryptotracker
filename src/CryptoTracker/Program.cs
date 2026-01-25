@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace CryptoTracker
@@ -7,21 +8,17 @@ namespace CryptoTracker
     {
         public static void Main(string[] args)
         {
-            BuildWebHost(args).Run();
+            var builder = WebApplication.CreateBuilder(args);
+
+            builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+            builder.Logging.AddApplicationInsights();
+
+            var startup = new Startup(builder.Configuration);
+            startup.ConfigureServices(builder.Services);
+
+            var app = builder.Build();
+            startup.Configure(app, app.Environment);
+            app.Run();
         }
-
-        public static IWebHost BuildWebHost(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-            .ConfigureLogging((hostingContext, logging)  =>
-                        {
-                            logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                            logging.AddApplicationInsights();
-                        })
-                .UseConfiguration(new ConfigurationBuilder()
-                    .AddCommandLine(args)
-                    .Build())
-
-                .UseStartup<Startup>()
-                .Build();
     }
 }

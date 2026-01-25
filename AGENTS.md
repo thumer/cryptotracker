@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Projektstruktur & Modulorganisation
-- `CryptoTracker.sln` ist der Einstiegspunkt der Solution.
+- `CryptoTracker.slnx` ist der Einstiegspunkt der Solution.
 - `src/CryptoTracker` enthält den ASP.NET Core Host (API-Controller, Services, EF Core `DbContext`, `Migrations/` und geteilte UI-Komponenten).
 - `src/CryptoTracker.Client` ist die Blazor WebAssembly UI (Seiten unter `Pages/`, gemeinsame UI unter `Shared/`, statische Assets in `wwwroot/`).
 - `src/CryptoTracker.Tests` enthält xUnit-Tests (Importer-Tests liegen in `Importers/`).
@@ -9,10 +9,10 @@
 - `src/TestApp` ist eine lokale Sandbox; Experimente bitte dort isolieren.
 
 ## Build-, Test- und Dev-Kommandos
-- `dotnet restore` — stellt NuGet-Abhängigkeiten wieder her.
-- `dotnet build --configuration Release` — CI-konformer Build.
+- `dotnet restore CryptoTracker.slnx` — stellt NuGet-Abhängigkeiten wieder her.
+- `dotnet build CryptoTracker.slnx --configuration Release` — CI-konformer Build.
 - `dotnet run --project src/CryptoTracker` — lokale Ausführung (Profile in `src/CryptoTracker/Properties/launchSettings.json`).
-- `dotnet test --configuration Release` — führt die Testsuite aus.
+- `dotnet test CryptoTracker.slnx --configuration Release` — führt die Testsuite aus.
 
 ## Coding-Style & Namenskonventionen
 - C# 10+ Konventionen: 4 Leerzeichen, file-scoped namespaces, Nullable References aktiviert.
