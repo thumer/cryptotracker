@@ -1,0 +1,40 @@
+@namespace CryptoTracker.Client.Shared
+
+<div class="top-nav">
+    @foreach (var item in Items)
+    {
+        var isActive = IsSelected(item.Value);
+        <button type="button"
+                class="top-nav-item @(isActive ? "active" : string.Empty)"
+                data-active="@(isActive ? "true" : "false")"
+                aria-current="@(isActive ? "true" : "false")"
+                @onclick="(() => OnSelect(item.Value))">
+            @item.Label
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<TopNavItem> Items { get; set; } = Array.Empty<TopNavItem>();
+    [Parameter] public string? SelectedValue { get; set; }
+    [Parameter] public EventCallback<string?> SelectedValueChanged { get; set; }
+    [Parameter] public string? ActiveValue { get; set; }
+
+    private bool IsSelected(string? value)
+    {
+        var current = Normalize(ActiveValue ?? SelectedValue);
+        return string.Equals(Normalize(value), current, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task OnSelect(string? value)
+    {
+        if (IsSelected(value))
+            return;
+
+        SelectedValue = Normalize(value);
+        await SelectedValueChanged.InvokeAsync(value);
+    }
+
+    private static string Normalize(string? value)
+        => (value ?? string.Empty).Trim();
+}

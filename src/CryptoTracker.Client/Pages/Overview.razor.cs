@@ -7,45 +7,33 @@ namespace CryptoTracker.Client.Pages
     public partial class Overview
     {
         private bool IsLoading { get; set; } = true;
-        
         private string? ErrorMessage { get; set; }
+        private OverviewSummaryDTO? Summary { get; set; }
 
-        private IList<WalletWithSymbolsDTO>? Wallets { get; set; }
-
-        private WalletWithSymbolsDTO? SelectedWallet { get; set; }
-        private string? SelectedWalletName { get; set; }
-
-        private IList<FlowDTO> Flows { get; set; } = new List<FlowDTO>();
-        private decimal Balance { get; set; }
+        [Inject] public NavigationManager NavigationManager { get; set; } = null!;
 
         protected override async Task OnInitializedAsync()
         {
             await base.OnInitializedAsync();
 
-            Wallets = await WalletApi.GetWalletsWithSymbolsAsync();
-
-            IsLoading = false;
-        }
-
-        private async Task OnSelectedWalletChanged(string walletName)
-        {
-            SelectedWalletName = walletName;
-            SelectedWallet = Wallets?.FirstOrDefault(w => w.Name == walletName);
-
-            if (SelectedWallet != null)
-                await LoadData();
-        }
-
-        private async Task LoadData()
-        {
-            IsLoading = true;
-            var response = await FlowApi.GetFlowsAsync(SelectedWallet?.Name ?? string.Empty);
-            if (response != null)
+            try
             {
-                Flows = response.Flows ?? new List<FlowDTO>();
-                Balance = response.Bilanz;
+                Summary = await OverviewApi.GetOverviewAsync();
             }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+            }
+
             IsLoading = false;
+        }
+
+        private void NavigateToWallet(string walletName)
+        {
+            if (string.IsNullOrWhiteSpace(walletName))
+                return;
+
+            NavigationManager.NavigateTo($"bilanzen?wallet={Uri.EscapeDataString(walletName)}");
         }
     }
 }

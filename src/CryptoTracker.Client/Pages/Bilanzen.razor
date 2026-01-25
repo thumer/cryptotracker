@@ -1,27 +1,61 @@
 @page "/bilanzen"
+@using CryptoTracker.Client.Common
+@using CryptoTracker.Client.Shared
 @using CryptoTracker.Shared
 @inject IBalanceApi BalanceApi
+@inject IWalletApi WalletApi
 
 <PageTitle>Bilanzen</PageTitle>
 
-<h1>Bilanzen</h1>
-
-@if (IsLoading)
-{
-    <div class="d-flex justify-content-center my-5">
-        <div class="spinner-border" role="status"></div>
+<div class="page-header">
+    <div>
+        <h1>Bilanzen</h1>
+        <p class="page-subtitle">Wallet-Überblick mit Einzelwerten je Asset.</p>
     </div>
-}
-else if (Balances != null)
+</div>
+
+<LoadingOverlay IsLoading="IsLoading" Text="Lade Bilanzen…" />
+
+@if (WalletNavItems.Count > 0)
 {
-    foreach (var balance in Balances)
+    <TopNavigator Items="WalletNavItems" SelectedValue="@SelectedWalletName" ActiveValue="@SelectedWalletName" SelectedValueChanged="OnWalletChanged" />
+}
+
+@if (!IsLoading && SelectedBalance != null)
+{
+    <section class="wallet-summary">
+        <div class="wallet-summary-total">Gesamt: <span>@FormatHelper.FormatAmount(SelectedBalance.TotalEuroValue)€</span></div>
+        <div class="wallet-summary-meta">@SelectedBalance.Assets.Count Assets</div>
+    </section>
+
+    @if (SelectedBalance.Assets.Count == 0)
     {
-        <h5 class="mt-3">@balance.Platform</h5>
-        <RadzenDataGrid TItem="AssetBalanceDTO" Data="balance.Assets" AllowSorting="true" AllowFiltering="true" AllowColumnResize="true" AllowPaging="false">
+        <div class="empty-state">Keine Assets in dieser Wallet gefunden.</div>
+    }
+    else
+    {
+        <RadzenDataGrid TItem="AssetBalanceDetailDTO" Data="SelectedBalance.Assets" AllowSorting="false" AllowFiltering="false" AllowColumnResize="true" AllowPaging="false" RowSelect="OnAssetSelected" Class="styled-grid row-clickable">
             <Columns>
-                <RadzenDataGridColumn TItem="AssetBalanceDTO" Property="@nameof(AssetBalanceDTO.Symbol)" Title="Symbol" />
-                <RadzenDataGridColumn TItem="AssetBalanceDTO" Property="@nameof(AssetBalanceDTO.Amount)" Title="Menge" />
-                <RadzenDataGridColumn TItem="AssetBalanceDTO" Property="@nameof(AssetBalanceDTO.EuroValue)" Title="Wert in EUR" />
+                <RadzenDataGridColumn TItem="AssetBalanceDetailDTO" Title="Symbol">
+                    <Template Context="asset">
+                        <CoinLink Symbol="@asset.Symbol" Slug="@asset.Slug" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="AssetBalanceDetailDTO" Title="Menge">
+                    <Template Context="asset">
+                        @FormatHelper.FormatAmount(asset.Amount)
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="AssetBalanceDetailDTO" Title="Wert €">
+                    <Template Context="asset">
+                        @FormatHelper.FormatEuro(asset.EuroValue)
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="AssetBalanceDetailDTO" Title="Kurs €">
+                    <Template Context="asset">
+                        @FormatHelper.FormatEuro(asset.RateEur)
+                    </Template>
+                </RadzenDataGridColumn>
             </Columns>
         </RadzenDataGrid>
     }
@@ -29,5 +63,5 @@ else if (Balances != null)
 
 @if (ErrorMessage != null)
 {
-    <div class="alert alert-danger" role="alert">@ErrorMessage</div>
+    <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
 }

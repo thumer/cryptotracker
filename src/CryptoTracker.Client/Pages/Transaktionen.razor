@@ -1,0 +1,114 @@
+@page "/transaktionen"
+@using CryptoTracker.Client.Common
+@using CryptoTracker.Client.Shared
+@using CryptoTracker.Shared
+@inject ITransactionsApi TransactionsApi
+@inject IWalletApi WalletApi
+
+<PageTitle>Transaktionen</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Transaktionen</h1>
+        <p class="page-subtitle">Alle Bewegungen, sauber filterbar nach Wallet und Coin.</p>
+    </div>
+</div>
+
+<LoadingOverlay IsLoading="IsLoading" Text="Lade Transaktionen…" />
+
+@if (WalletNavItems.Count > 0)
+{
+    <TopNavigator Items="WalletNavItems" SelectedValue="@SelectedWalletName" ActiveValue="@SelectedWalletName" SelectedValueChanged="OnWalletChanged" />
+}
+
+@if (CoinNavItems.Count > 0)
+{
+    <TopNavigator Items="CoinNavItems" SelectedValue="@SelectedCoinSymbol" ActiveValue="@SelectedCoinSymbol" SelectedValueChanged="OnCoinChanged" />
+}
+
+@if (!IsLoading)
+{
+    @if (Transactions.Count == 0)
+    {
+        <div class="empty-state">Keine Transaktionen gefunden.</div>
+    }
+    else
+    {
+        <RadzenDataGrid TItem="TransactionRowDTO" Data="Transactions" KeyProperty="@nameof(TransactionRowDTO.RowKey)" AllowSorting="false" AllowFiltering="false" AllowColumnResize="true" AllowPaging="false" Class="styled-grid">
+            <Columns>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Datum (UTC)">
+                    <Template Context="row">
+                        @FormatHelper.FormatUtc(row.DateTime)
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Typ">
+                    <Template Context="row">
+                        @(row.FlowType == FlowType.Trade ? "Trade" : "Transaction")
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Flow">
+                    <Template Context="row">
+                        <span class="flow-badge @(row.FlowDirection == FlowDirection.Inflow ? "flow-in" : "flow-out")">
+                            <span class="flow-arrow" aria-hidden="true">@(row.FlowDirection == FlowDirection.Inflow ? "\u2193" : "\u2191")</span>
+                            @(row.FlowDirection == FlowDirection.Inflow ? "Eingang" : "Ausgang")
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Coin">
+                    <Template Context="row">
+                        <CoinLink Symbol="@row.Symbol" Slug="@row.Slug" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Anzahl">
+                    <Template Context="row">
+                        @FormatHelper.FormatAmount(row.Amount)
+                    </Template>
+                </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Wert €">
+                <Template Context="row">
+                    @FormatHelper.FormatEuro(row.EuroValue)
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Ziel-Coin">
+                <Template Context="row">
+                    @if (row.FlowType == FlowType.Trade && !string.IsNullOrWhiteSpace(row.TargetSymbol))
+                    {
+                        <CoinLink Symbol="@row.TargetSymbol" Slug="@row.TargetSlug" />
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Ziel-Menge">
+                <Template Context="row">
+                    @if (row.FlowType == FlowType.Trade && row.TargetAmount.HasValue)
+                    {
+                        @FormatHelper.FormatAmount(row.TargetAmount.Value)
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Source Wallet">
+                <Template Context="row">
+                    @(string.IsNullOrWhiteSpace(row.SourceWallet) ? "—" : row.SourceWallet)
+                </Template>
+            </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Target Wallet">
+                    <Template Context="row">
+                        @(string.IsNullOrWhiteSpace(row.TargetWallet) ? "—" : row.TargetWallet)
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+}
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
+}

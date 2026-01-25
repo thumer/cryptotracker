@@ -37,6 +37,15 @@ namespace CryptoTracker
             services.AddMemoryCache();
             services.AddSingleton<ICoinmarketcapClient>(sp =>
                 new CoinmarketcapClient(Configuration["COINMARKETCAP_API_KEY"]!));
+            services.AddHttpClient("CoinMarketCap", client =>
+            {
+                client.BaseAddress = new Uri("https://pro-api.coinmarketcap.com/");
+                var apiKey = Configuration["COINMARKETCAP_API_KEY"];
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                {
+                    client.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", apiKey);
+                }
+            });
 
             services.AddScoped<HttpClient>(sp =>
             {
@@ -50,11 +59,18 @@ namespace CryptoTracker
             services.AddScoped<WalletService>();
             services.AddScoped<FlowService>();
             services.AddScoped<IFinanceValueProvider, FinanceValueProvider>();
+            services.AddSingleton<CoinMarketCapService>();
+            services.AddScoped<CoinRateService>();
             services.AddScoped<BalanceService>();
+            services.AddScoped<OverviewService>();
+            services.AddScoped<TransactionService>();
 
             services.AddScoped<IWalletApi, WalletController>();
             services.AddScoped<IFlowApi, FlowController>();
             services.AddScoped<IBalanceApi, BalanceController>();
+            services.AddScoped<IOverviewApi, OverviewController>();
+            services.AddScoped<ITransactionsApi, TransactionsController>();
+            services.AddScoped<ICoinRatesApi, CoinRatesController>();
             services.AddScoped<IDataImportApi, DataImportController>();
             services.AddScoped<IImportEntriesApi, ImportEntriesController>();
         }

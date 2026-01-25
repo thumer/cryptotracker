@@ -1,0 +1,93 @@
+@page "/kurse"
+@using CryptoTracker.Shared
+@inject ICoinRatesApi CoinRatesApi
+
+<PageTitle>Kurse</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Kurse</h1>
+        <p class="page-subtitle">Aktuelle und vorherige Kurse für alle Coins in deinen Wallets.</p>
+    </div>
+</div>
+
+<LoadingOverlay IsLoading="IsLoading" Text="Lade Kurse…" />
+
+@if (!IsLoading)
+{
+    var previousDate = Rates.FirstOrDefault()?.PreviousCloseDate;
+    <div class="rates-meta">Vortag: @(previousDate.HasValue ? FormatHelper.FormatDate(previousDate.Value) : "—")</div>
+
+    @if (Rates.Count == 0)
+    {
+        <div class="empty-state">Keine Coins mit Kursen gefunden.</div>
+    }
+    else
+    {
+        <RadzenDataGrid TItem="CoinRateDTO" Data="Rates" AllowSorting="false" AllowFiltering="false" AllowColumnResize="true" AllowPaging="false" RowSelect="OpenDialog" Class="styled-grid row-clickable">
+            <Columns>
+                <RadzenDataGridColumn TItem="CoinRateDTO" Title="Symbol">
+                    <Template Context="rate">
+                        <CoinLink Symbol="@rate.Symbol" Slug="@rate.Slug" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="CoinRateDTO" Title="Aktuell (€)">
+                    <Template Context="rate">
+                        <div class="rate-cell">
+                            <span>@FormatHelper.FormatEuroNullable(rate.CurrentRateEur)</span>
+                            @if (rate.IsCurrentManual)
+                            {
+                                <span class="rate-manual">manuell</span>
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="CoinRateDTO" Title="Vortag (€)">
+                    <Template Context="rate">
+                        <div class="rate-cell">
+                            <span>@FormatHelper.FormatEuroNullable(rate.PreviousCloseRateEur)</span>
+                            @if (rate.IsPreviousManual)
+                            {
+                                <span class="rate-manual">manuell</span>
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+}
+
+@if (IsDialogOpen)
+{
+    <div class="modal-overlay">
+        <div class="modal-card">
+            <h3>Kurs setzen</h3>
+            <p>Setze einen manuellen EUR-Kurs für <strong>@DialogSymbol</strong>.</p>
+
+            <div class="modal-field">
+                <label>Datum</label>
+                <RadzenDatePicker @bind-Value="DialogDate" DateFormat="dd.MM.yyyy" Style="width:100%" />
+            </div>
+            <div class="modal-field">
+                <label>Kurs in EUR</label>
+                <RadzenNumeric @bind-Value="DialogPrice" Style="width:100%" Min="0" Step="0.0001" />
+            </div>
+
+            @if (DialogError != null)
+            {
+                <div class="alert alert-danger" role="alert">@DialogError</div>
+            }
+
+            <div class="modal-actions">
+                <RadzenButton Text="Speichern" Click="SaveDialogAsync" />
+                <RadzenButton Text="Abbrechen" ButtonStyle="ButtonStyle.Secondary" Click="CloseDialog" />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
+}

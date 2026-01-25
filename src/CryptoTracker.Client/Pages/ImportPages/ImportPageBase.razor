@@ -39,7 +39,29 @@ else if (Entries.Count > 0)
             <Columns>
                 @foreach (var h in headers)
                 {
-                    <RadzenDataGridColumn TItem="TEntry" Property="@h" Title="@h" />
+                    var prop = props.FirstOrDefault(p => p.Name == h);
+                    if (prop != null && (h.EndsWith("Symbol", StringComparison.OrdinalIgnoreCase) || string.Equals(h, "Coin", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <RadzenDataGridColumn TItem="TEntry" Title="@h">
+                            <Template Context="entry">
+                                @{
+                                    var value = prop.GetValue(entry)?.ToString();
+                                }
+                                @if (!string.IsNullOrWhiteSpace(value))
+                                {
+                                    <CoinLink Symbol="@value" />
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                    }
+                    else
+                    {
+                        <RadzenDataGridColumn TItem="TEntry" Property="@h" Title="@h" />
+                    }
                 }
             </Columns>
         </RadzenDataGrid>

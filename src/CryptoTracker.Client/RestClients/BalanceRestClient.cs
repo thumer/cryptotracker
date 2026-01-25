@@ -14,4 +14,7 @@ public class BalanceRestClient : IBalanceApi
 
     public async Task<IList<PlatformBalanceDTO>> GetBalancesAsync()
         => await _http.GetFromJsonAsync<IList<PlatformBalanceDTO>>("api/Balance/GetBalances") ?? new List<PlatformBalanceDTO>();
+
+    public async Task<WalletBalanceDTO?> GetWalletBalanceAsync(string walletName)
+        => await _http.GetFromJsonAsync<WalletBalanceDTO>($"api/Balance/GetWalletBalance?walletName={Uri.EscapeDataString(walletName)}");
 }

@@ -18,6 +18,7 @@ namespace CryptoTracker
         public DbSet<MetamaskTransactionEntity> MetamaskTransactions { get; set; }
         public DbSet<OkxDepositEntity> OkxDeposits { get; set; }
         public DbSet<OkxTradeEntity> OkxTrades { get; set; }
+        public DbSet<ManualCoinPrice> ManualCoinPrices { get; set; }
 
         public CryptoTrackerDbContext(DbContextOptions<CryptoTrackerDbContext> options) : base(options)
         {
@@ -64,6 +65,10 @@ namespace CryptoTracker
             modelBuilder.Entity<MetamaskTransactionEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<OkxDepositEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<OkxTradeEntity>().HasKey(b => b.Id);
+            modelBuilder.Entity<ManualCoinPrice>().HasKey(p => p.Id);
+            modelBuilder.Entity<ManualCoinPrice>()
+                .HasIndex(p => new { p.Symbol, p.Date })
+                .IsUnique();
 
             modelBuilder.Entity<CryptoTrade>()
                 .Property(c => c.Price)
@@ -88,6 +93,14 @@ namespace CryptoTracker
             modelBuilder.Entity<CryptoTransaction>()
                 .Property(c => c.Fee)
                 .HasColumnType("decimal(27, 12)");
+
+            modelBuilder.Entity<ManualCoinPrice>()
+                .Property(p => p.PriceEur)
+                .HasColumnType("decimal(27, 12)");
+
+            modelBuilder.Entity<ManualCoinPrice>()
+                .Property(p => p.Date)
+                .HasColumnType("date");
 
             base.OnModelCreating(modelBuilder);
         }

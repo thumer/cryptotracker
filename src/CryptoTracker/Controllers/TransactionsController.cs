@@ -1,0 +1,24 @@
+using CryptoTracker.Services;
+using CryptoTracker.Shared;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CryptoTracker.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class TransactionsController : ControllerBase, ITransactionsApi
+{
+    private readonly TransactionService _transactionService;
+
+    public TransactionsController(TransactionService transactionService)
+    {
+        _transactionService = transactionService;
+    }
+
+    [HttpGet("GetTransactions")]
+    public Task<IList<TransactionRowDTO>> GetTransactions([FromQuery] string? walletName, [FromQuery] string? symbol)
+        => _transactionService.GetTransactionsAsync(walletName, symbol);
+
+    Task<IList<TransactionRowDTO>> ITransactionsApi.GetTransactionsAsync(string? walletName, string? symbol)
+        => _transactionService.GetTransactionsAsync(walletName, symbol);
+}

@@ -1,0 +1,12 @@
+@namespace CryptoTracker.Client.Shared
+
+<a class="coin-link" href="@Href" target="_blank" rel="noopener noreferrer">@Symbol</a>
+
+@code {
+    [Parameter] public string Symbol { get; set; } = string.Empty;
+    [Parameter] public string? Slug { get; set; }
+
+    private string Href => !string.IsNullOrWhiteSpace(Slug)
+        ? $"https://coinmarketcap.com/currencies/{Slug}/"
+        : $"https://coinmarketcap.com/search/?q={Uri.EscapeDataString(Symbol)}";
+}
