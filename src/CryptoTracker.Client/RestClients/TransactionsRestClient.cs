@@ -22,4 +22,10 @@ public class TransactionsRestClient : ITransactionsApi
         var suffix = query.Count > 0 ? "?" + string.Join("&", query) : string.Empty;
         return await _http.GetFromJsonAsync<IList<TransactionRowDTO>>($"api/Transactions/GetTransactions{suffix}") ?? new List<TransactionRowDTO>();
     }
+
+    public async Task<FlowDetailsDTO?> GetTransactionDetailsAsync(FlowType flowType, int id)
+    {
+        var url = $"api/Transactions/GetTransactionDetails?flowType={flowType}&id={id}";
+        return await _http.GetFromJsonAsync<FlowDetailsDTO>(url);
+    }
 }

@@ -69,6 +69,23 @@
                     @FormatHelper.FormatEuro(row.EuroValue)
                 </Template>
             </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Gebühr">
+                <Template Context="row">
+                    @if (row.Fee > 0)
+                    {
+                        <span>@FormatHelper.FormatAmount(row.Fee) @row.Symbol</span>
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Kommentar">
+                <Template Context="row">
+                    @(string.IsNullOrWhiteSpace(row.Comment) ? "—" : row.Comment)
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Ziel-Coin">
                 <Template Context="row">
                     @if (row.FlowType == FlowType.Trade && !string.IsNullOrWhiteSpace(row.TargetSymbol))
@@ -103,6 +120,18 @@
                         @(string.IsNullOrWhiteSpace(row.TargetWallet) ? "—" : row.TargetWallet)
                     </Template>
                 </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Opposite">
+                    <Template Context="row">
+                        <span class="opposite-indicator @(row.HasOpposite ? "has-opposite" : "no-opposite")">
+                            @(row.HasOpposite ? "Ja" : "Nein")
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="">
+                    <Template Context="row">
+                        <button type="button" class="details-button" @onclick="async () => await OpenDetailsAsync(row)">Details</button>
+                    </Template>
+                </RadzenDataGridColumn>
             </Columns>
         </RadzenDataGrid>
     }
@@ -111,4 +140,284 @@
 @if (ErrorMessage != null)
 {
     <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
+}
+
+@if (IsDetailsOpen)
+{
+    <div class="modal-overlay" @onclick="CloseDetails">
+        <div class="modal-card details-modal" @onclick:stopPropagation="true">
+            <div class="details-header">
+                <h3>Details</h3>
+                <button type="button" class="details-close" @onclick="CloseDetails">x</button>
+            </div>
+
+            @if (IsDetailsLoading)
+            {
+                <div class="details-loading">
+                    <div class="loading-spinner"></div>
+                    <span>Lade Details...</span>
+                </div>
+            }
+            else if (DetailsError != null)
+            {
+                <div class="alert alert-danger" role="alert">@DetailsError</div>
+            }
+            else if (Details == null)
+            {
+                <div class="empty-state">Keine Details gefunden.</div>
+            }
+            else if (Details.FlowType == FlowType.Trade && Details.Trade != null)
+            {
+                <div class="details-section">
+                    <div class="details-title">Trade</div>
+                    <div class="details-grid">
+                        <div class="details-item">
+                            <label>Datum</label>
+                            <span>@FormatHelper.FormatUtc(Details.Trade.DateTime)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Flow</label>
+                            <span>@(Details.Trade.FlowDirection == FlowDirection.Inflow ? "Eingang" : "Ausgang")</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Coin</label>
+                            <span><CoinLink Symbol="@Details.Trade.Symbol" Slug="@Details.Trade.Slug" /></span>
+                        </div>
+                        <div class="details-item">
+                            <label>Anzahl</label>
+                            <span>@FormatHelper.FormatAmount(Details.Trade.Amount)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Wert</label>
+                            <span>@FormatHelper.FormatEuro(Details.Trade.EuroValue)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Ziel-Coin</label>
+                            <span>
+                                @if (!string.IsNullOrWhiteSpace(Details.Trade.TargetSymbol))
+                                {
+                                    <CoinLink Symbol="@Details.Trade.TargetSymbol" Slug="@Details.Trade.TargetSlug" />
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="details-item">
+                            <label>Ziel-Menge</label>
+                            <span>@(Details.Trade.TargetAmount.HasValue ? FormatHelper.FormatAmount(Details.Trade.TargetAmount.Value) : "—")</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Wallet</label>
+                            <span>@Details.Trade.Wallet</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Gebühr</label>
+                            <span>@FormatHelper.FormatAmount(Details.Trade.Fee) @Details.Trade.FeeSymbol</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Fremdgebühr</label>
+                            <span>@(Details.Trade.ForeignFee > 0 ? $"{FormatHelper.FormatAmount(Details.Trade.ForeignFee)} {Details.Trade.ForeignFeeSymbol}" : "—")</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Referenz</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Trade.Referenz) ? "—" : Details.Trade.Referenz)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Kommentar</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Trade.Comment) ? "—" : Details.Trade.Comment)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="details-section details-opposite">
+                    <div class="details-title">Opposite Trade</div>
+                    @if (Details.OppositeTrade == null)
+                    {
+                        <div class="details-empty">Kein Opposite-Trade vorhanden.</div>
+                    }
+                    else
+                    {
+                        <div class="details-grid">
+                            <div class="details-item">
+                                <label>Datum</label>
+                                <span>@FormatHelper.FormatUtc(Details.OppositeTrade.DateTime)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Flow</label>
+                                <span>@(Details.OppositeTrade.FlowDirection == FlowDirection.Inflow ? "Eingang" : "Ausgang")</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Coin</label>
+                                <span><CoinLink Symbol="@Details.OppositeTrade.Symbol" Slug="@Details.OppositeTrade.Slug" /></span>
+                            </div>
+                            <div class="details-item">
+                                <label>Anzahl</label>
+                                <span>@FormatHelper.FormatAmount(Details.OppositeTrade.Amount)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Wert</label>
+                                <span>@FormatHelper.FormatEuro(Details.OppositeTrade.EuroValue)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Ziel-Coin</label>
+                                <span>
+                                    @if (!string.IsNullOrWhiteSpace(Details.OppositeTrade.TargetSymbol))
+                                    {
+                                        <CoinLink Symbol="@Details.OppositeTrade.TargetSymbol" Slug="@Details.OppositeTrade.TargetSlug" />
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="details-item">
+                                <label>Ziel-Menge</label>
+                                <span>@(Details.OppositeTrade.TargetAmount.HasValue ? FormatHelper.FormatAmount(Details.OppositeTrade.TargetAmount.Value) : "—")</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Wallet</label>
+                                <span>@Details.OppositeTrade.Wallet</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Gebühr</label>
+                                <span>@FormatHelper.FormatAmount(Details.OppositeTrade.Fee) @Details.OppositeTrade.FeeSymbol</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Fremdgebühr</label>
+                                <span>@(Details.OppositeTrade.ForeignFee > 0 ? $"{FormatHelper.FormatAmount(Details.OppositeTrade.ForeignFee)} {Details.OppositeTrade.ForeignFeeSymbol}" : "—")</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Referenz</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTrade.Referenz) ? "—" : Details.OppositeTrade.Referenz)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Kommentar</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTrade.Comment) ? "—" : Details.OppositeTrade.Comment)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else if (Details.FlowType == FlowType.Transaction && Details.Transaction != null)
+            {
+                <div class="details-section">
+                    <div class="details-title">Transaktion</div>
+                    <div class="details-grid">
+                        <div class="details-item">
+                            <label>Datum</label>
+                            <span>@FormatHelper.FormatUtc(Details.Transaction.DateTime)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Flow</label>
+                            <span>@(Details.Transaction.FlowDirection == FlowDirection.Inflow ? "Eingang" : "Ausgang")</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Coin</label>
+                            <span><CoinLink Symbol="@Details.Transaction.Symbol" Slug="@Details.Transaction.Slug" /></span>
+                        </div>
+                        <div class="details-item">
+                            <label>Anzahl</label>
+                            <span>@FormatHelper.FormatAmount(Details.Transaction.Amount)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Wert</label>
+                            <span>@FormatHelper.FormatEuro(Details.Transaction.EuroValue)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Source Wallet</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Transaction.SourceWallet) ? "—" : Details.Transaction.SourceWallet)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Ziel Wallet</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Transaction.TargetWallet) ? "—" : Details.Transaction.TargetWallet)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Gebühr</label>
+                            <span>@FormatHelper.FormatAmount(Details.Transaction.Fee) @Details.Transaction.FeeSymbol</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Kommentar</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Transaction.Comment) ? "—" : Details.Transaction.Comment)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>TransactionId</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Transaction.TransactionId) ? "—" : Details.Transaction.TransactionId)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Address</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Transaction.Address) ? "—" : Details.Transaction.Address)</span>
+                        </div>
+                        <div class="details-item">
+                            <label>Network</label>
+                            <span>@(string.IsNullOrWhiteSpace(Details.Transaction.Network) ? "—" : Details.Transaction.Network)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="details-section details-opposite">
+                    <div class="details-title">Opposite Transaktion</div>
+                    @if (Details.OppositeTransaction == null)
+                    {
+                        <div class="details-empty">Keine Opposite-Transaktion vorhanden.</div>
+                    }
+                    else
+                    {
+                        <div class="details-grid">
+                            <div class="details-item">
+                                <label>Datum</label>
+                                <span>@FormatHelper.FormatUtc(Details.OppositeTransaction.DateTime)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Flow</label>
+                                <span>@(Details.OppositeTransaction.FlowDirection == FlowDirection.Inflow ? "Eingang" : "Ausgang")</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Coin</label>
+                                <span><CoinLink Symbol="@Details.OppositeTransaction.Symbol" Slug="@Details.OppositeTransaction.Slug" /></span>
+                            </div>
+                            <div class="details-item">
+                                <label>Anzahl</label>
+                                <span>@FormatHelper.FormatAmount(Details.OppositeTransaction.Amount)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Wert</label>
+                                <span>@FormatHelper.FormatEuro(Details.OppositeTransaction.EuroValue)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Source Wallet</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTransaction.SourceWallet) ? "—" : Details.OppositeTransaction.SourceWallet)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Ziel Wallet</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTransaction.TargetWallet) ? "—" : Details.OppositeTransaction.TargetWallet)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Gebühr</label>
+                                <span>@FormatHelper.FormatAmount(Details.OppositeTransaction.Fee) @Details.OppositeTransaction.FeeSymbol</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Kommentar</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTransaction.Comment) ? "—" : Details.OppositeTransaction.Comment)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>TransactionId</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTransaction.TransactionId) ? "—" : Details.OppositeTransaction.TransactionId)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Address</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTransaction.Address) ? "—" : Details.OppositeTransaction.Address)</span>
+                            </div>
+                            <div class="details-item">
+                                <label>Network</label>
+                                <span>@(string.IsNullOrWhiteSpace(Details.OppositeTransaction.Network) ? "—" : Details.OppositeTransaction.Network)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
 }

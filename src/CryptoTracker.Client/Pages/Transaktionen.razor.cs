@@ -17,6 +17,10 @@ public partial class Transaktionen
     private string? SelectedCoinSymbol { get; set; }
 
     private IList<TransactionRowDTO> Transactions { get; set; } = new List<TransactionRowDTO>();
+    private bool IsDetailsOpen { get; set; }
+    private bool IsDetailsLoading { get; set; }
+    private string? DetailsError { get; set; }
+    private FlowDetailsDTO? Details { get; set; }
 
     [Inject] public NavigationManager NavigationManager { get; set; } = null!;
 
@@ -150,5 +154,33 @@ public partial class Transaktionen
 
         var suffix = query.Count > 0 ? "?" + string.Join("&", query) : string.Empty;
         NavigationManager.NavigateTo($"transaktionen{suffix}", replace: true);
+    }
+
+    private async Task OpenDetailsAsync(TransactionRowDTO row)
+    {
+        IsDetailsOpen = true;
+        IsDetailsLoading = true;
+        DetailsError = null;
+        Details = null;
+        try
+        {
+            Details = await TransactionsApi.GetTransactionDetailsAsync(row.FlowType, row.FlowId);
+            if (Details == null)
+            {
+                DetailsError = "Keine Details gefunden.";
+            }
+        }
+        catch (Exception ex)
+        {
+            DetailsError = ex.Message;
+        }
+        IsDetailsLoading = false;
+    }
+
+    private void CloseDetails()
+    {
+        IsDetailsOpen = false;
+        Details = null;
+        DetailsError = null;
     }
 }

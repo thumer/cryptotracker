@@ -19,6 +19,13 @@ public class TransactionsController : ControllerBase, ITransactionsApi
     public Task<IList<TransactionRowDTO>> GetTransactions([FromQuery] string? walletName, [FromQuery] string? symbol)
         => _transactionService.GetTransactionsAsync(walletName, symbol);
 
+    [HttpGet("GetTransactionDetails")]
+    public Task<FlowDetailsDTO?> GetTransactionDetails([FromQuery] FlowType flowType, [FromQuery] int id)
+        => _transactionService.GetTransactionDetailsAsync(flowType, id);
+
     Task<IList<TransactionRowDTO>> ITransactionsApi.GetTransactionsAsync(string? walletName, string? symbol)
         => _transactionService.GetTransactionsAsync(walletName, symbol);
+
+    Task<FlowDetailsDTO?> ITransactionsApi.GetTransactionDetailsAsync(FlowType flowType, int id)
+        => _transactionService.GetTransactionDetailsAsync(flowType, id);
 }

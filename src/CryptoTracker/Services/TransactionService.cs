@@ -68,9 +68,17 @@ public class TransactionService
             string? targetSymbol = null;
             decimal? targetAmount = null;
             string? targetSlug = null;
+            var fee = 0m;
+            string? comment = null;
+            var hasOpposite = false;
+            var flowId = 0;
 
             if (f is CryptoTrade trade)
             {
+                flowId = trade.Id;
+                fee = trade.Fee;
+                comment = trade.Comment;
+                hasOpposite = trade.OppositeTradeId.HasValue;
                 if (trade.TradeType == TradeType.Sell)
                 {
                     targetSymbol = trade.OppositeSymbol;
@@ -87,21 +95,177 @@ public class TransactionService
                     targetSlug = tSlug;
                 }
             }
+            else if (f is CryptoTransaction transaction)
+            {
+                flowId = transaction.Id;
+                fee = transaction.Fee;
+                comment = transaction.Comment;
+                hasOpposite = transaction.OppositeTransactionId.HasValue;
+            }
 
             return new TransactionRowDTO(f.FlowType,
                 f.FlowDirection,
                 f.DateTime,
+                flowId,
                 f.Symbol,
                 f.FlowAmount,
                 euroValue,
                 rate,
+                fee,
                 f.SourceWallet,
                 f.TargetWallet,
                 slug,
+                comment,
+                hasOpposite,
                 targetSymbol,
                 targetAmount,
                 targetSlug,
                 Guid.NewGuid());
         }).ToList();
+    }
+
+    public async Task<FlowDetailsDTO?> GetTransactionDetailsAsync(FlowType flowType, int id)
+    {
+        return flowType switch
+        {
+            FlowType.Trade => await GetTradeDetailsAsync(id),
+            FlowType.Transaction => await GetTransactionDetailsInternalAsync(id),
+            _ => null
+        };
+    }
+
+    private async Task<FlowDetailsDTO?> GetTradeDetailsAsync(int id)
+    {
+        var trade = await _dbContext.CryptoTrades
+            .Include(t => t.Wallet)
+            .Include(t => t.OppositeTrade)
+            .ThenInclude(t => t.Wallet)
+            .FirstOrDefaultAsync(t => t.Id == id);
+
+        if (trade == null)
+            return null;
+
+        var symbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            trade.Symbol,
+            trade.OppositeSymbol
+        };
+
+        if (trade.OppositeTrade != null)
+        {
+            symbols.Add(trade.OppositeTrade.Symbol);
+            symbols.Add(trade.OppositeTrade.OppositeSymbol);
+        }
+
+        var rates = await _coinRateService.GetCurrentRatesAsync(symbols);
+        var slugs = await _coinRateService.GetSlugsAsync(symbols);
+
+        var detail = BuildTradeDetails(trade, rates, slugs);
+        var opposite = trade.OppositeTrade != null ? BuildTradeDetails(trade.OppositeTrade, rates, slugs) : null;
+
+        return new FlowDetailsDTO(FlowType.Trade, detail, opposite, null, null);
+    }
+
+    private async Task<FlowDetailsDTO?> GetTransactionDetailsInternalAsync(int id)
+    {
+        var transaction = await _dbContext.CryptoTransactions
+            .Include(t => t.Wallet)
+            .Include(t => t.OppositeWallet)
+            .Include(t => t.OppositeTransaction)
+            .ThenInclude(t => t.Wallet)
+            .Include(t => t.OppositeTransaction)
+            .ThenInclude(t => t.OppositeWallet)
+            .FirstOrDefaultAsync(t => t.Id == id);
+
+        if (transaction == null)
+            return null;
+
+        var symbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            transaction.Symbol
+        };
+
+        if (transaction.OppositeTransaction != null)
+        {
+            symbols.Add(transaction.OppositeTransaction.Symbol);
+        }
+
+        var rates = await _coinRateService.GetCurrentRatesAsync(symbols);
+        var slugs = await _coinRateService.GetSlugsAsync(symbols);
+
+        var detail = BuildTransactionDetails(transaction, rates, slugs);
+        var opposite = transaction.OppositeTransaction != null ? BuildTransactionDetails(transaction.OppositeTransaction, rates, slugs) : null;
+
+        return new FlowDetailsDTO(FlowType.Transaction, null, null, detail, opposite);
+    }
+
+    private static TradeDetailsDTO BuildTradeDetails(CryptoTrade trade,
+        IReadOnlyDictionary<string, (decimal rate, bool isManual)> rates,
+        IReadOnlyDictionary<string, string?> slugs)
+    {
+        var flow = (IFlow)trade;
+        var rate = rates.TryGetValue(trade.Symbol, out var r) ? r.rate : 0m;
+        var slug = slugs.TryGetValue(trade.Symbol, out var s) ? s : null;
+        var euroValue = flow.FlowAmount * rate;
+
+        string? targetSymbol;
+        decimal? targetAmount;
+
+        if (trade.TradeType == TradeType.Sell)
+        {
+            targetSymbol = trade.OppositeSymbol;
+            targetAmount = trade.OppositeTrade?.QuantityAfterFee ?? trade.Price * trade.Quantity;
+        }
+        else
+        {
+            targetSymbol = trade.Symbol;
+            targetAmount = trade.QuantityAfterFee;
+        }
+
+        var targetSlug = !string.IsNullOrWhiteSpace(targetSymbol) && slugs.TryGetValue(targetSymbol, out var tSlug)
+            ? tSlug
+            : null;
+
+        return new TradeDetailsDTO(trade.DateTime,
+            flow.FlowDirection,
+            trade.Symbol,
+            flow.FlowAmount,
+            euroValue,
+            slug,
+            targetSymbol,
+            targetAmount,
+            targetSlug,
+            trade.Wallet.Name,
+            trade.Fee,
+            trade.Symbol,
+            trade.ForeignFee,
+            string.IsNullOrWhiteSpace(trade.ForeignFeeSymbol) ? null : trade.ForeignFeeSymbol,
+            trade.Referenz,
+            trade.Comment);
+    }
+
+    private static TransactionDetailsDTO BuildTransactionDetails(CryptoTransaction transaction,
+        IReadOnlyDictionary<string, (decimal rate, bool isManual)> rates,
+        IReadOnlyDictionary<string, string?> slugs)
+    {
+        var flow = (IFlow)transaction;
+        var rate = rates.TryGetValue(transaction.Symbol, out var r) ? r.rate : 0m;
+        var slug = slugs.TryGetValue(transaction.Symbol, out var s) ? s : null;
+        var euroValue = flow.FlowAmount * rate;
+
+        return new TransactionDetailsDTO(transaction.DateTime,
+            flow.FlowDirection,
+            transaction.Symbol,
+            flow.FlowAmount,
+            euroValue,
+            slug,
+            flow.SourceWallet,
+            flow.TargetWallet,
+            transaction.Fee,
+            transaction.Symbol,
+            transaction.Comment,
+            transaction.TransactionId,
+            transaction.Address,
+            transaction.Network);
     }
 }
