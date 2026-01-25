@@ -84,6 +84,7 @@ namespace CryptoTracker.Services
             using var csv = new CsvReader(reader, config);
             setup?.Invoke(csv);
             var records = csv.GetRecords<TCsv>().ToList();
+            records = FilterMissingTxid(records).ToList();
 
             var entities = records.Select(r =>
             {
@@ -122,6 +123,26 @@ namespace CryptoTracker.Services
                 default:
                     return (new CsvConfiguration(CultureInfo.InvariantCulture), null);
             }
+        }
+
+        private static IEnumerable<TCsv> FilterMissingTxid<TCsv>(IEnumerable<TCsv> records)
+            where TCsv : class
+        {
+            if (typeof(TCsv) == typeof(BinanceDeposit))
+            {
+                return records.Cast<BinanceDeposit>()
+                    .Where(r => !string.IsNullOrWhiteSpace(r.TXID))
+                    .Cast<TCsv>();
+            }
+
+            if (typeof(TCsv) == typeof(BinanceWithdrawal))
+            {
+                return records.Cast<BinanceWithdrawal>()
+                    .Where(r => !string.IsNullOrWhiteSpace(r.TXID))
+                    .Cast<TCsv>();
+            }
+
+            return records;
         }
 
         private class BitpandaDecimalConverter : CsvHelper.TypeConversion.DecimalConverter
