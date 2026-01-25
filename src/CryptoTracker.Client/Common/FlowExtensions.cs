@@ -12,5 +12,6 @@ public static class FlowExtensions
             flow.SourceWallet,
             flow.TargetWallet,
             flow.FlowDirection,
-            flow.FlowAmount);
+            flow.FlowAmount,
+            Guid.NewGuid()); // nur notwendig, da das Grid eindeutige RowKeys benötigt
 }

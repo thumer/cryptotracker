@@ -22,7 +22,7 @@ else
 
 
     <div class="mt-3">
-        <RadzenDataGrid TItem="FlowDTO" Data="Flows" AllowSorting="true" AllowFiltering="true" AllowColumnResize="true" AllowPaging="false">
+        <RadzenDataGrid TItem="FlowDTO" Data="Flows" KeyProperty="@nameof(FlowDTO.RowKey)" AllowSorting="true" AllowFiltering="true" AllowColumnResize="true" AllowPaging="false">
             <Columns>
                 <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.DateTime)" Title="DateTime" />
                 <RadzenDataGridColumn TItem="FlowDTO" Property="@nameof(FlowDTO.FlowType)" Title="FlowType" />
