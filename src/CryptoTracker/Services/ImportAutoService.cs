@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CryptoTracker.Import.Objects;
@@ -17,6 +18,7 @@ public class ImportAutoService
     private static readonly HashSet<string> BinanceStatementDepositOperations = new(StringComparer.OrdinalIgnoreCase)
     {
         "deposit",
+        "asset - transfer",
         "staking rewards",
         "eth 2.0 staking rewards",
         "eth 2.0 staking rewards distribution",
@@ -25,6 +27,7 @@ public class ImportAutoService
         "rewards distribution",
         "launchpool rewards",
         "airdrop",
+        "airdrop assets",
         "savings interest",
         "flexible savings interest",
         "locked savings interest",
@@ -39,7 +42,8 @@ public class ImportAutoService
         "withdrawal",
         "transaction spend",
         "transaction fee",
-        "fee"
+        "fee",
+        "token swap - redenomination/rebranding"
     };
     private static readonly string[] BinanceQuoteAssets =
     {
@@ -105,6 +109,7 @@ public class ImportAutoService
     }
 
     private sealed record DetectedFile(ImportFileVariant Variant, ImportFileKind Kind, string? Delimiter, int HeaderRowIndex);
+    private sealed record BinanceStatementRow(DateTimeOffset Date, string Operation, string Coin, decimal Change, string Remark);
 
     private DetectedFile Detect(Func<Stream> openStream, string fileName)
     {
@@ -193,6 +198,47 @@ public class ImportAutoService
             }
         }
 
+        if (detected.Variant == ImportFileVariant.BinanceAccountStatement)
+        {
+            var statementRows = EnumerateRows(openStream, detected)
+                .Select(r => ParseBinanceStatementRowData(r, detected.Kind == ImportFileKind.Excel))
+                .Where(r => r != null)
+                .Select(r => r!)
+                .ToList();
+
+            foreach (var group in GroupStatementRows(statementRows))
+            {
+                if (transactionsTruncated && tradesTruncated)
+                {
+                    break;
+                }
+
+                var trade = BuildTradeFromStatementGroup(group);
+                if (trade != null)
+                {
+                    AddTrade(BuildTradePreviewFromTrade(trade, "Binance"));
+                    continue;
+                }
+
+                foreach (var entry in group)
+                {
+                    if (transactionsTruncated)
+                    {
+                        break;
+                    }
+
+                    var isDeposit = IsBinanceStatementDeposit(entry.Operation, entry.Change);
+                    AddTransaction(BuildStatementTransactionPreview(entry, isDeposit, "Binance"));
+                }
+            }
+
+            var documentTypeLocal = GetDocumentType(detected.Variant);
+            var displayNameLocal = documentTypeLocal.HasValue ? documentTypeLocal.Value.GetDisplayName() : null;
+
+            return new ImportPreviewResult(true, null, GetSourceLabel(detected.Variant), documentTypeLocal, displayNameLocal,
+                transactions, transactionsTruncated, trades, tradesTruncated);
+        }
+
         foreach (var row in EnumerateRows(openStream, detected))
         {
             if (transactionsTruncated && tradesTruncated)
@@ -204,33 +250,22 @@ public class ImportAutoService
             {
                 case ImportFileVariant.BinanceDeposit:
                 case ImportFileVariant.BinanceWithdrawal:
-                    AddTransaction(BuildTransactionPreview(row,
+                    AddTransaction(BuildBinanceTransactionPreview(row,
                         NormalizeType(detected.Variant == ImportFileVariant.BinanceDeposit ? "Einzahlung" : "Auszahlung"),
                         GetValue(row, "coin"),
                         GetValue(row, "network"),
                         GetValue(row, "amount"),
-                        GetValue(row, "transactionfee"),
+                        GetValue(row, "transactionfee", "fee"),
                         GetValue(row, "address"),
-                        GetValue(row, "comment", "remark"),
-                        "Binance"));
+                        GetValue(row, "comment", "remark", "status"),
+                        detected.Kind == ImportFileKind.Excel));
                     break;
                 case ImportFileVariant.BinanceTrade:
-                    AddTrade(BuildBinanceTradePreview(row));
+                    AddTrade(BuildBinanceTradePreview(row, detected.Kind == ImportFileKind.Excel));
                     break;
                 case ImportFileVariant.BinanceConvertHistory:
                     AddTrade(BuildBinanceConvertPreview(row));
                     break;
-                case ImportFileVariant.BinanceAccountStatement:
-                    {
-                        var operation = GetValue(row, "operation");
-                        var change = ParseDecimal(GetValue(row, "change")) ?? 0m;
-                        var isDeposit = IsBinanceStatementDeposit(operation, change);
-                        var amountText = FormatDecimal(Math.Abs(change));
-                        var comment = BuildOperationComment(operation, GetValue(row, "remark"));
-                        AddTransaction(BuildTransactionPreview(row, isDeposit ? "Einzahlung" : "Auszahlung",
-                            GetValue(row, "coin") ?? "UNKNOWN", null, amountText, "0", null, comment, "Binance"));
-                        break;
-                    }
                 case ImportFileVariant.CexIoWithdrawals:
                     {
                         var address = GetValue(row, "walletaddress");
@@ -325,13 +360,16 @@ public class ImportAutoService
         switch (detected.Variant)
         {
             case ImportFileVariant.BinanceDeposit:
-                await ImportCsvAsync<BinanceDeposit>(walletName, openStream, detected, ImportDocumentType.BinanceDepositHistory, ParseBinanceDepositRow);
+                await ImportCsvAsync<BinanceDeposit>(walletName, openStream, detected, ImportDocumentType.BinanceDepositHistory,
+                    row => ParseBinanceDepositRow(row, detected.Kind == ImportFileKind.Excel));
                 break;
             case ImportFileVariant.BinanceWithdrawal:
-                await ImportCsvAsync<BinanceWithdrawal>(walletName, openStream, detected, ImportDocumentType.BinanceWithdrawalHistory, ParseBinanceWithdrawalRow);
+                await ImportCsvAsync<BinanceWithdrawal>(walletName, openStream, detected, ImportDocumentType.BinanceWithdrawalHistory,
+                    row => ParseBinanceWithdrawalRow(row, detected.Kind == ImportFileKind.Excel));
                 break;
             case ImportFileVariant.BinanceTrade:
-                await ImportCsvAsync<BinanceTrade>(walletName, openStream, detected, ImportDocumentType.BinanceTradingHistory, ParseBinanceTradeRow);
+                await ImportCsvAsync<BinanceTrade>(walletName, openStream, detected, ImportDocumentType.BinanceTradingHistory,
+                    row => ParseBinanceTradeRow(row, detected.Kind == ImportFileKind.Excel));
                 break;
             case ImportFileVariant.BinanceConvertHistory:
                 await ImportCsvAsync<BinanceTrade>(walletName, openStream, detected, ImportDocumentType.BinanceTradingHistory, ParseBinanceConvertRow);
@@ -385,48 +423,65 @@ public class ImportAutoService
     {
         var deposits = new List<BinanceDeposit>();
         var withdrawals = new List<BinanceWithdrawal>();
+        var trades = new List<BinanceTrade>();
 
-        foreach (var row in EnumerateRows(openStream, detected))
+        var rows = EnumerateRows(openStream, detected)
+            .Select(r => ParseBinanceStatementRowData(r, detected.Kind == ImportFileKind.Excel))
+            .Where(r => r != null)
+            .Select(r => r!)
+            .ToList();
+
+        foreach (var group in GroupStatementRows(rows))
         {
-            var operation = GetValue(row, "operation")?.Trim();
-            var change = ParseDecimal(GetValue(row, "change")) ?? 0m;
-            var isDeposit = IsBinanceStatementDeposit(operation, change);
-            var amount = Math.Abs(change);
-            var comment = BuildOperationComment(operation, GetValue(row, "remark"));
-            var coin = GetValue(row, "coin") ?? "UNKNOWN";
-            var date = ParseDateTimeOffset(GetValue(row, "utctime"));
-
-            if (isDeposit)
+            var trade = BuildTradeFromStatementGroup(group);
+            if (trade != null)
             {
-                deposits.Add(new BinanceDeposit
-                {
-                    Date = date,
-                    Coin = coin,
-                    Network = string.Empty,
-                    Amount = amount,
-                    TransactionFee = 0m,
-                    Address = string.Empty,
-                    TXID = string.Empty,
-                    Comment = comment
-                });
+                trades.Add(trade);
+                continue;
             }
-            else
+
+            foreach (var entry in group)
             {
-                withdrawals.Add(new BinanceWithdrawal
+                var isDeposit = IsBinanceStatementDeposit(entry.Operation, entry.Change);
+                var amount = Math.Abs(entry.Change);
+                var comment = BuildOperationComment(entry.Operation, entry.Remark);
+                var coin = string.IsNullOrWhiteSpace(entry.Coin) ? "UNKNOWN" : entry.Coin;
+                var date = entry.Date;
+
+                if (isDeposit)
                 {
-                    Date = date,
-                    Coin = coin,
-                    Network = string.Empty,
-                    Amount = amount,
-                    TransactionFee = 0m,
-                    Address = string.Empty,
-                    TXID = string.Empty,
-                    Comment = comment
-                });
+                    var txid = EnsureTxId(null, "binance-statement-deposit", date.ToString("O"), coin, amount.ToString(CultureEn), entry.Operation, comment);
+                    deposits.Add(new BinanceDeposit
+                    {
+                        Date = date,
+                        Coin = coin,
+                        Network = string.Empty,
+                        Amount = amount,
+                        TransactionFee = 0m,
+                        Address = string.Empty,
+                        TXID = txid,
+                        Comment = comment
+                    });
+                }
+                else
+                {
+                    var txid = EnsureTxId(null, "binance-statement-withdrawal", date.ToString("O"), coin, amount.ToString(CultureEn), entry.Operation, comment);
+                    withdrawals.Add(new BinanceWithdrawal
+                    {
+                        Date = date,
+                        Coin = coin,
+                        Network = string.Empty,
+                        Amount = amount,
+                        TransactionFee = 0m,
+                        Address = string.Empty,
+                        TXID = txid,
+                        Comment = comment
+                    });
+                }
             }
         }
 
-        if (deposits.Count == 0 && withdrawals.Count == 0)
+        if (deposits.Count == 0 && withdrawals.Count == 0 && trades.Count == 0)
         {
             throw new InvalidOperationException("Keine Ein- oder Auszahlungen im Statement gefunden.");
         }
@@ -439,6 +494,11 @@ public class ImportAutoService
         if (withdrawals.Count > 0)
         {
             await ImportRecordsAsync(walletName, ImportDocumentType.BinanceWithdrawalHistory, withdrawals);
+        }
+
+        if (trades.Count > 0)
+        {
+            await ImportRecordsAsync(walletName, ImportDocumentType.BinanceTradingHistory, trades);
         }
     }
 
@@ -779,7 +839,8 @@ public class ImportAutoService
             return true;
         }
 
-        if (set.Contains("userid") && set.Contains("utctime") && set.Contains("operation") && set.Contains("change"))
+        if (set.Contains("userid") && set.Contains("operation") && set.Contains("change") &&
+            (set.Contains("utctime") || set.Contains("time") || set.Contains("date")))
         {
             variant = ImportFileVariant.BinanceAccountStatement;
             return true;
@@ -828,6 +889,21 @@ public class ImportAutoService
             }
 
             variant = ImportFileVariant.OkxDeposit;
+            return true;
+        }
+
+        if (set.Contains("time") && set.Contains("coin") && set.Contains("amount"))
+        {
+            var lower = fileName.ToLowerInvariant();
+            if (set.Contains("fee") || lower.Contains("withd") || lower.Contains("withdraw"))
+            {
+                variant = ImportFileVariant.BinanceWithdrawal;
+            }
+            else
+            {
+                variant = ImportFileVariant.BinanceDeposit;
+            }
+
             return true;
         }
 
@@ -920,7 +996,7 @@ public class ImportAutoService
         string? comment,
         string? source)
     {
-        var date = ParseDateTimeOffset(GetValue(row, "dateutc", "datum", "timestamp", "utctime", "date"));
+        var date = ParseDateTimeOffset(GetValue(row, "dateutc", "datum", "timestamp", "utctime", "date", "time"));
         return new ImportPreviewTransactionRowDTO(date, type, coin ?? string.Empty, network, amount ?? string.Empty,
             fee ?? string.Empty, address, comment, source);
     }
@@ -939,9 +1015,10 @@ public class ImportAutoService
             executed ?? string.Empty, amount ?? string.Empty, fee ?? string.Empty, source);
     }
 
-    private static ImportPreviewTradeRowDTO BuildBinanceTradePreview(Dictionary<string, string?> row)
+    private static ImportPreviewTradeRowDTO BuildBinanceTradePreview(Dictionary<string, string?> row, bool isExcel)
     {
-        var date = ParseDateTimeOffset(GetValue(row, "dateutc"));
+        var hasUtcHeader = HasUtcHeader(row);
+        var date = ParseBinanceExchangeTime(GetValue(row, "dateutc"), isExcel, hasUtcHeader);
         var pair = GetValue(row, "pair", "market") ?? string.Empty;
         var side = GetValue(row, "side", "type") ?? string.Empty;
         var price = GetValue(row, "price") ?? string.Empty;
@@ -969,6 +1046,36 @@ public class ImportAutoService
             fee ?? string.Empty, "Binance");
     }
 
+    private static ImportPreviewTransactionRowDTO BuildBinanceTransactionPreview(Dictionary<string, string?> row,
+        string type,
+        string? coin,
+        string? network,
+        string? amount,
+        string? fee,
+        string? address,
+        string? comment,
+        bool isExcel)
+    {
+        var hasUtcHeader = HasUtcHeader(row);
+        var date = ParseBinanceExchangeTime(GetValue(row, "dateutc", "time"), isExcel, hasUtcHeader);
+        return new ImportPreviewTransactionRowDTO(date, type, coin ?? string.Empty, network, amount ?? string.Empty,
+            fee ?? string.Empty, address, comment, "Binance");
+    }
+
+    private static ImportPreviewTradeRowDTO BuildTradePreviewFromTrade(BinanceTrade trade, string source)
+    {
+        return new ImportPreviewTradeRowDTO(trade.Date, trade.Pair, trade.Side, trade.Price.ToString(CultureEn),
+            trade.Executed, trade.Amount, trade.Fee, source);
+    }
+
+    private static ImportPreviewTransactionRowDTO BuildStatementTransactionPreview(BinanceStatementRow row, bool isDeposit, string source)
+    {
+        var amountText = FormatDecimal(Math.Abs(row.Change));
+        var comment = BuildOperationComment(row.Operation, row.Remark);
+        return new ImportPreviewTransactionRowDTO(row.Date, isDeposit ? "Einzahlung" : "Auszahlung", row.Coin ?? "UNKNOWN",
+            null, amountText, "0", null, comment, source);
+    }
+
     private static ImportPreviewTradeRowDTO BuildBinanceConvertPreview(Dictionary<string, string?> row)
     {
         var date = ParseDateTimeOffset(GetValue(row, "dateupdated"));
@@ -984,47 +1091,59 @@ public class ImportAutoService
             convertTrade.Executed, convertTrade.Amount, convertTrade.Fee, "Binance");
     }
 
-    private static BinanceDeposit? ParseBinanceDepositRow(Dictionary<string, string?> row)
+    private static BinanceDeposit? ParseBinanceDepositRow(Dictionary<string, string?> row, bool isExcel)
     {
-        var date = ParseDateTimeOffset(GetValue(row, "dateutc"));
+        var hasUtcHeader = HasUtcHeader(row);
+        var date = ParseBinanceExchangeTime(GetValue(row, "dateutc", "time"), isExcel, hasUtcHeader);
         var coin = GetValue(row, "coin");
         if (string.IsNullOrWhiteSpace(coin))
         {
             return null;
         }
+
+        var amount = ParseDecimal(GetValue(row, "amount")) ?? 0m;
+        var address = GetValue(row, "address") ?? string.Empty;
+        var comment = GetValue(row, "comment", "remark", "status") ?? string.Empty;
+        var txid = EnsureTxId(GetValue(row, "txid"), "binance-deposit", date.ToString("O"), coin, amount.ToString(CultureEn), address, comment);
 
         return new BinanceDeposit
         {
             Date = date,
             Coin = coin,
             Network = GetValue(row, "network") ?? string.Empty,
-            Amount = ParseDecimal(GetValue(row, "amount")) ?? 0m,
-            TransactionFee = ParseDecimal(GetValue(row, "transactionfee")) ?? 0m,
-            Address = GetValue(row, "address") ?? string.Empty,
-            TXID = GetValue(row, "txid") ?? string.Empty,
-            Comment = GetValue(row, "comment", "remark") ?? string.Empty
+            Amount = amount,
+            TransactionFee = ParseDecimal(GetValue(row, "transactionfee", "fee")) ?? 0m,
+            Address = address,
+            TXID = txid,
+            Comment = comment
         };
     }
 
-    private static BinanceWithdrawal? ParseBinanceWithdrawalRow(Dictionary<string, string?> row)
+    private static BinanceWithdrawal? ParseBinanceWithdrawalRow(Dictionary<string, string?> row, bool isExcel)
     {
-        var date = ParseDateTimeOffset(GetValue(row, "dateutc"));
+        var hasUtcHeader = HasUtcHeader(row);
+        var date = ParseBinanceExchangeTime(GetValue(row, "dateutc", "time"), isExcel, hasUtcHeader);
         var coin = GetValue(row, "coin");
         if (string.IsNullOrWhiteSpace(coin))
         {
             return null;
         }
 
+        var amount = ParseDecimal(GetValue(row, "amount")) ?? 0m;
+        var address = GetValue(row, "address") ?? string.Empty;
+        var comment = GetValue(row, "comment", "remark", "status") ?? string.Empty;
+        var txid = EnsureTxId(GetValue(row, "txid"), "binance-withdrawal", date.ToString("O"), coin, amount.ToString(CultureEn), address, comment);
+
         return new BinanceWithdrawal
         {
             Date = date,
             Coin = coin,
             Network = GetValue(row, "network") ?? string.Empty,
-            Amount = ParseDecimal(GetValue(row, "amount")) ?? 0m,
-            TransactionFee = ParseDecimal(GetValue(row, "transactionfee")) ?? 0m,
-            Address = GetValue(row, "address") ?? string.Empty,
-            TXID = GetValue(row, "txid") ?? string.Empty,
-            Comment = GetValue(row, "comment", "remark") ?? string.Empty
+            Amount = amount,
+            TransactionFee = ParseDecimal(GetValue(row, "transactionfee", "fee")) ?? 0m,
+            Address = address,
+            TXID = txid,
+            Comment = comment
         };
     }
 
@@ -1039,6 +1158,8 @@ public class ImportAutoService
 
         var address = GetValue(row, "walletaddress");
         var coin = InferCoinFromAddress(address);
+        var comment = GetValue(row, "comment") ?? string.Empty;
+        var txid = EnsureTxId(null, "cexio-withdrawal", date.ToString("O"), coin, amount.Value.ToString(CultureEn), address, comment);
 
         return new BinanceWithdrawal
         {
@@ -1048,14 +1169,15 @@ public class ImportAutoService
             Amount = amount.Value,
             TransactionFee = 0m,
             Address = address ?? string.Empty,
-            TXID = string.Empty,
-            Comment = GetValue(row, "comment") ?? string.Empty
+            TXID = txid,
+            Comment = comment
         };
     }
 
-    private static BinanceTrade? ParseBinanceTradeRow(Dictionary<string, string?> row)
+    private static BinanceTrade? ParseBinanceTradeRow(Dictionary<string, string?> row, bool isExcel)
     {
-        var date = ParseDateTimeOffset(GetValue(row, "dateutc"));
+        var hasUtcHeader = HasUtcHeader(row);
+        var date = ParseBinanceExchangeTime(GetValue(row, "dateutc"), isExcel, hasUtcHeader);
         var pair = GetValue(row, "pair", "market");
         if (string.IsNullOrWhiteSpace(pair))
         {
@@ -1185,9 +1307,213 @@ public class ImportAutoService
         };
     }
 
+    private static BinanceStatementRow? ParseBinanceStatementRowData(Dictionary<string, string?> row, bool isExcel)
+    {
+        var operation = GetValue(row, "operation") ?? string.Empty;
+        var coin = GetValue(row, "coin") ?? "UNKNOWN";
+        var change = ParseDecimal(GetValue(row, "change")) ?? 0m;
+        var remark = GetValue(row, "remark") ?? string.Empty;
+        var hasUtcHeader = HasUtcHeader(row);
+        var date = ParseBinanceStatementTime(GetValue(row, "utctime", "time", "date"), isExcel, hasUtcHeader);
+
+        return new BinanceStatementRow(date, operation, coin, change, remark);
+    }
+
+    private static IEnumerable<List<BinanceStatementRow>> GroupStatementRows(IReadOnlyList<BinanceStatementRow> rows)
+    {
+        var grouped = new List<List<BinanceStatementRow>>();
+        List<BinanceStatementRow>? current = null;
+        DateTimeOffset? currentTime = null;
+
+        foreach (var row in rows)
+        {
+            if (current == null || currentTime != row.Date)
+            {
+                if (current != null && current.Count > 0)
+                {
+                    grouped.Add(current);
+                }
+
+                current = new List<BinanceStatementRow>();
+                currentTime = row.Date;
+            }
+
+            current.Add(row);
+        }
+
+        if (current != null && current.Count > 0)
+        {
+            grouped.Add(current);
+        }
+
+        return grouped;
+    }
+
+    private static BinanceTrade? BuildTradeFromStatementGroup(IReadOnlyList<BinanceStatementRow> group)
+    {
+        if (group.Count == 0)
+        {
+            return null;
+        }
+
+        if (group.Any(row => ContainsOperation(row.Operation, "transaction buy")))
+        {
+            return BuildBuyTrade(group);
+        }
+
+        if (group.Any(row => ContainsOperation(row.Operation, "transaction sold") || ContainsOperation(row.Operation, "transaction revenue")))
+        {
+            return BuildSellTrade(group);
+        }
+
+        if (group.Any(row => ContainsOperation(row.Operation, "binance convert")))
+        {
+            return BuildConvertTrade(group);
+        }
+
+        if (group.Any(row => IsExactOperation(row.Operation, "buy")) &&
+            group.Any(row => IsExactOperation(row.Operation, "sell")))
+        {
+            var buyRow = group.FirstOrDefault(row => IsExactOperation(row.Operation, "buy"));
+            var sellRow = group.FirstOrDefault(row => IsExactOperation(row.Operation, "sell"));
+
+            if (buyRow != null && sellRow != null)
+            {
+                if (buyRow.Change >= 0m && sellRow.Change <= 0m)
+                {
+                    return BuildBuyTrade(group);
+                }
+
+                if (buyRow.Change <= 0m && sellRow.Change >= 0m)
+                {
+                    return BuildSellTrade(group);
+                }
+            }
+
+            var buySum = group.Where(row => IsExactOperation(row.Operation, "buy")).Sum(row => row.Change);
+            var sellSum = group.Where(row => IsExactOperation(row.Operation, "sell")).Sum(row => row.Change);
+
+            if (buySum >= 0m && sellSum <= 0m)
+            {
+                return BuildBuyTrade(group);
+            }
+
+            if (buySum <= 0m && sellSum >= 0m)
+            {
+                return BuildSellTrade(group);
+            }
+
+            return BuildBuyTrade(group);
+        }
+
+        return null;
+    }
+
+    private static BinanceTrade? BuildBuyTrade(IReadOnlyList<BinanceStatementRow> group)
+    {
+        var feeRow = FindOperation(group, "transaction fee") ?? FindOperation(group, "fee");
+        var buyRow = FindOperation(group, "transaction buy") ??
+                     group.FirstOrDefault(r => IsExactOperation(r.Operation, "buy")) ??
+                     group.Where(r => r.Change > 0).OrderByDescending(r => Math.Abs(r.Change)).FirstOrDefault();
+        var spendRow = FindOperation(group, "transaction spend") ??
+                       group.FirstOrDefault(r => IsExactOperation(r.Operation, "sell")) ??
+                       FindOperation(group, "withdraw") ??
+                       group.Where(r => r.Change < 0 && r != feeRow).OrderByDescending(r => Math.Abs(r.Change)).FirstOrDefault();
+
+        if (buyRow == null || spendRow == null)
+        {
+            return null;
+        }
+
+        var baseAmount = Math.Abs(buyRow.Change);
+        var quoteAmount = Math.Abs(spendRow.Change);
+        var feeAmount = Math.Abs(feeRow?.Change ?? 0m);
+        var feeSymbol = feeRow?.Coin ?? spendRow.Coin;
+        var price = baseAmount != 0m ? quoteAmount / baseAmount : 0m;
+
+        return new BinanceTrade
+        {
+            Date = buyRow.Date,
+            Pair = $"{buyRow.Coin}{spendRow.Coin}",
+            Side = "BUY",
+            Price = price,
+            Executed = $"{baseAmount.ToString(CultureEn)}{buyRow.Coin}",
+            Amount = $"{quoteAmount.ToString(CultureEn)}{spendRow.Coin}",
+            Fee = $"{feeAmount.ToString(CultureEn)}{feeSymbol}"
+        };
+    }
+
+    private static BinanceTrade? BuildSellTrade(IReadOnlyList<BinanceStatementRow> group)
+    {
+        var feeRow = FindOperation(group, "transaction fee") ?? FindOperation(group, "fee");
+        var soldRow = FindOperation(group, "transaction sold") ??
+                      group.FirstOrDefault(r => IsExactOperation(r.Operation, "sell")) ??
+                      group.Where(r => r.Change < 0 && r != feeRow).OrderByDescending(r => Math.Abs(r.Change)).FirstOrDefault();
+        var revenueRow = FindOperation(group, "transaction revenue") ??
+                         group.FirstOrDefault(r => IsExactOperation(r.Operation, "buy")) ??
+                         group.Where(r => r.Change > 0).OrderByDescending(r => Math.Abs(r.Change)).FirstOrDefault();
+
+        if (soldRow == null || revenueRow == null)
+        {
+            return null;
+        }
+
+        var baseAmount = Math.Abs(soldRow.Change);
+        var quoteAmount = Math.Abs(revenueRow.Change);
+        var feeAmount = Math.Abs(feeRow?.Change ?? 0m);
+        var feeSymbol = feeRow?.Coin ?? soldRow.Coin;
+        var price = baseAmount != 0m ? quoteAmount / baseAmount : 0m;
+
+        return new BinanceTrade
+        {
+            Date = soldRow.Date,
+            Pair = $"{soldRow.Coin}{revenueRow.Coin}",
+            Side = "SELL",
+            Price = price,
+            Executed = $"{baseAmount.ToString(CultureEn)}{soldRow.Coin}",
+            Amount = $"{quoteAmount.ToString(CultureEn)}{revenueRow.Coin}",
+            Fee = $"{feeAmount.ToString(CultureEn)}{feeSymbol}"
+        };
+    }
+
+    private static BinanceTrade? BuildConvertTrade(IReadOnlyList<BinanceStatementRow> group)
+    {
+        var positive = group.Where(r => r.Change > 0).OrderByDescending(r => Math.Abs(r.Change)).FirstOrDefault();
+        var negative = group.Where(r => r.Change < 0).OrderByDescending(r => Math.Abs(r.Change)).FirstOrDefault();
+        if (positive == null || negative == null)
+        {
+            return null;
+        }
+
+        var baseAmount = Math.Abs(positive.Change);
+        var quoteAmount = Math.Abs(negative.Change);
+        var price = baseAmount != 0m ? quoteAmount / baseAmount : 0m;
+
+        return new BinanceTrade
+        {
+            Date = positive.Date,
+            Pair = $"{positive.Coin}{negative.Coin}",
+            Side = "BUY",
+            Price = price,
+            Executed = $"{baseAmount.ToString(CultureEn)}{positive.Coin}",
+            Amount = $"{quoteAmount.ToString(CultureEn)}{negative.Coin}",
+            Fee = $"0{negative.Coin}"
+        };
+    }
+
+    private static BinanceStatementRow? FindOperation(IEnumerable<BinanceStatementRow> group, string needle)
+        => group.FirstOrDefault(row => ContainsOperation(row.Operation, needle));
+
+    private static bool ContainsOperation(string? operation, string needle)
+        => !string.IsNullOrWhiteSpace(operation) && operation.Contains(needle, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsExactOperation(string? operation, string expected)
+        => !string.IsNullOrWhiteSpace(operation) &&
+           string.Equals(operation.Trim(), expected, StringComparison.OrdinalIgnoreCase);
+
     private static (BinanceDeposit deposit, BinanceWithdrawal withdrawal)? ParseBinanceStatementRow(Dictionary<string, string?> row, bool isDeposit)
     {
-        var date = ParseDateTimeOffset(GetValue(row, "utctime"));
+        var date = ParseDateTimeOffset(GetValue(row, "utctime", "time", "date"));
         var coin = GetValue(row, "coin");
         var change = ParseDecimal(GetValue(row, "change"));
         if (string.IsNullOrWhiteSpace(coin) || change == null)
@@ -1735,6 +2061,17 @@ public class ImportAutoService
         return sb.ToString();
     }
 
+    private static string EnsureTxId(string? txid, params string?[] parts)
+    {
+        if (!string.IsNullOrWhiteSpace(txid))
+        {
+            return txid.Trim();
+        }
+
+        var fallback = string.Join("|", parts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!.Trim()));
+        return string.IsNullOrWhiteSpace(fallback) ? Guid.NewGuid().ToString("N") : fallback;
+    }
+
     private static (string baseSymbol, string quoteSymbol) SplitBinancePair(string? pair)
     {
         if (string.IsNullOrWhiteSpace(pair))
@@ -1782,6 +2119,106 @@ public class ImportAutoService
 
         return DateTimeOffset.MinValue;
     }
+
+    private static DateTimeOffset ParseBinanceExchangeTime(string? input, bool isExcel, bool hasUtcHeader)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return DateTimeOffset.MinValue;
+        }
+
+        var normalized = Regex.Replace(input.Trim(), "\\s+", " ");
+        var formats = new[]
+        {
+            "yy-MM-dd HH:mm:ss",
+            "yy-MM-dd HH:mm",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd HH:mm",
+            "dd.MM.yyyy HH:mm:ss",
+            "dd.MM.yyyy HH:mm",
+            "dd.MM.yy HH:mm:ss",
+            "dd.MM.yy HH:mm"
+        };
+
+        if (DateTime.TryParseExact(normalized, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt) ||
+            DateTime.TryParseExact(normalized, formats, CultureDe, DateTimeStyles.None, out dt) ||
+            DateTime.TryParseExact(normalized, formats, CultureEn, DateTimeStyles.None, out dt))
+        {
+            var offset = isExcel && !hasUtcHeader && !HasExplicitTimeZone(input) ? TimeSpan.FromHours(1) : TimeSpan.Zero;
+            return new DateTimeOffset(dt, offset).ToOffset(TimeSpan.Zero);
+        }
+
+        var parsed = ParseDateTimeOffset(input);
+        if (parsed == DateTimeOffset.MinValue || !isExcel)
+        {
+            return parsed;
+        }
+
+        if (hasUtcHeader || HasExplicitTimeZone(input))
+        {
+            return parsed;
+        }
+
+        return parsed.AddHours(-1);
+    }
+
+    private static bool HasExplicitTimeZone(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return false;
+        }
+
+        var trimmed = input.Trim();
+        if (trimmed.EndsWith("Z", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (trimmed.Contains("UTC", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return Regex.IsMatch(trimmed, @"[+-]\d{2}:?\d{2}$");
+    }
+
+    private static DateTimeOffset ParseBinanceStatementTime(string? input, bool isExcel, bool hasUtcHeader)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return DateTimeOffset.MinValue;
+        }
+
+        var normalized = Regex.Replace(input.Trim(), "\\s+", " ");
+        var formats = new[]
+        {
+            "yy-MM-dd HH:mm:ss",
+            "yy-MM-dd HH:mm",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd HH:mm",
+            "dd.MM.yyyy HH:mm:ss",
+            "dd.MM.yyyy HH:mm",
+            "dd.MM.yy HH:mm:ss",
+            "dd.MM.yy HH:mm"
+        };
+
+        if (DateTime.TryParseExact(normalized, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt) ||
+            DateTime.TryParseExact(normalized, formats, CultureDe, DateTimeStyles.None, out dt) ||
+            DateTime.TryParseExact(normalized, formats, CultureEn, DateTimeStyles.None, out dt) ||
+            DateTime.TryParse(normalized, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt) ||
+            DateTime.TryParse(normalized, CultureDe, DateTimeStyles.None, out dt) ||
+            DateTime.TryParse(normalized, CultureEn, DateTimeStyles.None, out dt))
+        {
+            var offset = isExcel && !hasUtcHeader ? TimeSpan.FromHours(1) : TimeSpan.Zero;
+            return new DateTimeOffset(dt, offset).ToOffset(TimeSpan.Zero);
+        }
+
+        return DateTimeOffset.MinValue;
+    }
+
+    private static bool HasUtcHeader(IReadOnlyDictionary<string, string?> row)
+        => row.Keys.Any(key => key.Contains("utc", StringComparison.OrdinalIgnoreCase));
 
     private static DateTime? ParseDateTimeDe(string? input)
     {
