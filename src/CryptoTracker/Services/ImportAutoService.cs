@@ -34,7 +34,8 @@ public class ImportAutoService
         "earn interest",
         "interest",
         "mining rewards",
-        "mining income"
+        "mining income",
+        "token swap - distribution"
     };
     private static readonly HashSet<string> BinanceStatementWithdrawalOperations = new(StringComparer.OrdinalIgnoreCase)
     {
