@@ -25,6 +25,9 @@ namespace CryptoTracker.Shared
         [DisplayName("Metamask Trading")]
         MetamaskTradingHistory,
 
+        [DisplayName("Ledger Transaktionen")]
+        LedgerTransactions,
+
         [DisplayName("Okx Einzahlungen")]
         OkxDepositHistory,
 

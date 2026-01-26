@@ -16,6 +16,7 @@ namespace CryptoTracker
         public DbSet<BitpandaTransactionEntity> BitpandaTransactions { get; set; }
         public DbSet<MetamaskTradeEntity> MetamaskTrades { get; set; }
         public DbSet<MetamaskTransactionEntity> MetamaskTransactions { get; set; }
+        public DbSet<LedgerTransactionEntity> LedgerTransactions { get; set; }
         public DbSet<OkxDepositEntity> OkxDeposits { get; set; }
         public DbSet<OkxTradeEntity> OkxTrades { get; set; }
         public DbSet<ManualCoinPrice> ManualCoinPrices { get; set; }
@@ -63,6 +64,7 @@ namespace CryptoTracker
             modelBuilder.Entity<BitpandaTransactionEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<MetamaskTradeEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<MetamaskTransactionEntity>().HasKey(b => b.Id);
+            modelBuilder.Entity<LedgerTransactionEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<OkxDepositEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<OkxTradeEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<ManualCoinPrice>().HasKey(p => p.Id);

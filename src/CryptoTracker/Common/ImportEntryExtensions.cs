@@ -129,6 +129,21 @@ public static class ImportEntryExtensions
             Kommentar = e.Kommentar
         };
 
+    public static LedgerTransactionDTO ToDto(this LedgerTransactionEntity e)
+        => new()
+        {
+            WalletId = e.WalletId,
+            Wallet = e.Wallet.Name,
+            Datum = e.Datum,
+            Typ = e.Typ,
+            Coin = e.Coin,
+            Network = e.Network,
+            Address = e.Address,
+            Amount = e.Amount,
+            TransactionFee = e.TransactionFee,
+            Kommentar = e.Kommentar
+        };
+
     public static OkxDepositDTO ToDto(this OkxDepositEntity e)
         => new()
         {

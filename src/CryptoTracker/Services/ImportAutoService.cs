@@ -115,6 +115,7 @@ public class ImportAutoService
         BitpandaTransactions,
         MetamaskTransactions,
         MetamaskTrades,
+        LedgerTransactions,
         OkxDeposit,
         OkxTrade
     }
@@ -357,6 +358,10 @@ public class ImportAutoService
                     AddTransaction(BuildTransactionPreview(row, NormalizeType(GetValue(row, "typ")), GetValue(row, "coin"), GetValue(row, "network"),
                         GetValue(row, "amount"), GetValue(row, "transactionfee"), null, GetValue(row, "kommentar"), "Metamask"));
                     break;
+                case ImportFileVariant.LedgerTransactions:
+                    AddTransaction(BuildTransactionPreview(row, NormalizeType(GetValue(row, "typ")), GetValue(row, "coin"), GetValue(row, "network"),
+                        GetValue(row, "amount"), GetValue(row, "transactionfee"), GetValue(row, "address"), GetValue(row, "kommentar"), "Ledger"));
+                    break;
                 case ImportFileVariant.MetamaskTrades:
                     AddTrade(BuildTradePreview(row, GetValue(row, "pair"), GetValue(row, "side"), GetValue(row, "price"), GetValue(row, "executed"),
                         GetValue(row, "amount"), GetValue(row, "fee"), GetValue(row, "tradingplatform") ?? "Metamask"));
@@ -461,6 +466,9 @@ public class ImportAutoService
                 break;
             case ImportFileVariant.MetamaskTransactions:
                 await ImportCsvAsync<MetamaskTransaction>(walletName, openStream, detected, ImportDocumentType.MetamaskTransactions, ParseMetamaskTransactionRow);
+                break;
+            case ImportFileVariant.LedgerTransactions:
+                await ImportCsvAsync<LedgerTransaction>(walletName, openStream, detected, ImportDocumentType.LedgerTransactions, ParseLedgerTransactionRow);
                 break;
             case ImportFileVariant.MetamaskTrades:
                 await ImportCsvAsync<MetamaskTrade>(walletName, openStream, detected, ImportDocumentType.MetamaskTradingHistory, ParseMetamaskTradeRow);
@@ -620,7 +628,8 @@ public class ImportAutoService
             ImportDocumentType.OkxDepositHistory or
             ImportDocumentType.OkxTradingHistory or
             ImportDocumentType.MetamaskTradingHistory or
-            ImportDocumentType.MetamaskTransactions =>
+            ImportDocumentType.MetamaskTransactions or
+            ImportDocumentType.LedgerTransactions =>
                 new CsvConfiguration(CultureDe) { Delimiter = ";" },
             ImportDocumentType.BinanceTradingHistory =>
                 new CsvConfiguration(CultureEn),
@@ -964,7 +973,14 @@ public class ImportAutoService
             return true;
         }
 
-        if (set.Contains("datum") && set.Contains("typ") && set.Contains("coin") && set.Contains("transactionfee"))
+        if ((set.Contains("datumutc") || set.Contains("datum")) &&
+            set.Contains("typ") && set.Contains("coin") && set.Contains("transactionfee") && set.Contains("address"))
+        {
+            variant = ImportFileVariant.LedgerTransactions;
+            return true;
+        }
+
+        if ((set.Contains("datumutc") || set.Contains("datum")) && set.Contains("typ") && set.Contains("coin") && set.Contains("transactionfee"))
         {
             variant = ImportFileVariant.MetamaskTransactions;
             return true;
@@ -1023,6 +1039,7 @@ public class ImportAutoService
             ImportFileVariant.BitpandaTransactions => ImportDocumentType.BitpandaTransaction,
             ImportFileVariant.MetamaskTransactions => ImportDocumentType.MetamaskTransactions,
             ImportFileVariant.MetamaskTrades => ImportDocumentType.MetamaskTradingHistory,
+            ImportFileVariant.LedgerTransactions => ImportDocumentType.LedgerTransactions,
             ImportFileVariant.OkxDeposit => ImportDocumentType.OkxDepositHistory,
             ImportFileVariant.OkxTrade => ImportDocumentType.OkxTradingHistory,
             _ => null
@@ -1038,6 +1055,7 @@ public class ImportAutoService
             ImportFileVariant.BitcoinDeAccountStatement or ImportFileVariant.BitcoinDeBuyHistory or ImportFileVariant.BitcoinDeSellHistory or ImportFileVariant.BitcoinDeDepositHistory or ImportFileVariant.BitcoinDeWithdrawalHistory => "Bitcoin.de",
             ImportFileVariant.BitpandaTransactions => "Bitpanda",
             ImportFileVariant.MetamaskTransactions or ImportFileVariant.MetamaskTrades => "Metamask",
+            ImportFileVariant.LedgerTransactions => "Ledger",
             ImportFileVariant.OkxDeposit or ImportFileVariant.OkxTrade => "OKX",
             _ => "Import"
         };
@@ -1053,7 +1071,7 @@ public class ImportAutoService
         string? comment,
         string? source)
     {
-        var date = ParseDateTimeOffset(GetValue(row, "dateutc", "datum", "timestamp", "utctime", "date", "time"));
+        var date = ParseDateTimeOffset(GetValue(row, "dateutc", "datumutc", "datum", "timestamp", "utctime", "date", "time"));
         return new ImportPreviewTransactionRowDTO(date, type, coin ?? string.Empty, null, network, amount ?? string.Empty,
             fee ?? string.Empty, address, comment, source);
     }
@@ -1761,10 +1779,31 @@ public class ImportAutoService
 
         return new MetamaskTransaction
         {
-            Datum = ParseDateTimeOffset(GetValue(row, "datum")),
+            Datum = ParseDateTimeOffset(GetValue(row, "datum", "datumutc")),
             Typ = GetValue(row, "typ") ?? string.Empty,
             Coin = coin,
             Network = GetValue(row, "network") ?? string.Empty,
+            Amount = ParseDecimal(GetValue(row, "amount")) ?? 0m,
+            TransactionFee = ParseDecimal(GetValue(row, "transactionfee")) ?? 0m,
+            Kommentar = GetValue(row, "kommentar") ?? string.Empty
+        };
+    }
+
+    private static LedgerTransaction? ParseLedgerTransactionRow(Dictionary<string, string?> row)
+    {
+        var coin = GetValue(row, "coin");
+        if (string.IsNullOrWhiteSpace(coin))
+        {
+            return null;
+        }
+
+        return new LedgerTransaction
+        {
+            Datum = ParseDateTimeOffset(GetValue(row, "datumutc", "datum")),
+            Typ = GetValue(row, "typ") ?? string.Empty,
+            Coin = coin,
+            Network = GetValue(row, "network") ?? string.Empty,
+            Address = GetValue(row, "address") ?? string.Empty,
             Amount = ParseDecimal(GetValue(row, "amount")) ?? 0m,
             TransactionFee = ParseDecimal(GetValue(row, "transactionfee")) ?? 0m,
             Kommentar = GetValue(row, "kommentar") ?? string.Empty

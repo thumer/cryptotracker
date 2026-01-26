@@ -50,6 +50,9 @@ public class ImportEntriesController : ControllerBase, IImportEntriesApi
             ImportDocumentType.MetamaskTransactions =>
                 (await _dbContext.MetamaskTransactions.Include(e => e.Wallet).ToListAsync())
                     .Select(e => e.ToDto()).ToList(),
+            ImportDocumentType.LedgerTransactions =>
+                (await _dbContext.LedgerTransactions.Include(e => e.Wallet).ToListAsync())
+                    .Select(e => e.ToDto()).ToList(),
             ImportDocumentType.OkxDepositHistory =>
                 (await _dbContext.OkxDeposits.Include(e => e.Wallet).ToListAsync())
                     .Select(e => e.ToDto()).ToList(),

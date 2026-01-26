@@ -63,6 +63,9 @@ namespace CryptoTracker.Services
                 case ImportDocumentType.MetamaskTransactions:
                     await SaveEntries<MetamaskTransaction, MetamaskTransactionEntity>(type, openStreamFunc, wallet);
                     break;
+                case ImportDocumentType.LedgerTransactions:
+                    await SaveEntries<LedgerTransaction, LedgerTransactionEntity>(type, openStreamFunc, wallet);
+                    break;
                 case ImportDocumentType.OkxDepositHistory:
                     await SaveEntries<OkxDeposit, OkxDepositEntity>(type, openStreamFunc, wallet);
                     break;
@@ -109,6 +112,7 @@ namespace CryptoTracker.Services
                 case ImportDocumentType.OkxTradingHistory:
                 case ImportDocumentType.MetamaskTradingHistory:
                 case ImportDocumentType.MetamaskTransactions:
+                case ImportDocumentType.LedgerTransactions:
                     return (new CsvConfiguration(new CultureInfo("de-AT")) { Delimiter = ";" }, reader => reader.Context.TypeConverterCache.AddConverter<DateTimeOffset>(new UtcDateTimeConverter()));
                 case ImportDocumentType.BinanceTradingHistory:
                     return (new CsvConfiguration(new CultureInfo("en-US")), reader => reader.Context.TypeConverterCache.AddConverter<DateTimeOffset>(new UtcDateTimeConverter()));
@@ -208,6 +212,7 @@ namespace CryptoTracker.Services
                 ImportDocumentType.BitpandaTransaction => new BitpandaTransactionImporter(_dbContext),
                 ImportDocumentType.MetamaskTradingHistory => new MetamaskTradeImporter(_dbContext),
                 ImportDocumentType.MetamaskTransactions => new MetamaskTransactionImporter(_dbContext),
+                ImportDocumentType.LedgerTransactions => new LedgerTransactionImporter(_dbContext),
                 ImportDocumentType.OkxDepositHistory => new OkxDepositImporter(_dbContext),
                 ImportDocumentType.OkxTradingHistory => new OkxTradeImporter(_dbContext),
                 _ => throw new NotSupportedException()
