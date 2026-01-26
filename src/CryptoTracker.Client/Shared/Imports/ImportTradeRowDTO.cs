@@ -3,6 +3,7 @@ namespace CryptoTracker.Shared;
 public record ImportTradeRowDTO(DateTimeOffset DateTime,
                                 string Side,
                                 string Symbol,
+                                string? Slug,
                                 string OppositeSymbol,
                                 decimal Price,
                                 decimal Quantity,

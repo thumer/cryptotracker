@@ -58,7 +58,7 @@ namespace CryptoTracker.Controllers
             using var memory = new MemoryStream();
             await file.CopyToAsync(memory);
             var bytes = memory.ToArray();
-            var result = _importAutoService.Preview(() => new MemoryStream(bytes), file.FileName);
+            var result = await _importAutoService.PreviewAsync(() => new MemoryStream(bytes), file.FileName);
             return Ok(result);
         }
 
@@ -82,7 +82,7 @@ namespace CryptoTracker.Controllers
         {
             using var memory = new MemoryStream();
             await file.OpenReadStream(MAX_REQUEST_SIZE).CopyToAsync(memory);
-            return _importAutoService.Preview(() => new MemoryStream(memory.ToArray()), file.Name);
+            return await _importAutoService.PreviewAsync(() => new MemoryStream(memory.ToArray()), file.Name);
         }
 
         async Task IDataImportApi.ImportAutoAsync(string walletName, IBrowserFile file, ImportDocumentType? documentType)

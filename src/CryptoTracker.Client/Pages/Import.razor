@@ -51,7 +51,7 @@
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Coin">
                             <Template Context="row">
-                                <CoinLink Symbol="@row.Symbol" />
+                                <CoinLink Symbol="@row.Symbol" Slug="@row.Slug" />
                             </Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Menge">
@@ -75,7 +75,7 @@
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Coin">
                             <Template Context="row">
-                                <CoinLink Symbol="@row.Symbol" />
+                                <CoinLink Symbol="@row.Symbol" Slug="@row.Slug" />
                             </Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ImportTransactionRowDTO" Title="Menge">
@@ -100,7 +100,7 @@
                         <RadzenDataGridColumn TItem="ImportTradeRowDTO" Property="Side" Title="Seite" />
                         <RadzenDataGridColumn TItem="ImportTradeRowDTO" Title="Coin">
                             <Template Context="row">
-                                <CoinLink Symbol="@row.Symbol" />
+                                <CoinLink Symbol="@row.Symbol" Slug="@row.Slug" />
                             </Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ImportTradeRowDTO" Property="OppositeSymbol" Title="Gegen-Coin" />
@@ -161,7 +161,7 @@
                                         <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Type" Title="Typ" />
                                         <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Title="Coin">
                                             <Template Context="row">
-                                                <CoinLink Symbol="@row.Coin" />
+                                                <CoinLink Symbol="@row.Coin" Slug="@row.Slug" />
                                             </Template>
                                         </RadzenDataGridColumn>
                                         <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Amount" Title="Menge" />
@@ -202,7 +202,7 @@
                             <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Type" Title="Typ" />
                             <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Title="Coin">
                                 <Template Context="row">
-                                    <CoinLink Symbol="@row.Coin" />
+                                    <CoinLink Symbol="@row.Coin" Slug="@row.Slug" />
                                 </Template>
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="ImportPreviewTransactionRowDTO" Property="Amount" Title="Menge" />

@@ -55,19 +55,26 @@ public class ImportAutoService
     };
 
     private readonly DataImportService _dataImportService;
+    private readonly CoinRateService? _coinRateService;
+
+    public ImportAutoService(DataImportService dataImportService, CoinRateService coinRateService)
+    {
+        _dataImportService = dataImportService;
+        _coinRateService = coinRateService;
+    }
 
     public ImportAutoService(DataImportService dataImportService)
     {
         _dataImportService = dataImportService;
     }
 
-    public ImportPreviewResult Preview(Func<Stream> openStream, string fileName)
+    public async Task<ImportPreviewResult> PreviewAsync(Func<Stream> openStream, string fileName)
     {
         try
         {
             var detected = Detect(openStream, fileName);
             var preview = BuildPreview(openStream, fileName, detected);
-            return preview;
+            return await ApplyPreviewSlugsAsync(preview);
         }
         catch (Exception ex)
         {
@@ -76,6 +83,9 @@ public class ImportAutoService
                 new List<ImportPreviewTradeRowDTO>(), false);
         }
     }
+
+    public ImportPreviewResult Preview(Func<Stream> openStream, string fileName)
+        => PreviewAsync(openStream, fileName).GetAwaiter().GetResult();
 
     public async Task ImportAsync(string walletName, Func<Stream> openStream, string fileName, ImportDocumentType? documentType)
     {
@@ -354,6 +364,39 @@ public class ImportAutoService
 
         return new ImportPreviewResult(true, null, GetSourceLabel(detected.Variant), documentType, displayName,
             transactions, transactionsTruncated, trades, tradesTruncated);
+    }
+
+    private async Task<ImportPreviewResult> ApplyPreviewSlugsAsync(ImportPreviewResult preview)
+    {
+        if (_coinRateService == null || !preview.Success || preview.TransactionRows.Count == 0)
+        {
+            return preview;
+        }
+
+        var symbols = preview.TransactionRows
+            .Select(r => r.Coin.Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (symbols.Count == 0)
+        {
+            return preview;
+        }
+
+        var slugs = await _coinRateService.GetSlugsAsync(symbols);
+        var updated = preview.TransactionRows
+            .Select(row =>
+            {
+                var symbol = row.Coin.Trim();
+                var slug = !string.IsNullOrWhiteSpace(symbol) && slugs.TryGetValue(symbol, out var value)
+                    ? value
+                    : null;
+                return row with { Slug = slug };
+            })
+            .ToList();
+
+        return preview with { TransactionRows = updated };
     }
 
     private async Task ImportDetectedAsync(string walletName, Func<Stream> openStream, string fileName, DetectedFile detected, ImportDocumentType? documentType)
@@ -998,7 +1041,7 @@ public class ImportAutoService
         string? source)
     {
         var date = ParseDateTimeOffset(GetValue(row, "dateutc", "datum", "timestamp", "utctime", "date", "time"));
-        return new ImportPreviewTransactionRowDTO(date, type, coin ?? string.Empty, network, amount ?? string.Empty,
+        return new ImportPreviewTransactionRowDTO(date, type, coin ?? string.Empty, null, network, amount ?? string.Empty,
             fee ?? string.Empty, address, comment, source);
     }
 
@@ -1059,7 +1102,7 @@ public class ImportAutoService
     {
         var hasUtcHeader = HasUtcHeader(row);
         var date = ParseBinanceExchangeTime(GetValue(row, "dateutc", "time"), isExcel, hasUtcHeader);
-        return new ImportPreviewTransactionRowDTO(date, type, coin ?? string.Empty, network, amount ?? string.Empty,
+        return new ImportPreviewTransactionRowDTO(date, type, coin ?? string.Empty, null, network, amount ?? string.Empty,
             fee ?? string.Empty, address, comment, "Binance");
     }
 
@@ -1074,7 +1117,7 @@ public class ImportAutoService
         var amountText = FormatDecimal(Math.Abs(row.Change));
         var comment = BuildOperationComment(row.Operation, row.Remark);
         return new ImportPreviewTransactionRowDTO(row.Date, isDeposit ? "Einzahlung" : "Auszahlung", row.Coin ?? "UNKNOWN",
-            null, amountText, "0", null, comment, source);
+            null, null, amountText, "0", null, comment, source);
     }
 
     private static ImportPreviewTradeRowDTO BuildBinanceConvertPreview(Dictionary<string, string?> row)
