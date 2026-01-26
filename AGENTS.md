@@ -19,6 +19,7 @@
 - Naming: `PascalCase` für Typen/Methoden, `camelCase` für lokale Variablen/Parameter, `_camelCase` für private Felder.
 - DTOs und Entities liegen unter `Shared/` bzw. `Entities/`; vorhandene Muster übernehmen (z. B. `WalletDTO`, `CryptoTrade`).
 - Blazor-Komponenten als `.razor`-Dateien, Dateiname entspricht der Komponente (z. B. `Wallets.razor`).
+- Dokumentationstexte verwenden Umlaute als äöü (nicht ae/oe/ue).
 
 ## Testing-Richtlinien
 - Frameworks: xUnit + FluentAssertions; EF Core InMemory wird in Tests genutzt.

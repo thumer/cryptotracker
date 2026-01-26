@@ -20,12 +20,12 @@ public class LedgerTransaction : ICryptoCsvEntry
     public string Typ { get; set; } = string.Empty;
 
     /// <summary>
-    /// Symbol der Cryptowaehrung
+    /// Symbol der Cryptowährung
     /// </summary>
     public string Coin { get; set; } = string.Empty;
 
     /// <summary>
-    /// Netzwerk ueber das die Coins uebertragen wurden
+    /// Netzwerk über das die Coins übertragen wurden
     /// </summary>
     public string Network { get; set; } = string.Empty;
 
@@ -35,7 +35,7 @@ public class LedgerTransaction : ICryptoCsvEntry
     public string Address { get; set; } = string.Empty;
 
     /// <summary>
-    /// Anzahl der Coins vor Gebuehrenabzug
+    /// Anzahl der Coins vor Gebührenabzug
     /// </summary>
     public decimal Amount { get; set; }
 

@@ -21,8 +21,8 @@ public class OverviewService
             .Select(g =>
             {
                 var amount = g.Sum(x => x.Amount);
-                var euroValue = g.Sum(x => x.EuroValue);
-                var rate = g.First().RateEur;
+                var euroValue = RoundEuro(g.Sum(x => x.EuroValue));
+                var rate = RoundEuro(g.First().RateEur);
                 var slug = g.First().Slug;
                 return new CoinSummaryDTO(g.Key, amount, euroValue, rate, slug);
             })
@@ -30,12 +30,15 @@ public class OverviewService
             .Take(3)
             .ToList();
 
-        var totalEuro = walletBalances.Sum(w => w.TotalEuroValue);
+        var totalEuro = RoundEuro(walletBalances.Sum(w => w.TotalEuroValue));
         var coinCount = allAssets.Select(a => a.Symbol).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         var walletSummaries = walletBalances
-            .Select(w => new WalletSummaryDTO(w.WalletName, w.TotalEuroValue, w.Assets.Count))
+            .Select(w => new WalletSummaryDTO(w.WalletName, RoundEuro(w.TotalEuroValue), w.Assets.Count))
             .ToList();
 
         return new OverviewSummaryDTO(totalEuro, coinCount, topCoins, walletSummaries);
     }
+
+    private static decimal RoundEuro(decimal value)
+        => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 }
