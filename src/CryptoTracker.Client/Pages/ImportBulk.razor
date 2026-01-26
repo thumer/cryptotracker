@@ -1,0 +1,408 @@
+@page "/import/bulk"
+@using CryptoTracker.Shared
+@inject IWalletApi WalletApi
+@inject IDataImportApi DataImportApi
+
+<PageTitle>Sammelimport</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Sammelimport</h1>
+        <p class="page-subtitle">Ziehe mehrere CSV- oder XLSX-Dateien in das Feld und wähle pro Datei das Wallet aus.</p>
+    </div>
+</div>
+
+<LoadingOverlay IsLoading="IsImporting" Text="Importiere Dateien…" />
+
+<div class="bulk-drop-zone">
+    <InputFile id="bulk-file-input" class="bulk-drop-input" OnChange="HandleFilesSelected" multiple />
+    <div class="bulk-drop-content">
+        <div class="bulk-drop-title">Dateien hier ablegen</div>
+        <div class="bulk-drop-subtitle">oder klicken, um Dateien auszuwählen</div>
+        <div class="form-text">Tipp: Dateiname mit #walletname setzt das Wallet voraus.</div>
+    </div>
+</div>
+
+<div class="bulk-import-grid">
+    <div>
+        <h3>Dateien</h3>
+        <div class="bulk-file-list" role="listbox" aria-label="Importdateien">
+            @if (Entries.Count == 0)
+            {
+                <div class="empty-state">Keine Dateien ausgewählt.</div>
+            }
+            else
+            {
+                foreach (var entry in Entries)
+                {
+                    var isActive = SelectedEntry == entry;
+                    <button type="button"
+                            role="option"
+                            aria-selected="@isActive"
+                            class="bulk-file-item @(isActive ? "active" : string.Empty)"
+                            @onclick="(() => SelectEntry(entry))">
+                        <div class="bulk-file-name">@entry.File.Name</div>
+                        <div class="bulk-file-meta">
+                            <span>@FormatFileSize(entry.File.Size)</span>
+                            <span>@GetWalletLabel(entry)</span>
+                        </div>
+                        <span class="bulk-status @GetStatusClass(entry)">@GetStatusLabel(entry)</span>
+                    </button>
+                }
+            }
+        </div>
+    </div>
+    <div>
+        <h3>Auswahl</h3>
+        <div class="bulk-details-card">
+            @if (SelectedEntry == null)
+            {
+                <div class="empty-state">Wähle links eine Datei aus, um das Wallet zu ändern.</div>
+            }
+            else
+            {
+                <div class="bulk-detail-block">
+                    <div class="bulk-detail-title">@SelectedEntry.File.Name</div>
+                    <div class="bulk-detail-meta">@FormatFileSize(SelectedEntry.File.Size)</div>
+                </div>
+
+                <div class="bulk-detail-block">
+                    <label>Wallet</label>
+                    <RadzenDropDown Style="width:100%" Data="@WalletOptions" TextProperty="Name" ValueProperty="Name"
+                                    @bind-Value="SelectedEntry.WalletName" Placeholder="Wallet wählen"
+                                    Change="OnSelectedWalletChanged" />
+                    @if (!string.IsNullOrWhiteSpace(SelectedEntry.DetectedWalletName))
+                    {
+                        <div class="form-text">Erkannt: @SelectedEntry.DetectedWalletName</div>
+                    }
+                    @if (SelectedEntry.Status == BulkImportStatus.Pending && IsNewWallet(SelectedEntry))
+                    {
+                        <div class="form-text">Wallet wird beim Import angelegt.</div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(SelectedEntry.ErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">@SelectedEntry.ErrorMessage</div>
+                }
+                else if (SelectedEntry.HasMissingWallet)
+                {
+                    <div class="alert alert-warning" role="alert">Bitte wähle ein Wallet für diese Datei.</div>
+                }
+
+                <div class="bulk-details-actions">
+                    <RadzenButton Text="Aus Liste entfernen" ButtonStyle="ButtonStyle.Secondary" Click="RemoveSelected" Disabled="IsImporting" />
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="bulk-actions">
+    <RadzenButton Text="Alle importieren" Click="ImportAllAsync" Disabled="!CanImport" />
+    <RadzenButton Text="Liste leeren" ButtonStyle="ButtonStyle.Secondary" Click="ClearAll" Disabled="IsImporting || Entries.Count == 0" />
+</div>
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
+}
+
+@code {
+    private readonly List<BulkImportEntry> Entries = new();
+    private IList<WalletInfoDTO> Wallets { get; set; } = new List<WalletInfoDTO>();
+    private BulkImportEntry? SelectedEntry { get; set; }
+    private bool IsImporting { get; set; }
+    private string? ErrorMessage { get; set; }
+    private const int MaxFileCount = 250;
+    private IList<WalletInfoDTO> WalletOptions => BuildWalletOptions();
+
+    private bool CanImport => Entries.Count > 0
+        && Entries.All(entry => !entry.HasMissingWallet)
+        && Entries.Any(entry => entry.Status != BulkImportStatus.Imported)
+        && !IsImporting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadWalletsAsync();
+    }
+
+    private async Task LoadWalletsAsync()
+    {
+        try
+        {
+            Wallets = await WalletApi.GetWalletInfosAsync();
+            foreach (var entry in Entries.Where(entry => entry.HasMissingWallet && !string.IsNullOrWhiteSpace(entry.DetectedWalletName)))
+            {
+                entry.WalletName = ResolveWalletName(entry.DetectedWalletName);
+            }
+
+            foreach (var entry in Entries.Where(entry => !entry.HasMissingWallet))
+            {
+                entry.WalletName = ResolveWalletName(entry.WalletName);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private Task HandleFilesSelected(InputFileChangeEventArgs e)
+    {
+        ErrorMessage = null;
+        foreach (var file in e.GetMultipleFiles(MaxFileCount))
+        {
+            if (Entries.Any(existing => string.Equals(existing.File.Name, file.Name, StringComparison.OrdinalIgnoreCase)
+                                        && existing.File.Size == file.Size))
+            {
+                continue;
+            }
+
+            var entry = new BulkImportEntry(file);
+            var detectedWalletName = ExtractWalletName(file.Name);
+            if (!string.IsNullOrWhiteSpace(detectedWalletName))
+            {
+                entry.DetectedWalletName = detectedWalletName;
+                entry.WalletName = ResolveWalletName(detectedWalletName);
+            }
+
+            Entries.Add(entry);
+        }
+
+        if (SelectedEntry == null && Entries.Count > 0)
+        {
+            SelectedEntry = Entries[0];
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void SelectEntry(BulkImportEntry entry)
+    {
+        SelectedEntry = entry;
+    }
+
+    private void OnSelectedWalletChanged(object? _)
+    {
+        if (SelectedEntry == null)
+        {
+            return;
+        }
+
+        SelectedEntry.Status = BulkImportStatus.Pending;
+        SelectedEntry.ErrorMessage = null;
+    }
+
+    private async Task ImportAllAsync()
+    {
+        if (!CanImport)
+        {
+            return;
+        }
+
+        ErrorMessage = null;
+        IsImporting = true;
+
+        foreach (var entry in Entries.Where(entry => entry.Status != BulkImportStatus.Imported))
+        {
+            entry.ErrorMessage = null;
+            entry.Status = BulkImportStatus.Importing;
+            StateHasChanged();
+
+            try
+            {
+                await DataImportApi.ImportAutoAsync(entry.WalletName ?? string.Empty, entry.File);
+                entry.Status = BulkImportStatus.Imported;
+            }
+            catch (Exception ex)
+            {
+                entry.Status = BulkImportStatus.Failed;
+                entry.ErrorMessage = ex.Message;
+                ErrorMessage = "Einige Importe sind fehlgeschlagen. Details siehe Auswahl.";
+            }
+        }
+
+        IsImporting = false;
+        await LoadWalletsAsync();
+    }
+
+    private void RemoveSelected()
+    {
+        if (SelectedEntry == null)
+        {
+            return;
+        }
+
+        var index = Entries.IndexOf(SelectedEntry);
+        Entries.Remove(SelectedEntry);
+        SelectedEntry = Entries.Count == 0 ? null : Entries[Math.Clamp(index, 0, Entries.Count - 1)];
+    }
+
+    private void ClearAll()
+    {
+        Entries.Clear();
+        SelectedEntry = null;
+        ErrorMessage = null;
+    }
+
+    private IList<WalletInfoDTO> BuildWalletOptions()
+    {
+        if (Entries.Count == 0)
+        {
+            return Wallets;
+        }
+
+        var options = Wallets.ToList();
+        var extraNames = Entries
+            .Select(entry => entry.WalletName ?? entry.DetectedWalletName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(name => options.All(wallet => !string.Equals(wallet.Name, name, StringComparison.OrdinalIgnoreCase)))
+            .Select(name => new WalletInfoDTO(0, name!));
+
+        options.AddRange(extraNames);
+        return options;
+    }
+
+    private string? ResolveWalletName(string? candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return null;
+        }
+
+        var trimmed = candidate.Trim();
+        return Wallets
+            .FirstOrDefault(wallet => string.Equals(wallet.Name, trimmed, StringComparison.OrdinalIgnoreCase))
+            ?.Name ?? trimmed;
+    }
+
+    private bool IsNewWallet(BulkImportEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.WalletName))
+        {
+            return false;
+        }
+
+        return Wallets.All(wallet => !string.Equals(wallet.Name, entry.WalletName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? ExtractWalletName(string fileName)
+    {
+        var indexOfHash = fileName.IndexOf('#');
+        if (indexOfHash < 0)
+        {
+            return null;
+        }
+
+        var indexOfDot = fileName.LastIndexOf('.');
+        if (indexOfDot <= indexOfHash)
+        {
+            return null;
+        }
+
+        var walletName = fileName.Substring(indexOfHash + 1, indexOfDot - indexOfHash - 1).Trim();
+        return string.IsNullOrWhiteSpace(walletName) ? null : walletName;
+    }
+
+    private static string FormatFileSize(long size)
+    {
+        const long kilo = 1024;
+        const long mega = kilo * 1024;
+        const long giga = mega * 1024;
+
+        if (size >= giga)
+        {
+            return $"{size / (double)giga:0.0} GB";
+        }
+
+        if (size >= mega)
+        {
+            return $"{size / (double)mega:0.0} MB";
+        }
+
+        if (size >= kilo)
+        {
+            return $"{size / (double)kilo:0.0} KB";
+        }
+
+        return $"{size} B";
+    }
+
+    private string GetStatusLabel(BulkImportEntry entry)
+    {
+        if (entry.HasMissingWallet)
+        {
+            return "Wallet fehlt";
+        }
+
+        if (entry.Status == BulkImportStatus.Pending && IsNewWallet(entry))
+        {
+            return "Neu";
+        }
+
+        return entry.Status switch
+        {
+            BulkImportStatus.Importing => "Import läuft",
+            BulkImportStatus.Imported => "Importiert",
+            BulkImportStatus.Failed => "Fehler",
+            _ => "Bereit"
+        };
+    }
+
+    private string GetStatusClass(BulkImportEntry entry)
+    {
+        if (entry.HasMissingWallet)
+        {
+            return "warning";
+        }
+
+        return entry.Status switch
+        {
+            BulkImportStatus.Importing => "running",
+            BulkImportStatus.Imported => "success",
+            BulkImportStatus.Failed => "error",
+            _ => string.Empty
+        };
+    }
+
+    private string GetWalletLabel(BulkImportEntry entry)
+    {
+        if (!string.IsNullOrWhiteSpace(entry.WalletName))
+        {
+            return IsNewWallet(entry) ? $"Neu: {entry.WalletName}" : entry.WalletName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(entry.DetectedWalletName))
+        {
+            return $"Erkannt: {entry.DetectedWalletName}";
+        }
+
+        return "Wallet fehlt";
+    }
+
+    private sealed class BulkImportEntry
+    {
+        public BulkImportEntry(IBrowserFile file)
+        {
+            File = file;
+        }
+
+        public IBrowserFile File { get; }
+        public string? WalletName { get; set; }
+        public string? DetectedWalletName { get; set; }
+        public BulkImportStatus Status { get; set; }
+        public string? ErrorMessage { get; set; }
+        public bool HasMissingWallet => string.IsNullOrWhiteSpace(WalletName);
+    }
+
+    private enum BulkImportStatus
+    {
+        Pending,
+        Importing,
+        Imported,
+        Failed
+    }
+}
