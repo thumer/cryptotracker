@@ -31,6 +31,15 @@ public class BitcoinDeAutoImportTests : DbTestBase
     }
 
     [Fact]
+    public async Task ImportAccountStatementAdjustmentsCsv()
+    {
+        var csv = BuildAccountStatementAdjustmentsCsv();
+        await ImportAsync("btc_account_statement_adjustments.csv", csv);
+
+        DbContext.CryptoTransactions.Should().HaveCount(5);
+    }
+
+    [Fact]
     public async Task ImportBuyHistoryCsv()
     {
         var csv = BuildBuyHistoryCsv();
@@ -139,6 +148,18 @@ public class BitcoinDeAutoImportTests : DbTestBase
         var sb = new StringBuilder();
         sb.AppendLine("Datum;Typ;Währung;Referenz;BTC-Adresse;Kurs;\"Einheit (Kurs)\";\"BTC vor Gebühr\";\"Menge vor Gebühr\";\"Einheit (Menge vor Gebühr)\";\"BTC nach Bitcoin.de-Gebühr\";\"Menge nach Bitcoin.de-Gebühr\";\"Einheit (Menge nach Bitcoin.de-Gebühr)\";\"Zu- / Abgang\";Kontostand");
         sb.AppendLine("\"2013-04-17 15:35:15\";Kauf;BTC;QW3A9T;;61.00;\"BTC / EUR\";1.00000000;61.00;EUR;0.99000000;60.69;EUR;0.99000000;0.99000000");
+        return sb.ToString();
+    }
+
+    private static string BuildAccountStatementAdjustmentsCsv()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Datum;Typ;Währung;Referenz;Adresse;Kurs;Einheit (Kurs);Crypto vor Gebühr;Menge vor Gebühr;Einheit (Menge vor Gebühr);Crypto nach Bitcoin.de-Gebühr;Menge nach Bitcoin.de-Gebühr;Einheit (Menge nach Bitcoin.de-Gebühr);Zu- / Abgang;Kontostand;Kommentar");
+        sb.AppendLine("2017-08-01 14:43:14;Initialisierung;BCH;;;;;;;;;;;0.00012929;0.00012929;");
+        sb.AppendLine("2017-10-24 03:24:35;Initialisierung;BTG;;;;;;;;;;;0.00012929;0.00012929;");
+        sb.AppendLine("2018-03-01 03:30:48;Partnerprogramm;ETH;tradeGH;;;;;;;;;;0.00050000;0.00050000;");
+        sb.AppendLine("2018-03-01 04:09:01;Partnerprogramm;BTC;tradeGH;;;;;;;;;;0.00005000;0.00005000;");
+        sb.AppendLine("2023-02-09 12:04:55;Korrekturposition;BTC;Gutschrift BTC (Verkauf BSV) laut Abkündigung;;;;;;;;;;0.00000025;0.00000025;");
         return sb.ToString();
     }
 

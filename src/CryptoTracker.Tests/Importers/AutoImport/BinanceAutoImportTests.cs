@@ -18,6 +18,9 @@ public class BinanceAutoImportTests : DbTestBase
         DbContext.Wallets.Should().ContainSingle(w => w.Name == WalletName);
         DbContext.CryptoTransactions.Should().HaveCount(10);
         DbContext.CryptoTransactions.Should().OnlyContain(t => t.TransactionType == TransactionType.Receive);
+        var deposit = DbContext.CryptoTransactions.Single(t => t.TransactionId == "tx1");
+        deposit.Quantity.Should().Be(0.1m);
+        deposit.Fee.Should().Be(0m);
     }
 
     [Fact]
@@ -28,6 +31,24 @@ public class BinanceAutoImportTests : DbTestBase
 
         DbContext.CryptoTransactions.Should().HaveCount(10);
         DbContext.CryptoTransactions.Should().OnlyContain(t => t.TransactionType == TransactionType.Send);
+        var withdrawal = DbContext.CryptoTransactions.Single(t => t.TransactionId == "tx1");
+        withdrawal.Quantity.Should().Be(0.1001m);
+        withdrawal.Fee.Should().Be(0.0001m);
+    }
+
+    [Fact]
+    public async Task ImportWithdrawalCsv_CommaDecimalAmount()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Date(UTC);Coin;Network;Amount;TransactionFee;Address;TXID;Comment");
+        sb.AppendLine("20.11.2024 02:43:00;WAVES;WAVES;23,976;0;addr;txwaves;Withdraw WAVES");
+        await ImportAsync("binance_withdraw_history_missing#thomas_binance.csv", sb.ToString());
+
+        DbContext.CryptoTransactions.Should().ContainSingle();
+        var withdrawal = DbContext.CryptoTransactions.Single();
+        withdrawal.Symbol.Should().Be("WAVES");
+        withdrawal.Quantity.Should().Be(23.976m);
+        withdrawal.Fee.Should().Be(0m);
     }
 
     [Fact]

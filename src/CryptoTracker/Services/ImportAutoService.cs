@@ -301,6 +301,19 @@ public class ImportAutoService
                                 GetValue(row, "waehrung", "wahrung"), null, GetValue(row, "zuabgang"), "0",
                                 GetValueBySuffix(row, "adresse"), GetValue(row, "kommentar"), "Bitcoin.de"));
                         }
+                        else
+                        {
+                            var amountRaw = GetValue(row, "zuabgang");
+                            var amount = ParseDecimalDe(amountRaw);
+                            if (amount.HasValue && amount.Value != 0m)
+                            {
+                                var fallbackType = amount.Value < 0 ? "Auszahlung" : "Einzahlung";
+                                var displayType = string.IsNullOrWhiteSpace(typ) ? fallbackType : typ;
+                                AddTransaction(BuildTransactionPreview(row, displayType,
+                                    GetValue(row, "waehrung", "wahrung"), null, amountRaw ?? string.Empty, "0",
+                                    GetValueBySuffix(row, "adresse"), GetValue(row, "kommentar"), "Bitcoin.de"));
+                            }
+                        }
                         break;
                     }
                 case ImportFileVariant.BitcoinDeBuyHistory:
@@ -1895,12 +1908,18 @@ public class ImportAutoService
         }
 
         var numeric = ExtractNumeric(trimmed);
-        if (decimal.TryParse(numeric, NumberStyles.Float | NumberStyles.AllowThousands, CultureEn, out var result))
+        if (string.IsNullOrWhiteSpace(numeric))
+        {
+            return null;
+        }
+
+        var (primary, secondary) = ResolveDecimalCultures(numeric);
+        if (decimal.TryParse(numeric, NumberStyles.Float | NumberStyles.AllowThousands, primary, out var result))
         {
             return result;
         }
 
-        if (decimal.TryParse(numeric, NumberStyles.Float | NumberStyles.AllowThousands, CultureDe, out result))
+        if (decimal.TryParse(numeric, NumberStyles.Float | NumberStyles.AllowThousands, secondary, out result))
         {
             return result;
         }
@@ -1915,6 +1934,27 @@ public class ImportAutoService
 
     private static string FormatDecimal(decimal value)
         => value.ToString(CultureEn);
+
+    private static (CultureInfo primary, CultureInfo secondary) ResolveDecimalCultures(string numeric)
+    {
+        var hasComma = numeric.Contains(',');
+        var hasDot = numeric.Contains('.');
+        if (hasComma && hasDot)
+        {
+            var lastComma = numeric.LastIndexOf(',');
+            var lastDot = numeric.LastIndexOf('.');
+            var primary = lastComma > lastDot ? CultureDe : CultureEn;
+            return primary == CultureDe ? (CultureDe, CultureEn) : (CultureEn, CultureDe);
+        }
+
+        if (hasComma)
+        {
+            var primary = numeric.Count(ch => ch == ',') > 1 ? CultureEn : CultureDe;
+            return primary == CultureDe ? (CultureDe, CultureEn) : (CultureEn, CultureDe);
+        }
+
+        return (CultureEn, CultureDe);
+    }
 
     private static bool IsBinanceStatementDeposit(string? operation, decimal change)
     {

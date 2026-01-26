@@ -82,6 +82,30 @@ namespace CryptoTracker.Import
                         cryptoTransaction.Quantity += cryptoTransaction.Fee;
                     }
                 }
+                else
+                {
+                    if (record.ZuAbgang == 0m)
+                    {
+                        continue;
+                    }
+
+                    var isReceive = record.ZuAbgang > 0m;
+                    var transaction = new CryptoTransaction
+                    {
+                        TransactionType = isReceive ? TransactionType.Receive : TransactionType.Send,
+                        WalletId = args.Wallet.Id,
+                        DateTime = record.Datum,
+                        Symbol = record.Waehrung,
+                        Quantity = Math.Abs(record.ZuAbgang),
+                        Fee = 0,
+                        TransactionId = record.Referenz,
+                        Address = record.Adresse,
+                        Comment = string.IsNullOrWhiteSpace(record.Kommentar)
+                            ? record.Typ
+                            : $"{record.Typ}: {record.Kommentar}"
+                    };
+                    DbContext.Add(transaction);
+                }
             }
 
             await DbContext.SaveChangesAsync();
