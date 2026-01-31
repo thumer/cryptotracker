@@ -22,6 +22,24 @@
     },
     "identityProviderClientId": {
       "value": "ffa07cd3-dd3b-44e1-8968-6e95c5185423"
+    },
+    "openAiEndpoint": {
+      "value": "https://stockmanager-swedencentral.cognitiveservices.azure.com/"
+    },
+    "openAiDeploymentName": {
+      "value": "gpt-5.2"
+    },
+    "openAiFastDeploymentName": {
+      "value": "gpt-5-nano"
+    },
+    "openAiEmbeddingDeploymentName": {
+      "value": "text-embedding-3-large"
+    },
+    "openAiEmbeddingVectorDimensions": {
+      "value": 1536
+    },
+    "openAiKeyKVUri": {
+      "value": ""
     }
   }
 }

@@ -1,0 +1,139 @@
+@using CryptoTracker.Shared
+@using CryptoTracker.Client.Common
+
+<div class="lot-flow-visualization">
+    @if (Flow == null)
+    {
+        <div class="flow-empty">Keine Flow-Daten verfügbar</div>
+    }
+    else
+    {
+        <div class="flow-header">
+            <div class="flow-title">
+                <span class="flow-symbol">@Flow.Symbol</span>
+                <span class="flow-quantity">@FormatHelper.FormatAmount(Flow.Quantity)</span>
+                <span class="flow-status @(Flow.IsComplete ? "complete" : "incomplete")">
+                    @(Flow.IsComplete ? "Vollständig" : "Unvollständig")
+                </span>
+            </div>
+            @if (!Flow.IsComplete && !string.IsNullOrEmpty(Flow.IncompleteReason))
+            {
+                <div class="flow-warning">
+                    <span class="warning-icon">⚠</span>
+                    @Flow.IncompleteReason
+                </div>
+            }
+        </div>
+
+        <div class="flow-chain">
+            @for (int i = 0; i < Flow.FlowChain.Count; i++)
+            {
+                var step = Flow.FlowChain[i];
+                var isFirst = i == 0;
+                var isLast = i == Flow.FlowChain.Count - 1;
+                
+                @if (!isFirst)
+                {
+                    <div class="flow-connector">
+                        <div class="connector-line"></div>
+                        <div class="connector-arrow">→</div>
+                    </div>
+                }
+
+                <div class="flow-step @GetStepClass(step.Type)">
+                    <div class="step-icon">@GetStepIcon(step.Type)</div>
+                    <div class="step-content">
+                        <div class="step-type">@GetStepLabel(step.Type)</div>
+                        <div class="step-details">
+                            <span class="step-quantity">@FormatHelper.FormatAmount(step.Quantity) @step.Symbol</span>
+                            <span class="step-date">@step.DateTime.ToString("dd.MM.yyyy HH:mm")</span>
+                        </div>
+                        @if (step.TradeId.HasValue)
+                        {
+                            <div class="step-ref">Trade #@step.TradeId</div>
+                        }
+                        @if (step.TransactionId.HasValue)
+                        {
+                            <div class="step-ref">Transaktion #@step.TransactionId</div>
+                        }
+                    </div>
+                    <div class="step-lot-id">Lot #@step.LotId</div>
+                </div>
+            }
+        </div>
+
+        <div class="flow-summary">
+            <div class="summary-item">
+                <span class="summary-label">Ursprüngliche Menge:</span>
+                <span class="summary-value">@FormatHelper.FormatAmount(Flow.Quantity)</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Effektive Menge:</span>
+                <span class="summary-value">@FormatHelper.FormatAmount(Flow.EffectiveQuantity)</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Kaufdatum:</span>
+                <span class="summary-value">@Flow.AcquisitionDate.ToString("dd.MM.yyyy")</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Status:</span>
+                <span class="summary-value @(Flow.AcquisitionDate <= new DateTimeOffset(2021, 2, 28, 23, 59, 59, TimeSpan.Zero) ? "altbestand" : "neubestand")">
+                    @(Flow.AcquisitionDate <= new DateTimeOffset(2021, 2, 28, 23, 59, 59, TimeSpan.Zero) ? "Altbestand" : "Neubestand")
+                </span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public LotFlowValidationDTO? Flow { get; set; }
+
+    private string GetStepIcon(string type) => type switch
+    {
+        "FiatPurchase" => "💰",
+        "CryptoSwap" => "🔄",
+        "InternalTransfer" => "↔️",
+        "ExternalDeposit" => "📥",
+        "Mining" => "⛏️",
+        "Staking" => "🥩",
+        "Lending" => "🏦",
+        "Airdrop" => "🎁",
+        "Hardfork" => "🍴",
+        "Gift" => "🎀",
+        "Manual" => "✏️",
+        "Transfer" => "➡️",
+        "FiatSale" => "💵",
+        "CryptoSwapOut" => "🔃",
+        "Fee" => "📋",
+        _ => "📦"
+    };
+
+    private string GetStepLabel(string type) => type switch
+    {
+        "FiatPurchase" => "Kauf mit Fiat",
+        "CryptoSwap" => "Krypto-Tausch (Eingang)",
+        "InternalTransfer" => "Interner Transfer",
+        "ExternalDeposit" => "Externer Eingang",
+        "Mining" => "Mining Reward",
+        "Staking" => "Staking Reward",
+        "Lending" => "Lending Zinsen",
+        "Airdrop" => "Airdrop",
+        "Hardfork" => "Hardfork",
+        "Gift" => "Schenkung erhalten",
+        "Manual" => "Manueller Eintrag",
+        "Transfer" => "Transfer",
+        "FiatSale" => "Verkauf gegen Fiat",
+        "CryptoSwapOut" => "Krypto-Tausch (Ausgang)",
+        "Fee" => "Gebühr",
+        _ => type
+    };
+
+    private string GetStepClass(string type) => type switch
+    {
+        "FiatPurchase" or "Mining" or "Staking" or "Airdrop" or "Gift" or "ExternalDeposit" => "step-inflow",
+        "FiatSale" or "CryptoSwapOut" or "Fee" => "step-outflow",
+        "Transfer" or "InternalTransfer" => "step-transfer",
+        "CryptoSwap" => "step-swap",
+        _ => ""
+    };
+}

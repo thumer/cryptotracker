@@ -1,0 +1,416 @@
+@page "/linking"
+@using CryptoTracker.Client.Common
+@using CryptoTracker.Client.Shared
+@using CryptoTracker.Shared
+@inject ITransactionLinkingApi LinkingApi
+
+<PageTitle>Transaktions-Verknüpfung</PageTitle>
+
+@* Wizard anzeigen wenn aktiv *@
+@if (IsWizardOpen)
+{
+    <LinkingWizard Statistics="@Statistics" 
+                   OnComplete="CloseWizard" 
+                   OnCancel="CloseWizard" />
+}
+
+<div class="page-header">
+    <div>
+        <h1>Transaktions-Verknüpfung</h1>
+        <p class="page-subtitle">Verknüpfe Send/Receive-Transaktionen für korrekte Steuerberechnung.</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-secondary" @onclick="OpenWizard" disabled="@IsLoading">
+            Wizard starten
+        </button>
+        @if (IsAIConfigured)
+        {
+            <button type="button" class="btn btn-secondary" @onclick="ToggleChat" disabled="@IsLoading">
+                @(IsChatOpen ? "Chat schließen" : "AI-Assistent")
+            </button>
+            <button type="button" class="btn btn-primary" @onclick="RunAutoLink" disabled="@IsAutoLinking">
+                @if (IsAutoLinking)
+                {
+                    <span class="loading-spinner-small"></span>
+                    <span>Verknüpfe...</span>
+                }
+                else
+                {
+                    <span>Auto-Verknüpfung</span>
+                }
+            </button>
+        }
+        <button type="button" class="btn btn-danger" @onclick="OpenResetDialog" disabled="@IsLoading">
+            Reset
+        </button>
+    </div>
+</div>
+
+<LoadingOverlay IsLoading="IsLoading" Text="Lade Daten..." />
+
+@* Statistik-Karten *@
+@if (Statistics != null)
+{
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">@Statistics.TotalTransactions</div>
+            <div class="stat-label">Gesamt</div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-value">@Statistics.LinkedTransactions</div>
+            <div class="stat-label">Verknüpft (@Statistics.LinkedPercent%)</div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-value">@Statistics.UnlinkedTransactions</div>
+            <div class="stat-label">Offen</div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-value">@Statistics.IntentionallyUnlinked</div>
+            <div class="stat-label">Externe</div>
+        </div>
+        @if (Statistics.UnconfirmedLinks > 0)
+        {
+            <div class="stat-card stat-pending">
+                <div class="stat-value">@Statistics.UnconfirmedLinks</div>
+                <div class="stat-label">Unbestätigt</div>
+            </div>
+        }
+    </div>
+
+    @* Unverknüpfte nach Symbol *@
+    @if (Statistics.UnlinkedBySymbol.Count > 0)
+    {
+        <div class="symbol-chips">
+            <span class="symbol-chips-label">Offen nach Coin:</span>
+            @foreach (var (symbol, count) in Statistics.UnlinkedBySymbol.OrderByDescending(x => x.Value).Take(8))
+            {
+                <button type="button" 
+                        class="symbol-chip @(SelectedSymbol == symbol ? "active" : "")"
+                        @onclick="() => FilterBySymbol(symbol)">
+                    @symbol <span class="chip-count">@count</span>
+                </button>
+            }
+            @if (!string.IsNullOrEmpty(SelectedSymbol))
+            {
+                <button type="button" class="symbol-chip clear" @onclick="ClearSymbolFilter">
+                    Alle
+                </button>
+            }
+        </div>
+    }
+}
+
+@* AI Chat Panel (aufklappbar) *@
+@if (IsChatOpen && IsAIConfigured)
+{
+    <div class="chat-panel">
+        <div class="chat-header">
+            <h3>AI-Assistent</h3>
+            <button type="button" class="chat-close" @onclick="ToggleChat">x</button>
+        </div>
+        <div class="chat-messages" @ref="ChatMessagesRef">
+            @foreach (var msg in ChatMessages)
+            {
+                <div class="chat-message @(msg.Role == "user" ? "user" : "assistant")">
+                    @if (msg.IsLoading)
+                    {
+                        <div class="chat-loading">
+                            <span class="loading-dot"></span>
+                            <span class="loading-dot"></span>
+                            <span class="loading-dot"></span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="chat-content">@((MarkupString)FormatMarkdown(msg.Content))</div>
+                        <div class="chat-time">@msg.Timestamp.ToLocalTime().ToString("HH:mm")</div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="chat-input-area">
+            <input type="text" 
+                   class="chat-input" 
+                   placeholder="Nachricht eingeben..." 
+                   @bind="ChatInput"
+                   @bind:event="oninput"
+                   @onkeydown="OnChatKeyDown"
+                   disabled="@IsChatLoading" />
+            <button type="button" class="chat-send" @onclick="SendChatMessage" disabled="@(IsChatLoading || string.IsNullOrWhiteSpace(ChatInput))">
+                Senden
+            </button>
+        </div>
+    </div>
+}
+
+@* Typ-Filter Tabs *@
+<div class="type-tabs">
+    <button type="button" class="type-tab @(SelectedType == null ? "active" : "")" @onclick="() => FilterByType(null)">
+        Alle
+    </button>
+    <button type="button" class="type-tab @(SelectedType == "send" ? "active" : "")" @onclick="@(() => FilterByType("send"))">
+        Sends
+    </button>
+    <button type="button" class="type-tab @(SelectedType == "receive" ? "active" : "")" @onclick="@(() => FilterByType("receive"))">
+        Receives
+    </button>
+</div>
+
+@* Unverknüpfte Transaktionen Grid *@
+@if (!IsLoading)
+{
+    @if (UnlinkedTransactions.Count == 0)
+    {
+        <div class="empty-state success-state">
+            <div class="empty-icon">✓</div>
+            <div class="empty-text">Alle Transaktionen sind verknüpft!</div>
+        </div>
+    }
+    else
+    {
+        <RadzenDataGrid TItem="UnlinkedTransactionDTO" 
+                        Data="UnlinkedTransactions" 
+                        KeyProperty="Id" 
+                        AllowSorting="true" 
+                        AllowPaging="true" 
+                        PageSize="20"
+                        SelectionMode="DataGridSelectionMode.Multiple"
+                        @bind-Value="SelectedTransactions"
+                        Class="styled-grid">
+            <Columns>
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Width="50px" Sortable="false">
+                    <HeaderTemplate>
+                        <RadzenCheckBox TValue="bool" Value="@(SelectedTransactions.Count == UnlinkedTransactions.Count && UnlinkedTransactions.Count > 0)" 
+                                        Change="@(args => SelectAll(args))" />
+                    </HeaderTemplate>
+                    <Template Context="tx">
+                        <RadzenCheckBox TValue="bool" Value="@SelectedTransactions.Contains(tx)" 
+                                        Change="@(args => ToggleSelection(tx, args))" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Title="Typ" Width="90px">
+                    <Template Context="tx">
+                        <span class="type-badge @(tx.IsSend ? "send" : "receive")">
+                            @(tx.IsSend ? "Send" : "Receive")
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Title="Datum">
+                    <Template Context="tx">
+                        @FormatHelper.FormatUtc(tx.DateTime)
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Property="Symbol" Title="Coin" />
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Title="Menge">
+                    <Template Context="tx">
+                        @FormatHelper.FormatAmount(tx.Quantity)
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Property="WalletName" Title="Wallet" />
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Title="Adresse" Width="200px">
+                    <Template Context="tx">
+                        @if (!string.IsNullOrWhiteSpace(tx.Address))
+                        {
+                            <span class="address-truncate" title="@tx.Address">
+                                @TruncateAddress(tx.Address)
+                            </span>
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="UnlinkedTransactionDTO" Title="" Width="180px">
+                    <Template Context="tx">
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="() => OpenLinkDialog(tx)">
+                                Verknüpfen
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="() => OpenMarkExternalDialog(tx)">
+                                Extern
+                            </button>
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+}
+
+@* Manuelles Verknüpfen Dialog *@
+@if (IsLinkDialogOpen && LinkDialogTransaction != null)
+{
+    <div class="modal-overlay" @onclick="CloseLinkDialog">
+        <div class="modal-card link-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Transaktion verknüpfen</h3>
+                <button type="button" class="details-close" @onclick="CloseLinkDialog">x</button>
+            </div>
+            <div class="modal-body">
+                <div class="link-source">
+                    <div class="link-source-header">
+                        <span class="type-badge @(LinkDialogTransaction.IsSend ? "send" : "receive")">
+                            @(LinkDialogTransaction.IsSend ? "Send" : "Receive")
+                        </span>
+                        <strong>@LinkDialogTransaction.Symbol</strong>
+                    </div>
+                    <div class="link-source-details">
+                        <div>Datum: @FormatHelper.FormatUtc(LinkDialogTransaction.DateTime)</div>
+                        <div>Menge: @FormatHelper.FormatAmount(LinkDialogTransaction.Quantity)</div>
+                        <div>Wallet: @LinkDialogTransaction.WalletName</div>
+                    </div>
+                </div>
+
+                <div class="link-arrow">↔</div>
+
+                <div class="link-target-search">
+                    <p>Wähle die passende Gegentransaktion:</p>
+                    
+                    @if (IsLoadingMatches)
+                    {
+                        <div class="loading-spinner"></div>
+                    }
+                    else if (PotentialMatches.Count == 0)
+                    {
+                        <div class="empty-state">Keine passenden Transaktionen gefunden.</div>
+                    }
+                    else
+                    {
+                        <div class="match-list">
+                            @foreach (var match in PotentialMatches)
+                            {
+                                <div class="match-item @(SelectedMatch?.Id == match.Id ? "selected" : "")" 
+                                     @onclick="() => SelectMatch(match)">
+                                    <div class="match-header">
+                                        <span class="type-badge @(match.IsSend ? "send" : "receive")">
+                                            @(match.IsSend ? "Send" : "Receive")
+                                        </span>
+                                        <span class="match-wallet">@match.WalletName</span>
+                                    </div>
+                                    <div class="match-details">
+                                        <span>@FormatHelper.FormatUtc(match.DateTime)</span>
+                                        <span>@FormatHelper.FormatAmount(match.Quantity) @match.Symbol</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="link-reason">
+                    <label>Grund (optional):</label>
+                    <input type="text" class="form-control" @bind="LinkReason" placeholder="z.B. Transfer zwischen eigenen Wallets" />
+                </div>
+
+                @if (LinkError != null)
+                {
+                    <div class="alert alert-danger">@LinkError</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseLinkDialog">Abbrechen</button>
+                <button type="button" class="btn btn-primary" @onclick="ConfirmLink" disabled="@(SelectedMatch == null || IsLinking)">
+                    @if (IsLinking)
+                    {
+                        <span class="loading-spinner-small"></span>
+                        <span>Verknüpfe...</span>
+                    }
+                    else
+                    {
+                        <span>Verknüpfen</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Als extern markieren Dialog *@
+@if (IsMarkExternalDialogOpen && MarkExternalTransaction != null)
+{
+    <div class="modal-overlay" @onclick="CloseMarkExternalDialog">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Als extern markieren</h3>
+                <button type="button" class="details-close" @onclick="CloseMarkExternalDialog">x</button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Diese Transaktion hat kein Gegenstück in deinen Wallets und wird als 
+                    <strong>@(MarkExternalTransaction.IsSend ? "externe Ausgabe" : "externe Einnahme")</strong> markiert.
+                </p>
+                <div class="external-info">
+                    <div><strong>@MarkExternalTransaction.Symbol</strong></div>
+                    <div>Menge: @FormatHelper.FormatAmount(MarkExternalTransaction.Quantity)</div>
+                    <div>Datum: @FormatHelper.FormatUtc(MarkExternalTransaction.DateTime)</div>
+                    <div>Wallet: @MarkExternalTransaction.WalletName</div>
+                </div>
+                <div class="form-group" style="margin-top:15px">
+                    <label>Grund:</label>
+                    <input type="text" class="form-control" @bind="ExternalReason" 
+                           placeholder="@(MarkExternalTransaction.IsReceive ? "z.B. Airdrop, Mining, Geschenk" : "z.B. Spende, Zahlung")" />
+                </div>
+                @if (MarkExternalError != null)
+                {
+                    <div class="alert alert-danger" style="margin-top:10px">@MarkExternalError</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseMarkExternalDialog">Abbrechen</button>
+                <button type="button" class="btn btn-primary" @onclick="ConfirmMarkExternal" disabled="@(string.IsNullOrWhiteSpace(ExternalReason) || IsMarkingExternal)">
+                    @if (IsMarkingExternal)
+                    {
+                        <span class="loading-spinner-small"></span>
+                    }
+                    Als extern markieren
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Reset Dialog *@
+@if (IsResetDialogOpen)
+{
+    <div class="modal-overlay" @onclick="CloseResetDialog">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Verknüpfungen zurücksetzen</h3>
+                <button type="button" class="details-close" @onclick="CloseResetDialog">x</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-warning">
+                    <strong>Achtung:</strong> Diese Aktion setzt Verknüpfungen zurück. 
+                    Die Transaktionen werden wieder als "unverknüpft" angezeigt.
+                </p>
+                <div class="form-check" style="margin-top:15px">
+                    <input type="checkbox" class="form-check-input" id="keepManual" @bind="ResetKeepManual" />
+                    <label class="form-check-label" for="keepManual">Manuelle Verknüpfungen behalten</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="resetExternal" @bind="ResetIncludeExternal" />
+                    <label class="form-check-label" for="resetExternal">Auch "externe" Markierungen zurücksetzen</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseResetDialog">Abbrechen</button>
+                <button type="button" class="btn btn-danger" @onclick="ConfirmReset" disabled="@IsResetting">
+                    @if (IsResetting)
+                    {
+                        <span class="loading-spinner-small"></span>
+                    }
+                    Zurücksetzen
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Toast/Success Messages *@
+@if (SuccessMessage != null)
+{
+    <div class="toast toast-success" @onclick="() => SuccessMessage = null">
+        @SuccessMessage
+    </div>
+}

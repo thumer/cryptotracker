@@ -62,12 +62,13 @@ namespace CryptoTracker.Controllers
             return Ok(result);
         }
 
-        [HttpPost("[action]")]
-        public async Task<IActionResult> ProcessTransactionPairs()
-        {
-            await _dataImportService.ProcessTransactionPairs();
-            return Ok("Transaktionen wurden erfolgreich zusammengeführt");
-        }
+        //Obsolete durch neue Linking Logic
+        //[HttpPost("[action]")]
+        //public async Task<IActionResult> ProcessTransactionPairs()
+        //{
+        //    await _dataImportService.ProcessTransactionPairs();
+        //    return Ok("Transaktionen wurden erfolgreich zusammengeführt");
+        //}
 
         private const long MAX_REQUEST_SIZE = 1024 * 1024 * 100;
 
@@ -92,7 +93,8 @@ namespace CryptoTracker.Controllers
             await _importAutoService.ImportAsync(walletName, () => new MemoryStream(memory.ToArray()), file.Name, documentType);
         }
 
-        Task IDataImportApi.ProcessTransactionPairsAsync()
-            => _dataImportService.ProcessTransactionPairs();
+        //Obsolete durch neue Linking Logic
+        //Task IDataImportApi.ProcessTransactionPairsAsync()
+        //    => _dataImportService.ProcessTransactionPairs();
     }
 }

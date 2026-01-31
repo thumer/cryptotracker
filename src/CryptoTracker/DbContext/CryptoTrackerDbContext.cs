@@ -22,6 +22,8 @@ namespace CryptoTracker
         public DbSet<ManualCoinPrice> ManualCoinPrices { get; set; }
         public DbSet<AssetLot> AssetLots { get; set; }
         public DbSet<LotMovement> LotMovements { get; set; }
+        public DbSet<TransactionLinkMetadata> TransactionLinkMetadata { get; set; }
+        public DbSet<AgentMemory> AgentMemories { get; set; }
 
         public CryptoTrackerDbContext(DbContextOptions<CryptoTrackerDbContext> options) : base(options)
         {
@@ -206,6 +208,29 @@ namespace CryptoTracker
                 .WithMany()
                 .HasForeignKey(t => t.SourceLotId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // === TransactionLinkMetadata Configuration ===
+            modelBuilder.Entity<TransactionLinkMetadata>().HasKey(m => m.Id);
+            modelBuilder.Entity<TransactionLinkMetadata>()
+                .HasOne(m => m.Transaction)
+                .WithOne(t => t.LinkMetadata)
+                .HasForeignKey<TransactionLinkMetadata>(m => m.TransactionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<TransactionLinkMetadata>()
+                .Property(m => m.Confidence)
+                .HasColumnType("decimal(5, 4)");
+            modelBuilder.Entity<TransactionLinkMetadata>()
+                .HasIndex(m => m.LinkType);
+            modelBuilder.Entity<TransactionLinkMetadata>()
+                .HasIndex(m => m.IsConfirmed);
+
+            // === AgentMemory Configuration ===
+            modelBuilder.Entity<AgentMemory>().HasKey(m => m.Id);
+            modelBuilder.Entity<AgentMemory>()
+                .HasIndex(m => new { m.AgentKey, m.MemoryType, m.Key })
+                .IsUnique();
+            modelBuilder.Entity<AgentMemory>()
+                .HasIndex(m => m.AgentKey);
 
             base.OnModelCreating(modelBuilder);
         }

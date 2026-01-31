@@ -54,6 +54,19 @@ public class CryptoTransaction : IFlow
     public string? Comment { get; set; }
     public bool IsHidden { get; set; }
 
+    // === Link-Tracking ===
+
+    /// <summary>
+    /// Wurde diese Transaktion bewusst ohne Gegenstück gelassen?
+    /// Z.B. bei Staking Rewards, Airdrops, Mining-Einnahmen.
+    /// </summary>
+    public bool IsIntentionallyUnlinked { get; set; }
+
+    /// <summary>
+    /// Metadaten zur Verknüpfung (wie/warum verknüpft)
+    /// </summary>
+    public TransactionLinkMetadata? LinkMetadata { get; set; }
+
     // === Lot-Tracking ===
 
     /// <summary>

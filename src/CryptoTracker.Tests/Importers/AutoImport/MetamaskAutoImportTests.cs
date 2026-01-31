@@ -43,7 +43,7 @@ public class MetamaskAutoImportTests : DbTestBase
         for (var i = 1; i <= 10; i++)
         {
             var typ = i % 2 == 0 ? "Ausgang" : "Eingang";
-            sb.AppendLine($"{i:00}.07.2024 12:0{i};{typ};ETH;BSC;0,{i}00000;0,000{i};Metamask {i}");
+            sb.AppendLine($"{i:00}.07.2024 12:{i:00};{typ};ETH;BSC;0,{i}00000;0,000{i};Metamask {i}");
         }
 
         return sb.ToString();

@@ -24,6 +24,25 @@ param identityProviderName string
 @description('Azure AD application (client) ID for authentication')
 param identityProviderClientId string
 
+// OpenAI Configuration
+@description('Azure OpenAI Endpoint URL')
+param openAiEndpoint string = ''
+
+@description('Main deployment name for complex agent conversations')
+param openAiDeploymentName string = ''
+
+@description('Fast deployment name for batch classification')
+param openAiFastDeploymentName string = ''
+
+@description('Embedding deployment name for similarity search')
+param openAiEmbeddingDeploymentName string = ''
+
+@description('Embedding vector dimensions')
+param openAiEmbeddingVectorDimensions int = 1536
+
+@description('Key Vault reference to the OpenAI API key')
+param openAiKeyKVUri string = ''
+
 var tags = { 'azd-env-name': environmentName }
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' existing = {
@@ -54,6 +73,13 @@ module appService 'appservice/appservice.bicep' = {
     tenantId: tenant().tenantId
     identityProviderName: identityProviderName
     identityProviderClientId: identityProviderClientId
+    // OpenAI Configuration
+    openAiEndpoint: openAiEndpoint
+    openAiDeploymentName: openAiDeploymentName
+    openAiFastDeploymentName: openAiFastDeploymentName
+    openAiEmbeddingDeploymentName: openAiEmbeddingDeploymentName
+    openAiEmbeddingVectorDimensions: openAiEmbeddingVectorDimensions
+    openAiKeyKVUri: openAiKeyKVUri
   }
 }
 

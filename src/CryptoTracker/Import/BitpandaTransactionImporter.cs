@@ -1,4 +1,4 @@
-﻿using CryptoTracker.Entities;
+using CryptoTracker.Entities;
 using CryptoTracker.Import.Objects;
 using CsvHelper;
 using CsvHelper.Configuration;
@@ -74,16 +74,18 @@ namespace CryptoTracker.Import
                     (string.Equals(record.TransactionType, "buy", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(record.TransactionType, "sell", StringComparison.OrdinalIgnoreCase)))
                 {
+                    var isBuy = string.Equals(record.TransactionType, "buy", StringComparison.OrdinalIgnoreCase);
+                    var isSell = string.Equals(record.TransactionType, "sell", StringComparison.OrdinalIgnoreCase);
                     var price = record.AssetMarketPrice ?? (record.AmountAsset.HasValue && record.AmountFiat.HasValue && record.AmountAsset.Value != 0 ? record.AmountFiat.Value / record.AmountAsset.Value : 0);
                     var sellTrade = new CryptoTrade
                     {
                         WalletId = args.Wallet.Id,
                         DateTime = record.Timestamp,
-                        Symbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
-                        OppositeSymbol = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
+                        Symbol = isBuy ? record.Fiat : record.Asset,
+                        OppositeSymbol = isBuy ? record.Asset : record.Fiat,
                         TradeType = TradeType.Sell,
-                        Price = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? 1 / price : price,
-                        Quantity = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.AmountFiat!.Value : record.AmountAsset!.Value,
+                        Price = isBuy ? 1 / price : price,
+                        Quantity = isBuy ? record.AmountFiat!.Value : record.AmountAsset!.Value,
                         Fee = 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,
@@ -93,11 +95,11 @@ namespace CryptoTracker.Import
                     {
                         WalletId = args.Wallet.Id,
                         DateTime = record.Timestamp,
-                        Symbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Fiat : record.Asset,
-                        OppositeSymbol = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? record.Asset : record.Fiat,
+                        Symbol = isSell ? record.Fiat : record.Asset,
+                        OppositeSymbol = isSell ? record.Asset : record.Fiat,
                         TradeType = TradeType.Buy,
-                        Price = record.TransactionType.Equals("sell", StringComparison.OrdinalIgnoreCase) ? 1 / price : price,
-                        Quantity = record.TransactionType.Equals("buy", StringComparison.OrdinalIgnoreCase) ? record.AmountAsset!.Value : record.AmountFiat!.Value,
+                        Price = isSell ? 1 / price : price,
+                        Quantity = isBuy ? record.AmountAsset!.Value : record.AmountFiat!.Value,
                         Fee = 0,
                         ForeignFee = 0,
                         ForeignFeeSymbol = string.Empty,

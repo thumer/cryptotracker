@@ -7,5 +7,6 @@ public interface IDataImportApi
     Task ImportFileAsync(ImportDocumentType type, string walletName, IBrowserFile file);
     Task<ImportPreviewResult> PreviewImportAsync(IBrowserFile file);
     Task ImportAutoAsync(string walletName, IBrowserFile file, ImportDocumentType? documentType = null);
-    Task ProcessTransactionPairsAsync();
+    //Obsolete durch neue Linking Logic
+    //Task ProcessTransactionPairsAsync();
 }

@@ -1,0 +1,278 @@
+@using CryptoTracker.Shared
+
+<div class="wizard-overlay" @onclick="OnCancel">
+    <div class="wizard-container" @onclick:stopPropagation="true">
+        <div class="wizard-header">
+            <h2>Transaktions-Verknüpfung</h2>
+            <p class="wizard-subtitle">Schritt @CurrentStep von @TotalSteps</p>
+            <button type="button" class="wizard-close" @onclick="OnCancel">x</button>
+        </div>
+
+        <div class="wizard-progress">
+            @for (int i = 1; i <= TotalSteps; i++)
+            {
+                var step = i;
+                <div class="wizard-step @(step == CurrentStep ? "active" : step < CurrentStep ? "completed" : "")">
+                    <div class="wizard-step-number">
+                        @if (step < CurrentStep)
+                        {
+                            <span class="check-icon">&#10003;</span>
+                        }
+                        else
+                        {
+                            @step
+                        }
+                    </div>
+                    <div class="wizard-step-label">@GetStepLabel(step)</div>
+                </div>
+                @if (step < TotalSteps)
+                {
+                    <div class="wizard-step-connector @(step < CurrentStep ? "completed" : "")"></div>
+                }
+            }
+        </div>
+
+        <div class="wizard-content">
+            @if (CurrentStep == 1)
+            {
+                @* Step 1: Welcome *@
+                <div class="wizard-step-content">
+                    <div class="wizard-icon">&#128279;</div>
+                    <h3>Willkommen zur Transaktions-Verknüpfung</h3>
+                    <p>
+                        Dieser Assistent hilft dir, Send- und Receive-Transaktionen zwischen deinen Wallets zu verknüpfen.
+                        Das ist wichtig für die korrekte Steuerberechnung.
+                    </p>
+                    
+                    <div class="wizard-info-cards">
+                        <div class="wizard-info-card">
+                            <div class="info-icon">&#128300;</div>
+                            <h4>Warum verknüpfen?</h4>
+                            <p>Transfers zwischen eigenen Wallets sind keine steuerpflichtigen Ereignisse. 
+                               Die Verknüpfung stellt sicher, dass Lot-Informationen (Kaufdatum, Kaufpreis) 
+                               korrekt weitergegeben werden.</p>
+                        </div>
+                        <div class="wizard-info-card">
+                            <div class="info-icon">&#129302;</div>
+                            <h4>KI-Unterstützung</h4>
+                            <p>Unser KI-Assistent analysiert deine Transaktionen und schlägt automatisch 
+                               passende Verknüpfungen vor. Du behältst die volle Kontrolle.</p>
+                        </div>
+                    </div>
+
+                    @if (Statistics != null)
+                    {
+                        <div class="wizard-stats-preview">
+                            <h4>Aktuelle Situation</h4>
+                            <div class="stats-row">
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.UnlinkedTransactions</span>
+                                    <span class="stat-label">Unverknüpfte Transaktionen</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.LinkedTransactions</span>
+                                    <span class="stat-label">Bereits verknüpft</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.IntentionallyUnlinked</span>
+                                    <span class="stat-label">Als extern markiert</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else if (CurrentStep == 2)
+            {
+                @* Step 2: Auto-Link *@
+                <div class="wizard-step-content">
+                    <div class="wizard-icon">&#9889;</div>
+                    <h3>Automatische Verknüpfung</h3>
+                    <p>
+                        Klicke auf "Auto-Verknüpfung starten", um die KI-gestützte Analyse zu starten.
+                        Der Algorithmus sucht nach passenden Send/Receive-Paaren basierend auf:
+                    </p>
+                    <ul class="wizard-criteria-list">
+                        <li>Gleiches Asset (z.B. BTC zu BTC)</li>
+                        <li>Ähnliche Menge (unter Berücksichtigung von Gebühren)</li>
+                        <li>Zeitliche Nähe (typischerweise innerhalb von Minuten bis Stunden)</li>
+                        <li>Bekannte Wallet-Adressen</li>
+                    </ul>
+
+                    @if (!IsAutoLinking && AutoLinkResult == null)
+                    {
+                        <div class="wizard-action-area">
+                            <button type="button" class="btn btn-primary btn-lg" @onclick="RunAutoLink">
+                                Auto-Verknüpfung starten
+                            </button>
+                        </div>
+                    }
+                    else if (IsAutoLinking)
+                    {
+                        <div class="wizard-progress-area">
+                            <div class="loading-spinner-large"></div>
+                            <p>Analysiere Transaktionen...</p>
+                        </div>
+                    }
+                    else if (AutoLinkResult != null)
+                    {
+                        <div class="wizard-result-area">
+                            <div class="result-success">
+                                <span class="result-icon">&#10003;</span>
+                                <h4>Analyse abgeschlossen!</h4>
+                            </div>
+                            <div class="result-stats">
+                                <div class="result-stat">
+                                    <span class="result-number success">@AutoLinkResult.LinkedCount</span>
+                                    <span class="result-label">Automatisch verknüpft</span>
+                                </div>
+                                <div class="result-stat">
+                                    <span class="result-number info">@AutoLinkResult.MarkedUnlinkedCount</span>
+                                    <span class="result-label">Als extern markiert</span>
+                                </div>
+                                <div class="result-stat">
+                                    <span class="result-number warning">@AutoLinkResult.RemainingUnlinkedCount</span>
+                                    <span class="result-label">Noch offen</span>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(AutoLinkResult.Summary))
+                            {
+                                <div class="result-summary">
+                                    <h5>Zusammenfassung:</h5>
+                                    <p>@AutoLinkResult.Summary</p>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else if (CurrentStep == 3)
+            {
+                @* Step 3: Manual Review *@
+                <div class="wizard-step-content">
+                    <div class="wizard-icon">&#128270;</div>
+                    <h3>Manuelle Überprüfung</h3>
+
+                    @if (RemainingUnlinked.Count == 0)
+                    {
+                        <div class="wizard-success-state">
+                            <div class="success-icon">&#10003;</div>
+                            <h4>Alle Transaktionen verknüpft!</h4>
+                            <p>Es gibt keine weiteren unverknüpften Transaktionen.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>
+                            Diese @RemainingUnlinked.Count Transaktionen konnten nicht automatisch zugeordnet werden.
+                            Bitte überprüfe sie manuell.
+                        </p>
+
+                        <div class="wizard-transaction-list">
+                            @foreach (var tx in RemainingUnlinked.Take(10))
+                            {
+                                <div class="wizard-transaction-item">
+                                    <div class="tx-info">
+                                        <span class="type-badge @(tx.IsSend ? "send" : "receive")">
+                                            @(tx.IsSend ? "Send" : "Receive")
+                                        </span>
+                                        <span class="tx-symbol">@tx.Symbol</span>
+                                        <span class="tx-amount">@tx.Quantity.ToString("N8")</span>
+                                        <span class="tx-wallet">@tx.WalletName</span>
+                                        <span class="tx-date">@tx.DateTime.ToString("dd.MM.yyyy HH:mm")</span>
+                                    </div>
+                                    <div class="tx-actions">
+                                        <button type="button" class="btn btn-sm btn-primary" 
+                                                @onclick="() => OnLinkTransaction(tx)">
+                                            Verknüpfen
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary" 
+                                                @onclick="() => OnMarkExternal(tx)">
+                                            Extern
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        @if (RemainingUnlinked.Count > 10)
+                        {
+                            <p class="text-muted" style="margin-top: 15px;">
+                                Und @(RemainingUnlinked.Count - 10) weitere...
+                                Du kannst nach dem Wizard auf der Hauptseite alle bearbeiten.
+                            </p>
+                        }
+                    }
+                </div>
+            }
+            else if (CurrentStep == 4)
+            {
+                @* Step 4: Summary *@
+                <div class="wizard-step-content">
+                    <div class="wizard-icon success">&#10003;</div>
+                    <h3>Verknüpfung abgeschlossen!</h3>
+
+                    @if (FinalStatistics != null)
+                    {
+                        <div class="wizard-final-stats">
+                            <div class="final-stat-card success">
+                                <span class="final-stat-number">@FinalStatistics.LinkedTransactions</span>
+                                <span class="final-stat-label">Verknüpfte Transaktionen</span>
+                                <span class="final-stat-percent">@FinalStatistics.LinkedPercent%</span>
+                            </div>
+                            <div class="final-stat-card info">
+                                <span class="final-stat-number">@FinalStatistics.IntentionallyUnlinked</span>
+                                <span class="final-stat-label">Externe Transaktionen</span>
+                            </div>
+                            @if (FinalStatistics.UnlinkedTransactions > 0)
+                            {
+                                <div class="final-stat-card warning">
+                                    <span class="final-stat-number">@FinalStatistics.UnlinkedTransactions</span>
+                                    <span class="final-stat-label">Noch offen</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="wizard-next-steps">
+                            <h4>Nächste Schritte</h4>
+                            <ul>
+                                @if (FinalStatistics.UnlinkedTransactions > 0)
+                                {
+                                    <li>Bearbeite die verbleibenden @FinalStatistics.UnlinkedTransactions offenen Transaktionen auf der Hauptseite</li>
+                                }
+                                <li>Überprüfe die Lot-Zuordnungen unter "Steuerlots"</li>
+                                <li>Generiere deinen Steuerbericht unter "Bilanzen"</li>
+                            </ul>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="wizard-footer">
+            @if (CurrentStep > 1)
+            {
+                <button type="button" class="btn btn-secondary" @onclick="PreviousStep" disabled="@IsProcessing">
+                    Zurück
+                </button>
+            }
+            <div class="wizard-footer-spacer"></div>
+            @if (CurrentStep < TotalSteps)
+            {
+                <button type="button" class="btn btn-primary" @onclick="NextStep" disabled="@(!CanProceed || IsProcessing)">
+                    @if (IsProcessing)
+                    {
+                        <span class="loading-spinner-small"></span>
+                    }
+                    Weiter
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-primary" @onclick="Complete">
+                    Fertig
+                </button>
+            }
+        </div>
+    </div>
+</div>

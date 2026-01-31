@@ -48,10 +48,11 @@ public class DataImportRestClient : IDataImportApi
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task ProcessTransactionPairsAsync()
-    {
-        using var content = new MultipartFormDataContent();
-        var response = await _http.PostAsync("api/DataImport/ProcessTransactionPairs", content);
-        response.EnsureSuccessStatusCode();
-    }
+    //Obsolete durch neue Linking Logic
+    //public async Task ProcessTransactionPairsAsync()
+    //{
+    //    using var content = new MultipartFormDataContent();
+    //    var response = await _http.PostAsync("api/DataImport/ProcessTransactionPairs", content);
+    //    response.EnsureSuccessStatusCode();
+    //}
 }

@@ -216,6 +216,111 @@ public partial class Transaktionen
         DetailsError = null;
     }
 
+    private bool CanToggleHidden => CurrentHidden.HasValue && SelectedFlowType.HasValue && SelectedFlowId.HasValue;
+
+    private bool IsCurrentHidden => CurrentHidden ?? false;
+
+    private bool? CurrentHidden => Details?.FlowType switch
+    {
+        FlowType.Trade => Details?.Trade?.IsHidden,
+        FlowType.Transaction => Details?.Transaction?.IsHidden,
+        _ => null
+    };
+
+    private async Task ToggleHiddenAsync()
+    {
+        if (!SelectedFlowType.HasValue || !SelectedFlowId.HasValue || CurrentHidden == null)
+            return;
+
+        IsToggleHiddenBusy = true;
+        DetailsError = null;
+
+        try
+        {
+            var newHiddenState = !CurrentHidden.Value;
+            var success = await TransactionsApi.SetHiddenAsync(new SetHiddenRequest(SelectedFlowType.Value, SelectedFlowId.Value, newHiddenState));
+            if (!success)
+            {
+                DetailsError = "Eintrag konnte nicht aktualisiert werden.";
+            }
+            else
+            {
+                UpdateCurrentHiddenState(newHiddenState);
+                await LoadTransactionsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            DetailsError = ex.Message;
+        }
+        IsToggleHiddenBusy = false;
+    }
+
+    private void UpdateCurrentHiddenState(bool isHidden)
+    {
+        if (Details == null)
+            return;
+
+        if (Details.FlowType == FlowType.Trade && Details.Trade != null)
+        {
+            Details = Details with { Trade = Details.Trade with { IsHidden = isHidden } };
+        }
+        else if (Details.FlowType == FlowType.Transaction && Details.Transaction != null)
+        {
+            Details = Details with { Transaction = Details.Transaction with { IsHidden = isHidden } };
+        }
+    }
+
+    private void OnRowRender(RowRenderEventArgs<TransactionRowDTO> args)
+    {
+        if (args.Data == null || !args.Data.IsHidden)
+            return;
+
+        var attributes = args.Attributes;
+        if (attributes == null)
+            return;
+
+        if (attributes.TryGetValue("class", out var existing))
+        {
+            attributes["class"] = $"{existing} hidden-row";
+        }
+        else
+        {
+            attributes["class"] = "hidden-row";
+        }
+    }
+
+    private static bool ParseBool(object? value, bool fallback)
+    {
+        if (value is bool boolValue)
+            return boolValue;
+
+        if (value is string stringValue)
+        {
+            return ParseBool(stringValue, fallback);
+        }
+
+        return fallback;
+    }
+
+    private static bool ParseBool(string? value, bool fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return fallback;
+
+        if (bool.TryParse(value, out var parsed))
+            return parsed;
+
+        return value.Trim() switch
+        {
+            "1" => true,
+            "0" => false,
+            "on" => true,
+            "off" => false,
+            _ => fallback
+        };
+    }
+
     /// <summary>
     /// Gets the wallet name for lot assignment (source wallet for outflows)
     /// </summary>
@@ -226,6 +331,38 @@ public partial class Transaktionen
         // For trades, use the source wallet (row.SourceWallet)
         // For transactions (transfers), use the source wallet
         return LotAssignmentRow.SourceWallet ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Determines if the row represents a sell trade (crypto sold for fiat/other crypto)
+    /// vs. a transfer (crypto moved between own wallets)
+    /// </summary>
+    private static bool IsSellTrade(TransactionRowDTO row)
+    {
+        // A sell trade is a Trade flow type where crypto is sold
+        // A transfer is a Transaction flow type (Send/Receive between wallets)
+        return row.FlowType == FlowType.Trade;
+    }
+
+    /// <summary>
+    /// Determines if a transaction requires lot assignment
+    /// </summary>
+    private static bool RequiresLotAssignment(TransactionRowDTO row)
+    {
+        // Sell trades need lot assignment to calculate gains
+        if (row.FlowType == FlowType.Trade)
+        {
+            // Only outgoing trades (sells) need lot assignment
+            return row.FlowDirection == FlowDirection.Outflow;
+        }
+        
+        // Transfers (Send transactions) need lot assignment to track which lots are moved
+        if (row.FlowType == FlowType.Transaction)
+        {
+            return row.FlowDirection == FlowDirection.Outflow;
+        }
+        
+        return false;
     }
 
     /// <summary>
