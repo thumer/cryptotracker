@@ -15,7 +15,8 @@ public record TradeDetailsDTO(DateTimeOffset DateTime,
                               decimal ForeignFee,
                               string? ForeignFeeSymbol,
                               string? Referenz,
-                              string? Comment);
+                              string? Comment,
+                              bool IsHidden);
 
 public record TransactionDetailsDTO(DateTimeOffset DateTime,
                                     FlowDirection FlowDirection,
@@ -30,7 +31,8 @@ public record TransactionDetailsDTO(DateTimeOffset DateTime,
                                     string? Comment,
                                     string? TransactionId,
                                     string? Address,
-                                    string? Network);
+                                    string? Network,
+                                    bool IsHidden);
 
 public record FlowDetailsDTO(FlowType FlowType,
                              TradeDetailsDTO? Trade,

@@ -15,7 +15,7 @@ public class TransactionService
         _coinRateService = coinRateService;
     }
 
-    public async Task<IList<TransactionRowDTO>> GetTransactionsAsync(string? walletName, string? symbol)
+    public async Task<IList<TransactionRowDTO>> GetTransactionsAsync(string? walletName, string? symbol, bool includeHidden)
     {
         var tradesQuery = _dbContext.CryptoTrades
             .Include(t => t.Wallet)
@@ -26,6 +26,12 @@ public class TransactionService
             .Include(t => t.Wallet)
             .Include(t => t.OppositeWallet)
             .AsQueryable();
+
+        if (includeHidden)
+        {
+            tradesQuery = tradesQuery.IgnoreQueryFilters();
+            transactionsQuery = transactionsQuery.IgnoreQueryFilters();
+        }
 
         if (!string.IsNullOrWhiteSpace(walletName))
         {
@@ -72,6 +78,7 @@ public class TransactionService
             string? comment = null;
             var hasOpposite = false;
             var flowId = 0;
+            var isHidden = false;
 
             if (f is CryptoTrade trade)
             {
@@ -79,6 +86,7 @@ public class TransactionService
                 fee = trade.Fee;
                 comment = trade.Comment;
                 hasOpposite = trade.OppositeTradeId.HasValue;
+                isHidden = trade.IsHidden;
                 if (trade.TradeType == TradeType.Sell)
                 {
                     targetSymbol = trade.OppositeSymbol;
@@ -101,6 +109,7 @@ public class TransactionService
                 fee = transaction.Fee;
                 comment = transaction.Comment;
                 hasOpposite = transaction.OppositeTransactionId.HasValue;
+                isHidden = transaction.IsHidden;
             }
 
             return new TransactionRowDTO(f.FlowType,
@@ -120,27 +129,63 @@ public class TransactionService
                 targetSymbol,
                 targetAmount,
                 targetSlug,
-                Guid.NewGuid());
+                Guid.NewGuid(),
+                isHidden);
         }).ToList();
     }
 
-    public async Task<FlowDetailsDTO?> GetTransactionDetailsAsync(FlowType flowType, int id)
+    public async Task<FlowDetailsDTO?> GetTransactionDetailsAsync(FlowType flowType, int id, bool includeHidden)
     {
         return flowType switch
         {
-            FlowType.Trade => await GetTradeDetailsAsync(id),
-            FlowType.Transaction => await GetTransactionDetailsInternalAsync(id),
+            FlowType.Trade => await GetTradeDetailsAsync(id, includeHidden),
+            FlowType.Transaction => await GetTransactionDetailsInternalAsync(id, includeHidden),
             _ => null
         };
     }
 
-    private async Task<FlowDetailsDTO?> GetTradeDetailsAsync(int id)
+    public async Task<bool> SetHiddenAsync(FlowType flowType, int id, bool isHidden)
     {
-        var trade = await _dbContext.CryptoTrades
+        switch (flowType)
+        {
+            case FlowType.Trade:
+            {
+                var trade = await _dbContext.CryptoTrades.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
+                if (trade == null)
+                    return false;
+                trade.IsHidden = isHidden;
+                break;
+            }
+            case FlowType.Transaction:
+            {
+                var transaction = await _dbContext.CryptoTransactions.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
+                if (transaction == null)
+                    return false;
+                transaction.IsHidden = isHidden;
+                break;
+            }
+            default:
+                return false;
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    private async Task<FlowDetailsDTO?> GetTradeDetailsAsync(int id, bool includeHidden)
+    {
+        var tradeQuery = _dbContext.CryptoTrades
             .Include(t => t.Wallet)
             .Include(t => t.OppositeTrade)
             .ThenInclude(t => t.Wallet)
-            .FirstOrDefaultAsync(t => t.Id == id);
+            .AsQueryable();
+
+        if (includeHidden)
+        {
+            tradeQuery = tradeQuery.IgnoreQueryFilters();
+        }
+
+        var trade = await tradeQuery.FirstOrDefaultAsync(t => t.Id == id);
 
         if (trade == null)
             return null;
@@ -166,16 +211,23 @@ public class TransactionService
         return new FlowDetailsDTO(FlowType.Trade, detail, opposite, null, null);
     }
 
-    private async Task<FlowDetailsDTO?> GetTransactionDetailsInternalAsync(int id)
+    private async Task<FlowDetailsDTO?> GetTransactionDetailsInternalAsync(int id, bool includeHidden)
     {
-        var transaction = await _dbContext.CryptoTransactions
+        var transactionQuery = _dbContext.CryptoTransactions
             .Include(t => t.Wallet)
             .Include(t => t.OppositeWallet)
             .Include(t => t.OppositeTransaction)
             .ThenInclude(t => t.Wallet)
             .Include(t => t.OppositeTransaction)
             .ThenInclude(t => t.OppositeWallet)
-            .FirstOrDefaultAsync(t => t.Id == id);
+            .AsQueryable();
+
+        if (includeHidden)
+        {
+            transactionQuery = transactionQuery.IgnoreQueryFilters();
+        }
+
+        var transaction = await transactionQuery.FirstOrDefaultAsync(t => t.Id == id);
 
         if (transaction == null)
             return null;
@@ -241,7 +293,8 @@ public class TransactionService
             trade.ForeignFee,
             string.IsNullOrWhiteSpace(trade.ForeignFeeSymbol) ? null : trade.ForeignFeeSymbol,
             trade.Referenz,
-            trade.Comment);
+            trade.Comment,
+            trade.IsHidden);
     }
 
     private static TransactionDetailsDTO BuildTransactionDetails(CryptoTransaction transaction,
@@ -266,6 +319,7 @@ public class TransactionService
             transaction.Comment,
             transaction.TransactionId,
             transaction.Address,
-            transaction.Network);
+            transaction.Network,
+            transaction.IsHidden);
     }
 }

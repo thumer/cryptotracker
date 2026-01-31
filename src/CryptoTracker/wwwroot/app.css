@@ -108,6 +108,16 @@ h1, h2, h3, .app-title {
     margin-bottom: 1.5rem;
 }
 
+.page-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.page-actions .form-check {
+    margin: 0;
+}
+
 .page-subtitle {
     margin: 0.35rem 0 0;
     color: var(--ink-500);
@@ -319,6 +329,10 @@ h1, h2, h3, .app-title {
     color: var(--ink-700);
 }
 
+.styled-grid .hidden-row td {
+    color: var(--ink-400);
+}
+
 .row-clickable .rz-grid-table tbody tr {
     cursor: pointer;
 }
@@ -465,6 +479,32 @@ h1, h2, h3, .app-title {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 1rem;
+}
+
+.details-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.details-toggle {
+    border: none;
+    background: var(--surface-200);
+    color: var(--ink-700);
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.details-toggle.is-hidden {
+    background: rgba(194, 70, 84, 0.12);
+    color: var(--rose-500);
+}
+
+.details-toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .details-close {
