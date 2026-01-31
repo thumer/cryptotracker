@@ -220,6 +220,7 @@ public class LotsController : ControllerBase, ILotsApi
             t.Symbol,
             t.Quantity,
             t.Wallet.Name,
+            t.WalletId,
             t.TransactionType.ToString(),
             t.OppositeWallet?.Name)));
 
@@ -230,6 +231,7 @@ public class LotsController : ControllerBase, ILotsApi
             t.Symbol,
             t.Quantity,
             t.Wallet.Name,
+            t.WalletId,
             t.TradeType.ToString(),
             null)));
 

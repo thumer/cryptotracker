@@ -11,6 +11,7 @@ using CryptoTracker.Agent.Common;
 using CryptoTracker.Agent.Definitions;
 using CryptoTracker.Agent.Services;
 using CryptoTracker.Agent.Tools;
+using CryptoTracker.Hubs;
 using Azure.AI.OpenAI;
 using Azure;
 using Azure.Identity;
@@ -131,6 +132,10 @@ namespace CryptoTracker
 
             // Agent Services
             services.AddScoped<TransactionLinkingService>();
+            services.AddSingleton<InteractiveLinkingService>();
+
+            // SignalR
+            services.AddSignalR();
 
             services.AddScoped<IWalletApi, WalletController>();
             services.AddScoped<IFlowApi, FlowController>();
@@ -176,6 +181,7 @@ namespace CryptoTracker
                     //.AddInteractiveWebAssemblyRenderMode()
                     .AddAdditionalAssemblies(typeof(Overview).Assembly);
                 endpoints.MapControllers();
+                endpoints.MapHub<LinkingHub>("/hubs/linking");
                 endpoints.MapDefaultControllerRoute();
                 endpoints.MapFallbackToFile("index.html");
             });

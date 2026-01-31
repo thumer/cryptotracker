@@ -248,10 +248,9 @@ public partial class LotsLinking
 
         try
         {
-            // Look up wallet ID from name (simplified - real implementation needs API)
             var request = new CreateManualLotRequest(
                 Symbol: CreateLotForAssignment.Symbol,
-                WalletId: 0, // Would need to resolve from wallet name
+                WalletId: CreateLotForAssignment.WalletId,
                 Quantity: CreateLotForAssignment.Quantity,
                 AcquisitionDate: new DateTimeOffset(NewLotAcquisitionDate, TimeSpan.Zero),
                 AcquisitionPriceEur: NewLotAcquisitionPrice,

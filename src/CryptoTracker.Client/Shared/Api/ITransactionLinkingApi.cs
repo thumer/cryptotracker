@@ -54,4 +54,41 @@ public interface ITransactionLinkingApi
     /// Markiert eine Transaktion als absichtlich unverknüpft (externe Einnahme)
     /// </summary>
     Task<LinkResultDTO> MarkAsIntentionallyUnlinkedAsync(int transactionId, string reason);
+
+    // === Neue interaktive Linking-Methoden ===
+
+    /// <summary>
+    /// Startet eine neue interaktive Linking-Session
+    /// </summary>
+    Task<InteractiveLinkingSessionDTO> StartInteractiveSessionAsync();
+
+    /// <summary>
+    /// Gibt den Status einer interaktiven Session zurück
+    /// </summary>
+    Task<InteractiveLinkingSessionDTO?> GetInteractiveSessionStatusAsync(string sessionId);
+
+    /// <summary>
+    /// Sendet User-Antwort an interaktive Session
+    /// </summary>
+    Task SubmitUserResponseAsync(string sessionId, UserResponseDTO response);
+
+    /// <summary>
+    /// Stoppt eine interaktive Session
+    /// </summary>
+    Task StopInteractiveSessionAsync(string sessionId);
+
+    /// <summary>
+    /// Gibt den Linking-Context (alle Daten + Hints) zurück
+    /// </summary>
+    Task<LinkingContextDTO> GetLinkingContextAsync();
+
+    /// <summary>
+    /// Gibt gelernte Regeln zurück
+    /// </summary>
+    Task<IList<LearnedRuleDTO>> GetLearnedRulesAsync();
+
+    /// <summary>
+    /// Löscht eine gelernte Regel
+    /// </summary>
+    Task<bool> DeleteLearnedRuleAsync(string ruleId);
 }

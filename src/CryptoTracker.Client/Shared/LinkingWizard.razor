@@ -1,69 +1,142 @@
 @using CryptoTracker.Shared
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 
 <div class="wizard-overlay" @onclick="OnCancel">
-    <div class="wizard-container" @onclick:stopPropagation="true">
+    <div class="wizard-container wizard-container-large" @onclick:stopPropagation="true">
         <div class="wizard-header">
             <h2>Transaktions-Verknüpfung</h2>
-            <p class="wizard-subtitle">Schritt @CurrentStep von @TotalSteps</p>
-            <button type="button" class="wizard-close" @onclick="OnCancel">x</button>
+            <p class="wizard-subtitle">@GetStatusText()</p>
+            <button type="button" class="wizard-close" @onclick="OnCancel">×</button>
         </div>
 
-        <div class="wizard-progress">
-            @for (int i = 1; i <= TotalSteps; i++)
-            {
-                var step = i;
-                <div class="wizard-step @(step == CurrentStep ? "active" : step < CurrentStep ? "completed" : "")">
-                    <div class="wizard-step-number">
-                        @if (step < CurrentStep)
-                        {
-                            <span class="check-icon">&#10003;</span>
-                        }
-                        else
-                        {
-                            @step
-                        }
-                    </div>
-                    <div class="wizard-step-label">@GetStepLabel(step)</div>
+        <div class="wizard-content linking-wizard-content">
+            @* Progress Section *@
+            <div class="linking-progress-section">
+                <div class="linking-progress-bar">
+                    <div class="linking-progress-fill" style="width: @ProgressPercent%"></div>
                 </div>
-                @if (step < TotalSteps)
+                <div class="linking-progress-stats">
+                    <span>@ProcessedCount / @TotalCount Transaktionen</span>
+                    @if (LinkedCount > 0 || MarkedExternalCount > 0 || SkippedCount > 0)
+                    {
+                        <span class="stats-detail">
+                            ✓ @LinkedCount verknüpft | 
+                            ⊕ @MarkedExternalCount extern | 
+                            ⏭ @SkippedCount übersprungen
+                        </span>
+                    }
+                </div>
+            </div>
+
+            @* Live Event Log *@
+            <div class="linking-event-log" @ref="eventLogElement">
+                @foreach (var evt in EventLog)
                 {
-                    <div class="wizard-step-connector @(step < CurrentStep ? "completed" : "")"></div>
-                }
-            }
-        </div>
-
-        <div class="wizard-content">
-            @if (CurrentStep == 1)
-            {
-                @* Step 1: Welcome *@
-                <div class="wizard-step-content">
-                    <div class="wizard-icon">&#128279;</div>
-                    <h3>Willkommen zur Transaktions-Verknüpfung</h3>
-                    <p>
-                        Dieser Assistent hilft dir, Send- und Receive-Transaktionen zwischen deinen Wallets zu verknüpfen.
-                        Das ist wichtig für die korrekte Steuerberechnung.
-                    </p>
-                    
-                    <div class="wizard-info-cards">
-                        <div class="wizard-info-card">
-                            <div class="info-icon">&#128300;</div>
-                            <h4>Warum verknüpfen?</h4>
-                            <p>Transfers zwischen eigenen Wallets sind keine steuerpflichtigen Ereignisse. 
-                               Die Verknüpfung stellt sicher, dass Lot-Informationen (Kaufdatum, Kaufpreis) 
-                               korrekt weitergegeben werden.</p>
-                        </div>
-                        <div class="wizard-info-card">
-                            <div class="info-icon">&#129302;</div>
-                            <h4>KI-Unterstützung</h4>
-                            <p>Unser KI-Assistent analysiert deine Transaktionen und schlägt automatisch 
-                               passende Verknüpfungen vor. Du behältst die volle Kontrolle.</p>
-                        </div>
+                    <div class="linking-event @evt.CssClass">
+                        <span class="event-icon">@evt.Icon</span>
+                        <span class="event-message">@evt.Message</span>
                     </div>
+                }
+                @if (IsProcessing && CurrentQuestion == null)
+                {
+                    <div class="linking-event processing">
+                        <span class="event-icon"><span class="loading-spinner-small"></span></span>
+                        <span class="event-message">@ProcessingMessage</span>
+                    </div>
+                }
+            </div>
 
+            @* Question Section (inline) *@
+            @if (CurrentQuestion != null)
+            {
+                <div class="linking-question-section">
+                    <div class="question-header">
+                        <span class="question-icon">❓</span>
+                        <span>Agent fragt:</span>
+                    </div>
+                    <div class="question-content">
+                        <p>@CurrentQuestion</p>
+                        @if (CurrentTransaction != null)
+                        {
+                            <div class="question-transaction-preview">
+                                <span class="type-badge @(CurrentTransaction.IsSend ? "send" : "receive")">
+                                    @(CurrentTransaction.IsSend ? "Send" : "Receive")
+                                </span>
+                                <span class="tx-symbol">@CurrentTransaction.Symbol</span>
+                                <span class="tx-amount">@CurrentTransaction.Quantity.ToString("N8")</span>
+                                <span class="tx-wallet">@CurrentTransaction.WalletName</span>
+                                <span class="tx-date">@CurrentTransaction.DateTime.ToString("dd.MM.yyyy HH:mm")</span>
+                                @if (!string.IsNullOrEmpty(CurrentTransaction.Comment))
+                                {
+                                    <span class="tx-comment">"@CurrentTransaction.Comment"</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="question-options">
+                        @if (CurrentOptions != null)
+                        {
+                            @foreach (var option in CurrentOptions)
+                            {
+                                <button type="button" 
+                                        class="btn @GetOptionButtonClass(option)" 
+                                        @onclick="() => AnswerQuestion(option)"
+                                        disabled="@IsAnswering">
+                                    @option
+                                </button>
+                            }
+                        }
+                    </div>
+                    <div class="question-remember">
+                        <label>
+                            <input type="checkbox" @bind="ShouldRemember" />
+                            Diese Entscheidung für ähnliche Fälle merken
+                        </label>
+                    </div>
+                </div>
+            }
+
+            @* Learned Rules Section *@
+            @if (LearnedRules.Count > 0)
+            {
+                <div class="linking-rules-section">
+                    <div class="rules-header" @onclick="ToggleRulesExpanded">
+                        <span>@(RulesExpanded ? "▼" : "▶") Gelernte Regeln (@LearnedRules.Count)</span>
+                    </div>
+                    @if (RulesExpanded)
+                    {
+                        <div class="rules-list">
+                            @foreach (var rule in LearnedRules)
+                            {
+                                <div class="rule-item">
+                                    <span class="rule-pattern">"@rule.Pattern"</span>
+                                    <span class="rule-arrow">→</span>
+                                    <span class="rule-action">@rule.Description</span>
+                                    <span class="rule-count">(@rule.TimesApplied× angewendet)</span>
+                                    <button type="button" class="btn-icon" @onclick="() => DeleteRule(rule.Id)" title="Regel löschen">
+                                        🗑
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Start / Completion Section *@
+            @if (!IsStarted)
+            {
+                <div class="linking-start-section">
+                    <div class="wizard-icon">🔗</div>
+                    <h3>Interaktive Transaktions-Verknüpfung</h3>
+                    <p>
+                        Der Assistent verknüpft automatisch passende Send/Receive-Paare.
+                        Bei unklaren Fällen wirst du um Bestätigung gebeten.
+                    </p>
                     @if (Statistics != null)
                     {
                         <div class="wizard-stats-preview">
-                            <h4>Aktuelle Situation</h4>
                             <div class="stats-row">
                                 <div class="stat-item">
                                     <span class="stat-number">@Statistics.UnlinkedTransactions</span>
@@ -80,199 +153,342 @@
                             </div>
                         </div>
                     }
-                </div>
-            }
-            else if (CurrentStep == 2)
-            {
-                @* Step 2: Auto-Link *@
-                <div class="wizard-step-content">
-                    <div class="wizard-icon">&#9889;</div>
-                    <h3>Automatische Verknüpfung</h3>
-                    <p>
-                        Klicke auf "Auto-Verknüpfung starten", um die KI-gestützte Analyse zu starten.
-                        Der Algorithmus sucht nach passenden Send/Receive-Paaren basierend auf:
-                    </p>
-                    <ul class="wizard-criteria-list">
-                        <li>Gleiches Asset (z.B. BTC zu BTC)</li>
-                        <li>Ähnliche Menge (unter Berücksichtigung von Gebühren)</li>
-                        <li>Zeitliche Nähe (typischerweise innerhalb von Minuten bis Stunden)</li>
-                        <li>Bekannte Wallet-Adressen</li>
-                    </ul>
-
-                    @if (!IsAutoLinking && AutoLinkResult == null)
-                    {
-                        <div class="wizard-action-area">
-                            <button type="button" class="btn btn-primary btn-lg" @onclick="RunAutoLink">
-                                Auto-Verknüpfung starten
-                            </button>
-                        </div>
-                    }
-                    else if (IsAutoLinking)
-                    {
-                        <div class="wizard-progress-area">
-                            <div class="loading-spinner-large"></div>
-                            <p>Analysiere Transaktionen...</p>
-                        </div>
-                    }
-                    else if (AutoLinkResult != null)
-                    {
-                        <div class="wizard-result-area">
-                            <div class="result-success">
-                                <span class="result-icon">&#10003;</span>
-                                <h4>Analyse abgeschlossen!</h4>
-                            </div>
-                            <div class="result-stats">
-                                <div class="result-stat">
-                                    <span class="result-number success">@AutoLinkResult.LinkedCount</span>
-                                    <span class="result-label">Automatisch verknüpft</span>
-                                </div>
-                                <div class="result-stat">
-                                    <span class="result-number info">@AutoLinkResult.MarkedUnlinkedCount</span>
-                                    <span class="result-label">Als extern markiert</span>
-                                </div>
-                                <div class="result-stat">
-                                    <span class="result-number warning">@AutoLinkResult.RemainingUnlinkedCount</span>
-                                    <span class="result-label">Noch offen</span>
-                                </div>
-                            </div>
-                            @if (!string.IsNullOrEmpty(AutoLinkResult.Summary))
+                    <div class="wizard-action-area">
+                        <button type="button" class="btn btn-primary btn-lg" @onclick="StartInteractiveSession" disabled="@IsConnecting">
+                            @if (IsConnecting)
                             {
-                                <div class="result-summary">
-                                    <h5>Zusammenfassung:</h5>
-                                    <p>@AutoLinkResult.Summary</p>
-                                </div>
+                                <span class="loading-spinner-small"></span>
+                                <span>Verbinde...</span>
                             }
-                        </div>
-                    }
-                </div>
-            }
-            else if (CurrentStep == 3)
-            {
-                @* Step 3: Manual Review *@
-                <div class="wizard-step-content">
-                    <div class="wizard-icon">&#128270;</div>
-                    <h3>Manuelle Überprüfung</h3>
-
-                    @if (RemainingUnlinked.Count == 0)
-                    {
-                        <div class="wizard-success-state">
-                            <div class="success-icon">&#10003;</div>
-                            <h4>Alle Transaktionen verknüpft!</h4>
-                            <p>Es gibt keine weiteren unverknüpften Transaktionen.</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <p>
-                            Diese @RemainingUnlinked.Count Transaktionen konnten nicht automatisch zugeordnet werden.
-                            Bitte überprüfe sie manuell.
-                        </p>
-
-                        <div class="wizard-transaction-list">
-                            @foreach (var tx in RemainingUnlinked.Take(10))
+                            else
                             {
-                                <div class="wizard-transaction-item">
-                                    <div class="tx-info">
-                                        <span class="type-badge @(tx.IsSend ? "send" : "receive")">
-                                            @(tx.IsSend ? "Send" : "Receive")
-                                        </span>
-                                        <span class="tx-symbol">@tx.Symbol</span>
-                                        <span class="tx-amount">@tx.Quantity.ToString("N8")</span>
-                                        <span class="tx-wallet">@tx.WalletName</span>
-                                        <span class="tx-date">@tx.DateTime.ToString("dd.MM.yyyy HH:mm")</span>
-                                    </div>
-                                    <div class="tx-actions">
-                                        <button type="button" class="btn btn-sm btn-primary" 
-                                                @onclick="() => OnLinkTransaction(tx)">
-                                            Verknüpfen
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-secondary" 
-                                                @onclick="() => OnMarkExternal(tx)">
-                                            Extern
-                                        </button>
-                                    </div>
-                                </div>
+                                <span>Verknüpfung starten</span>
                             }
-                        </div>
-
-                        @if (RemainingUnlinked.Count > 10)
-                        {
-                            <p class="text-muted" style="margin-top: 15px;">
-                                Und @(RemainingUnlinked.Count - 10) weitere...
-                                Du kannst nach dem Wizard auf der Hauptseite alle bearbeiten.
-                            </p>
-                        }
-                    }
+                        </button>
+                    </div>
                 </div>
             }
-            else if (CurrentStep == 4)
+            else if (IsCompleted)
             {
-                @* Step 4: Summary *@
-                <div class="wizard-step-content">
-                    <div class="wizard-icon success">&#10003;</div>
+                <div class="linking-complete-section">
+                    <div class="wizard-icon success">✓</div>
                     <h3>Verknüpfung abgeschlossen!</h3>
-
-                    @if (FinalStatistics != null)
-                    {
-                        <div class="wizard-final-stats">
-                            <div class="final-stat-card success">
-                                <span class="final-stat-number">@FinalStatistics.LinkedTransactions</span>
-                                <span class="final-stat-label">Verknüpfte Transaktionen</span>
-                                <span class="final-stat-percent">@FinalStatistics.LinkedPercent%</span>
-                            </div>
-                            <div class="final-stat-card info">
-                                <span class="final-stat-number">@FinalStatistics.IntentionallyUnlinked</span>
-                                <span class="final-stat-label">Externe Transaktionen</span>
-                            </div>
-                            @if (FinalStatistics.UnlinkedTransactions > 0)
-                            {
-                                <div class="final-stat-card warning">
-                                    <span class="final-stat-number">@FinalStatistics.UnlinkedTransactions</span>
-                                    <span class="final-stat-label">Noch offen</span>
-                                </div>
-                            }
+                    <div class="result-stats">
+                        <div class="result-stat">
+                            <span class="result-number success">@LinkedCount</span>
+                            <span class="result-label">Verknüpft</span>
                         </div>
-
-                        <div class="wizard-next-steps">
-                            <h4>Nächste Schritte</h4>
-                            <ul>
-                                @if (FinalStatistics.UnlinkedTransactions > 0)
-                                {
-                                    <li>Bearbeite die verbleibenden @FinalStatistics.UnlinkedTransactions offenen Transaktionen auf der Hauptseite</li>
-                                }
-                                <li>Überprüfe die Lot-Zuordnungen unter "Steuerlots"</li>
-                                <li>Generiere deinen Steuerbericht unter "Bilanzen"</li>
-                            </ul>
+                        <div class="result-stat">
+                            <span class="result-number info">@MarkedExternalCount</span>
+                            <span class="result-label">Extern markiert</span>
                         </div>
-                    }
+                        @if (SkippedCount > 0)
+                        {
+                            <div class="result-stat">
+                                <span class="result-number warning">@SkippedCount</span>
+                                <span class="result-label">Übersprungen</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Error Display *@
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="linking-error">
+                    <span>⚠</span> @ErrorMessage
                 </div>
             }
         </div>
 
         <div class="wizard-footer">
-            @if (CurrentStep > 1)
+            @if (IsStarted && !IsCompleted)
             {
-                <button type="button" class="btn btn-secondary" @onclick="PreviousStep" disabled="@IsProcessing">
-                    Zurück
+                <button type="button" class="btn btn-secondary" @onclick="StopSession" disabled="@IsAnswering">
+                    Abbrechen
                 </button>
             }
             <div class="wizard-footer-spacer"></div>
-            @if (CurrentStep < TotalSteps)
-            {
-                <button type="button" class="btn btn-primary" @onclick="NextStep" disabled="@(!CanProceed || IsProcessing)">
-                    @if (IsProcessing)
-                    {
-                        <span class="loading-spinner-small"></span>
-                    }
-                    Weiter
-                </button>
-            }
-            else
+            @if (IsCompleted || !IsStarted)
             {
                 <button type="button" class="btn btn-primary" @onclick="Complete">
-                    Fertig
+                    @(IsCompleted ? "Fertig" : "Schließen")
                 </button>
             }
         </div>
     </div>
 </div>
+
+<style>
+    .wizard-container-large {
+        max-width: 800px;
+        max-height: 90vh;
+    }
+
+    .linking-wizard-content {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-height: 400px;
+    }
+
+    .linking-progress-section {
+        padding: 12px 16px;
+        background: var(--bs-light);
+        border-radius: 8px;
+    }
+
+    .linking-progress-bar {
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .linking-progress-fill {
+        height: 100%;
+        background: var(--bs-primary);
+        transition: width 0.3s ease;
+    }
+
+    .linking-progress-stats {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .stats-detail {
+        color: #888;
+    }
+
+    .linking-event-log {
+        flex: 1;
+        min-height: 150px;
+        max-height: 250px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 12px;
+        background: #fafafa;
+    }
+
+    .linking-event {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .linking-event:last-child {
+        border-bottom: none;
+    }
+
+    .linking-event.linked {
+        color: #28a745;
+    }
+
+    .linking-event.external {
+        color: #17a2b8;
+    }
+
+    .linking-event.skipped {
+        color: #6c757d;
+    }
+
+    .linking-event.error {
+        color: #dc3545;
+    }
+
+    .linking-event.rule {
+        color: #6f42c1;
+    }
+
+    .linking-event.processing {
+        color: #666;
+    }
+
+    .event-icon {
+        width: 20px;
+        text-align: center;
+    }
+
+    .linking-question-section {
+        background: #fff8e1;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .question-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    .question-icon {
+        font-size: 1.2rem;
+    }
+
+    .question-content p {
+        margin: 0 0 12px 0;
+    }
+
+    .question-transaction-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 12px;
+        background: #fff;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .tx-comment {
+        color: #666;
+        font-style: italic;
+    }
+
+    .question-options {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .question-remember {
+        margin-top: 12px;
+        font-size: 0.9rem;
+    }
+
+    .question-remember label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+    .linking-rules-section {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .rules-header {
+        padding: 10px 16px;
+        background: #f5f5f5;
+        cursor: pointer;
+        font-weight: 500;
+        user-select: none;
+    }
+
+    .rules-header:hover {
+        background: #eee;
+    }
+
+    .rules-list {
+        padding: 8px 16px;
+    }
+
+    .rule-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .rule-item:last-child {
+        border-bottom: none;
+    }
+
+    .rule-pattern {
+        font-family: monospace;
+        background: #e9ecef;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+
+    .rule-arrow {
+        color: #888;
+    }
+
+    .rule-action {
+        flex: 1;
+    }
+
+    .rule-count {
+        color: #888;
+        font-size: 0.8rem;
+    }
+
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        opacity: 0.6;
+    }
+
+    .btn-icon:hover {
+        opacity: 1;
+    }
+
+    .linking-start-section,
+    .linking-complete-section {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .linking-start-section h3,
+    .linking-complete-section h3 {
+        margin-bottom: 12px;
+    }
+
+    .linking-error {
+        padding: 12px 16px;
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 8px;
+        color: #721c24;
+    }
+
+    .type-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .type-badge.send {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .type-badge.receive {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .tx-symbol {
+        font-weight: 600;
+    }
+
+    .tx-wallet {
+        color: #666;
+    }
+
+    .tx-date {
+        color: #888;
+        font-size: 0.85rem;
+    }
+</style>

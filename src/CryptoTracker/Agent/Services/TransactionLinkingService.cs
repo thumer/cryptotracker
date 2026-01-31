@@ -110,60 +110,167 @@ public class TransactionLinkingService
     }
 
     /// <summary>
-    /// Führt automatische Verknüpfung durch (ohne Benutzerinteraktion)
+    /// Führt automatische Verknüpfung durch - OHNE AI-Aufrufe!
+    /// Verwendet regelbasierte Logik und vorberechnete Hints.
     /// </summary>
     public async Task<AutoLinkResult> RunAutomaticLinkingAsync(CancellationToken ct = default)
     {
-        if (!IsConfigured)
-        {
-            return new AutoLinkResult
-            {
-                Summary = "AI-Service nicht konfiguriert.",
-                Success = false
-            };
-        }
-
         try
         {
-            var agent = _agentBuilder.BuildAgent(TransactionLinkingAgentDefinition.KEY);
-
             var startTime = DateTimeOffset.UtcNow;
+            var linkedCount = 0;
+            var markedUnlinkedCount = 0;
+            var summaryLines = new List<string>();
 
-            var result = await agent.RunAsync(
-                """
-                Führe automatische Verknüpfung durch:
-                1. Lade gespeicherte Regeln (get_memory)
-                2. Lade alle unverknüpften Transaktionen
-                3. Für jede Transaktion:
-                   - Prüfe ob bekannte Skip-Patterns zutreffen → mark_intentionally_unlinked
-                   - Suche passende Gegenstücke (find_matching_transactions)
-                   - Bei Konfidenz >= 0.9: Verknüpfe automatisch (link_transactions)
-                4. Gib mir eine detaillierte Zusammenfassung:
-                   - Wie viele wurden verknüpft?
-                   - Wie viele als externe Einnahme markiert?
-                   - Wie viele bleiben unverknüpft?
-                   - Welche brauchen manuelle Prüfung?
-                """,
-                cancellationToken: ct);
+            // 1. Lade gelernte Regeln
+            var rules = await _dbContext.AgentMemories
+                .Where(m => m.AgentKey == "transaction-linking")
+                .ToListAsync(ct);
 
-            // Zähle Ergebnisse
-            var linkedCount = await _dbContext.TransactionLinkMetadata
-                .CountAsync(m => m.LinkedAt > startTime &&
-                                !m.LinkType.HasFlag(TransactionLinkType.IntentionallyUnlinked), ct);
+            var skipPatterns = rules
+                .Where(r => r.MemoryType == AgentMemoryType.SkipPattern)
+                .Select(r => r.Key.ToLowerInvariant())
+                .ToHashSet();
 
-            var markedUnlinkedCount = await _dbContext.TransactionLinkMetadata
-                .CountAsync(m => m.LinkedAt > startTime &&
-                                m.LinkType.HasFlag(TransactionLinkType.IntentionallyUnlinked), ct);
+            // 2. Lade alle unverknüpften Transaktionen
+            var unlinked = await _dbContext.CryptoTransactions
+                .Include(t => t.Wallet)
+                .Where(t => t.OppositeTransactionId == null && !t.IsIntentionallyUnlinked)
+                .OrderBy(t => t.DateTime)
+                .ToListAsync(ct);
 
-            var remainingUnlinked = await _dbContext.CryptoTransactions
-                .CountAsync(t => t.OppositeTransactionId == null && !t.IsIntentionallyUnlinked, ct);
+            if (unlinked.Count == 0)
+            {
+                return new AutoLinkResult
+                {
+                    LinkedCount = 0,
+                    MarkedUnlinkedCount = 0,
+                    RemainingUnlinkedCount = 0,
+                    Summary = "Keine unverknüpften Transaktionen gefunden.",
+                    Success = true
+                };
+            }
+
+            var sends = unlinked.Where(t => t.TransactionType == TransactionType.Send).ToList();
+            var receives = unlinked.Where(t => t.TransactionType == TransactionType.Receive).ToList();
+
+            // 3. Automatische Verknüpfung basierend auf Regeln
+            // Zuerst: Bekannte externe Einnahmen markieren
+            foreach (var tx in receives.ToList())
+            {
+                var comment = tx.Comment?.ToLowerInvariant() ?? "";
+                
+                // Check gegen bekannte externe Muster
+                var isExternal = IsKnownExternalTransaction(comment, skipPatterns);
+                
+                if (isExternal.matched)
+                {
+                    tx.IsIntentionallyUnlinked = true;
+                    
+                    var metadata = new TransactionLinkMetadata
+                    {
+                        TransactionId = tx.Id,
+                        LinkType = TransactionLinkType.IntentionallyUnlinked | TransactionLinkType.AIAssisted,
+                        Confidence = 1.0m,
+                        Reason = isExternal.reason,
+                        LinkedAt = DateTimeOffset.UtcNow,
+                        IsConfirmed = true,
+                        ConfirmedAt = DateTimeOffset.UtcNow
+                    };
+                    _dbContext.TransactionLinkMetadata.Add(metadata);
+                    
+                    receives.Remove(tx);
+                    markedUnlinkedCount++;
+                }
+            }
+
+            // 4. Verknüpfe Send/Receive Paare basierend auf Zeit + Betrag
+            var linkedPairs = new List<(CryptoTransaction send, CryptoTransaction receive, string reason)>();
+            
+            foreach (var send in sends.ToList())
+            {
+                // Finde passendes Receive
+                var bestMatch = receives
+                    .Where(r => 
+                        r.Symbol == send.Symbol &&
+                        r.DateTime >= send.DateTime.AddMinutes(-5) &&
+                        r.DateTime <= send.DateTime.AddHours(24))
+                    .Select(r => new
+                    {
+                        Receive = r,
+                        TimeDiff = r.DateTime - send.DateTime,
+                        AmountDiff = Math.Abs(send.QuantityAfterFee - r.Quantity),
+                        AmountPercent = send.QuantityAfterFee > 0 
+                            ? Math.Abs(send.QuantityAfterFee - r.Quantity) / send.QuantityAfterFee 
+                            : 1m
+                    })
+                    .Where(m => m.AmountPercent < 0.01m) // Max 1% Differenz
+                    .OrderBy(m => m.AmountDiff)
+                    .ThenBy(m => m.TimeDiff)
+                    .FirstOrDefault();
+
+                if (bestMatch != null)
+                {
+                    var reason = $"Auto-Link: {send.Symbol} {send.Quantity:F8}, " +
+                                 $"Zeit: {bestMatch.TimeDiff.TotalMinutes:F0} Min, " +
+                                 $"Δ: {bestMatch.AmountDiff:F8}";
+                    
+                    linkedPairs.Add((send, bestMatch.Receive, reason));
+                    sends.Remove(send);
+                    receives.Remove(bestMatch.Receive);
+                }
+            }
+
+            // 5. Führe die Verknüpfungen durch
+            foreach (var (send, receive, reason) in linkedPairs)
+            {
+                send.OppositeTransactionId = receive.Id;
+                send.OppositeWalletId = receive.WalletId;
+                receive.OppositeTransactionId = send.Id;
+                receive.OppositeWalletId = send.WalletId;
+
+                var metadata = new TransactionLinkMetadata
+                {
+                    TransactionId = send.Id,
+                    LinkType = TransactionLinkType.AIAssisted,
+                    Confidence = 0.95m,
+                    Reason = reason,
+                    LinkedAt = DateTimeOffset.UtcNow,
+                    IsConfirmed = true,
+                    ConfirmedAt = DateTimeOffset.UtcNow
+                };
+                _dbContext.TransactionLinkMetadata.Add(metadata);
+                
+                linkedCount++;
+            }
+
+            await _dbContext.SaveChangesAsync(ct);
+
+            // 6. Statistiken berechnen
+            var remainingUnlinked = sends.Count + receives.Count;
+
+            // Zusammenfassung erstellen
+            summaryLines.Add($"✅ {linkedCount} Transaktionen automatisch verknüpft");
+            if (markedUnlinkedCount > 0)
+                summaryLines.Add($"📥 {markedUnlinkedCount} als externe Einnahme markiert");
+            if (remainingUnlinked > 0)
+                summaryLines.Add($"⏳ {remainingUnlinked} benötigen manuelle Prüfung");
+
+            // Details zu verknüpften Paaren
+            if (linkedPairs.Count > 0)
+            {
+                var bySymbol = linkedPairs.GroupBy(p => p.send.Symbol)
+                    .Select(g => $"{g.Key}: {g.Count()}")
+                    .ToList();
+                summaryLines.Add($"Verknüpft nach Symbol: {string.Join(", ", bySymbol)}");
+            }
 
             return new AutoLinkResult
             {
                 LinkedCount = linkedCount,
                 MarkedUnlinkedCount = markedUnlinkedCount,
                 RemainingUnlinkedCount = remainingUnlinked,
-                Summary = result.Text ?? "",
+                Summary = string.Join("\n", summaryLines),
                 Success = true
             };
         }
@@ -177,6 +284,48 @@ public class TransactionLinkingService
             };
         }
     }
+
+    /// <summary>
+    /// Prüft ob eine Transaktion basierend auf Kommentar als externe Einnahme erkannt wird
+    /// </summary>
+    private (bool matched, string reason) IsKnownExternalTransaction(string comment, HashSet<string> customPatterns)
+    {
+        if (string.IsNullOrWhiteSpace(comment))
+            return (false, "");
+
+        // Eingebaute Muster für externe Einnahmen
+        var builtInPatterns = new Dictionary<string, string>
+        {
+            { "staking", "Staking Rewards" },
+            { "eth 2.0 staking", "ETH 2.0 Staking Rewards" },
+            { "airdrop", "Airdrop" },
+            { "bonus", "Bonus" },
+            { "referral", "Referral Bonus" },
+            { "mining", "Mining Rewards" },
+            { "lending", "Lending Interest" },
+            { "interest", "Interest" },
+            { "cashback", "Cashback" },
+            { "reward", "Reward" },
+            { "div. käufe", "Diverse Käufe (Fiat)" },
+            { "kauf", "Kauf (Fiat)" },
+        };
+
+        foreach (var (pattern, reason) in builtInPatterns)
+        {
+            if (comment.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                return (true, reason);
+        }
+
+        // Benutzerdefinierte Muster
+        foreach (var pattern in customPatterns)
+        {
+            if (comment.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                return (true, $"Benutzerdefiniert: {pattern}");
+        }
+
+        return (false, "");
+    }
+
 
     /// <summary>
     /// Gibt Statistiken über unverknüpfte Transaktionen zurück

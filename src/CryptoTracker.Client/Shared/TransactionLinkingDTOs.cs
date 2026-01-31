@@ -129,3 +129,86 @@ public record ChatMessageDTO
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
     public bool IsLoading { get; init; }
 }
+
+/// <summary>
+/// Hint für potentielle Verknüpfung (vorberechnet)
+/// </summary>
+public record LinkingHintDTO
+{
+    public int SendId { get; init; }
+    public int ReceiveId { get; init; }
+    public decimal ConfidenceScore { get; init; }
+    public string Reason { get; init; } = "";
+    public TimeSpan TimeDifference { get; init; }
+    public decimal AmountDifference { get; init; }
+}
+
+/// <summary>
+/// Context für den Agent mit allen Daten
+/// </summary>
+public record LinkingContextDTO
+{
+    public IList<UnlinkedTransactionDTO> UnlinkedTransactions { get; init; } = [];
+    public IList<LinkingHintDTO> Hints { get; init; } = [];
+    public IList<LearnedRuleDTO> LearnedRules { get; init; } = [];
+    public LinkingStatisticsDTO Statistics { get; init; } = new();
+}
+
+/// <summary>
+/// Gelernte Regel für zukünftige Entscheidungen
+/// </summary>
+public record LearnedRuleDTO
+{
+    public string Id { get; init; } = "";
+    public string RuleType { get; init; } = ""; // "skip_pattern", "link_pattern", "wallet_alias"
+    public string Pattern { get; init; } = "";
+    public string Action { get; init; } = ""; // "mark_external", "link", "skip"
+    public string Description { get; init; } = "";
+    public int TimesApplied { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+}
+
+/// <summary>
+/// Live-Event vom Agent
+/// </summary>
+public record LinkingEventDTO
+{
+    public string EventType { get; init; } = ""; // "linked", "marked_external", "question", "progress", "error", "rule_learned"
+    public string Message { get; init; } = "";
+    public int? SendId { get; init; }
+    public int? ReceiveId { get; init; }
+    public UnlinkedTransactionDTO? Transaction { get; init; }
+    public string? QuestionId { get; init; }
+    public IList<string>? Options { get; init; }
+    public int ProcessedCount { get; init; }
+    public int TotalCount { get; init; }
+}
+
+/// <summary>
+/// Antwort vom User auf Agent-Frage
+/// </summary>
+public record UserResponseDTO
+{
+    public string QuestionId { get; init; } = "";
+    public string Response { get; init; } = "";
+    public bool ShouldRemember { get; init; } = true;
+}
+
+/// <summary>
+/// Session-State für interaktives Linking
+/// </summary>
+public record InteractiveLinkingSessionDTO
+{
+    public string SessionId { get; init; } = "";
+    public bool IsActive { get; init; }
+    public int ProcessedCount { get; init; }
+    public int TotalCount { get; init; }
+    public int LinkedCount { get; init; }
+    public int MarkedExternalCount { get; init; }
+    public int SkippedCount { get; init; }
+    public string? CurrentQuestionId { get; init; }
+    public string? CurrentQuestion { get; init; }
+    public UnlinkedTransactionDTO? CurrentTransaction { get; init; }
+    public IList<string>? CurrentOptions { get; init; }
+}
+

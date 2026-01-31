@@ -104,6 +104,7 @@ public record PendingLotAssignmentDTO(
     string Symbol,
     decimal Quantity,
     string WalletName,
+    int WalletId,
     string? Direction, // "Receive" für Transactions, "Sell" für Trades
     string? OppositeWalletName);
 

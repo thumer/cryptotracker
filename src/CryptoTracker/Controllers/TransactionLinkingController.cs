@@ -11,13 +11,16 @@ namespace CryptoTracker.Controllers;
 public class TransactionLinkingController : ControllerBase, ITransactionLinkingApi
 {
     private readonly TransactionLinkingService _linkingService;
+    private readonly InteractiveLinkingService _interactiveService;
     private readonly CryptoTrackerDbContext _dbContext;
 
     public TransactionLinkingController(
         TransactionLinkingService linkingService,
+        InteractiveLinkingService interactiveService,
         CryptoTrackerDbContext dbContext)
     {
         _linkingService = linkingService;
+        _interactiveService = interactiveService;
         _dbContext = dbContext;
     }
 
@@ -282,5 +285,212 @@ public class TransactionLinkingController : ControllerBase, ITransactionLinkingA
 
         await _dbContext.SaveChangesAsync();
         return new LinkResultDTO { Success = true, Message = "Transaktion als externe Einnahme/Ausgabe markiert" };
+    }
+
+    // === Neue interaktive Linking-Methoden ===
+
+    /// <summary>
+    /// Startet eine neue interaktive Linking-Session
+    /// </summary>
+    [HttpPost("interactive/start")]
+    public async Task<InteractiveLinkingSessionDTO> StartInteractiveSessionAsync()
+    {
+        return await _interactiveService.StartSessionAsync();
+    }
+
+    /// <summary>
+    /// Gibt den Status einer interaktiven Session zurück
+    /// </summary>
+    [HttpGet("interactive/{sessionId}/status")]
+    public Task<InteractiveLinkingSessionDTO?> GetInteractiveSessionStatusAsync(string sessionId)
+    {
+        return Task.FromResult(_interactiveService.GetSessionStatus(sessionId));
+    }
+
+    /// <summary>
+    /// Sendet User-Antwort an interaktive Session
+    /// </summary>
+    [HttpPost("interactive/{sessionId}/respond")]
+    public async Task SubmitUserResponseAsync(string sessionId, [FromBody] UserResponseDTO response)
+    {
+        await _interactiveService.SubmitUserResponseAsync(sessionId, response);
+    }
+
+    /// <summary>
+    /// Stoppt eine interaktive Session
+    /// </summary>
+    [HttpPost("interactive/{sessionId}/stop")]
+    public Task StopInteractiveSessionAsync(string sessionId)
+    {
+        _interactiveService.StopSession(sessionId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Gibt den Linking-Context (alle Daten + Hints) zurück
+    /// </summary>
+    [HttpGet("context")]
+    public async Task<LinkingContextDTO> GetLinkingContextAsync()
+    {
+        // Lade unverknüpfte Transaktionen
+        var unlinked = await _dbContext.CryptoTransactions
+            .Include(t => t.Wallet)
+            .Where(t => t.OppositeTransactionId == null && !t.IsIntentionallyUnlinked)
+            .OrderBy(t => t.DateTime)
+            .Select(t => new UnlinkedTransactionDTO
+            {
+                Id = t.Id,
+                DateTime = t.DateTime,
+                Type = t.TransactionType.ToString(),
+                Symbol = t.Symbol,
+                Quantity = t.Quantity,
+                QuantityAfterFee = t.QuantityAfterFee,
+                Comment = t.Comment,
+                Address = t.Address,
+                WalletName = t.Wallet.Name,
+                TransactionId = t.TransactionId,
+                Network = t.Network
+            })
+            .ToListAsync();
+
+        // Berechne Hints
+        var hints = CalculateHints(unlinked);
+
+        // Lade Regeln
+        var rules = await GetLearnedRulesAsync();
+
+        // Statistiken
+        var stats = await GetStatisticsAsync();
+
+        return new LinkingContextDTO
+        {
+            UnlinkedTransactions = unlinked,
+            Hints = hints,
+            LearnedRules = rules,
+            Statistics = stats
+        };
+    }
+
+    /// <summary>
+    /// Gibt gelernte Regeln zurück
+    /// </summary>
+    [HttpGet("rules")]
+    public async Task<IList<LearnedRuleDTO>> GetLearnedRulesAsync()
+    {
+        var memories = await _dbContext.AgentMemories
+            .Where(m => m.AgentKey == "transaction-linking" && m.Key.StartsWith("rule:"))
+            .ToListAsync();
+
+        return memories
+            .Select(m => System.Text.Json.JsonSerializer.Deserialize<LearnedRuleDTO>(m.Value))
+            .Where(r => r != null)
+            .Cast<LearnedRuleDTO>()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Löscht eine gelernte Regel
+    /// </summary>
+    [HttpDelete("rules/{ruleId}")]
+    public async Task<bool> DeleteLearnedRuleAsync(string ruleId)
+    {
+        var memory = await _dbContext.AgentMemories
+            .FirstOrDefaultAsync(m => m.AgentKey == "transaction-linking" && m.Key == $"rule:{ruleId}");
+
+        if (memory == null)
+            return false;
+
+        _dbContext.AgentMemories.Remove(memory);
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Berechnet potentielle Verknüpfungs-Hints
+    /// </summary>
+    private List<LinkingHintDTO> CalculateHints(IList<UnlinkedTransactionDTO> transactions)
+    {
+        var hints = new List<LinkingHintDTO>();
+        var sends = transactions.Where(t => t.IsSend).ToList();
+        var receives = transactions.Where(t => t.IsReceive).ToList();
+
+        foreach (var send in sends)
+        {
+            foreach (var receive in receives)
+            {
+                if (!string.Equals(send.Symbol, receive.Symbol, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var timeDiff = receive.DateTime - send.DateTime;
+                if (timeDiff < TimeSpan.FromMinutes(-5) || timeDiff > TimeSpan.FromHours(24))
+                    continue;
+
+                var amountDiff = Math.Abs(send.QuantityAfterFee - receive.Quantity);
+                var amountPercent = send.QuantityAfterFee > 0 
+                    ? amountDiff / send.QuantityAfterFee 
+                    : 1;
+
+                var confidence = CalculateConfidence(timeDiff, amountPercent);
+
+                if (confidence >= 0.5m)
+                {
+                    hints.Add(new LinkingHintDTO
+                    {
+                        SendId = send.Id,
+                        ReceiveId = receive.Id,
+                        ConfidenceScore = confidence,
+                        Reason = BuildHintReason(send, receive, timeDiff, amountDiff),
+                        TimeDifference = timeDiff,
+                        AmountDifference = amountDiff
+                    });
+                }
+            }
+        }
+
+        return hints.OrderByDescending(h => h.ConfidenceScore).ToList();
+    }
+
+    private decimal CalculateConfidence(TimeSpan timeDiff, decimal amountPercentDiff)
+    {
+        var score = 0.5m;
+
+        if (timeDiff.TotalMinutes <= 5) score += 0.25m;
+        else if (timeDiff.TotalMinutes <= 30) score += 0.20m;
+        else if (timeDiff.TotalHours <= 1) score += 0.15m;
+        else if (timeDiff.TotalHours <= 6) score += 0.10m;
+        else score += 0.05m;
+
+        if (amountPercentDiff == 0) score += 0.25m;
+        else if (amountPercentDiff < 0.001m) score += 0.20m;
+        else if (amountPercentDiff < 0.01m) score += 0.15m;
+        else if (amountPercentDiff < 0.05m) score += 0.10m;
+        else score += 0.05m;
+
+        return Math.Min(1.0m, score);
+    }
+
+    private string BuildHintReason(
+        UnlinkedTransactionDTO send,
+        UnlinkedTransactionDTO receive,
+        TimeSpan timeDiff,
+        decimal amountDiff)
+    {
+        var reasons = new List<string>();
+
+        if (timeDiff.TotalMinutes <= 5)
+            reasons.Add("Zeit < 5 Min");
+        else if (timeDiff.TotalMinutes <= 30)
+            reasons.Add($"Zeit: {timeDiff.TotalMinutes:F0} Min");
+        else
+            reasons.Add($"Zeit: {timeDiff.TotalHours:F1}h");
+
+        if (amountDiff == 0)
+            reasons.Add("Betrag exakt");
+        else
+            reasons.Add($"Δ {amountDiff:F8} {send.Symbol}");
+
+        reasons.Add($"{send.WalletName} → {receive.WalletName}");
+
+        return string.Join(", ", reasons);
     }
 }
