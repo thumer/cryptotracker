@@ -19,7 +19,9 @@ public record LotDTO(
     string? Note,
     int? ParentLotId,
     int? SourceTradeId,
-    int? SourceTransactionId);
+    int? SourceTransactionId,
+    bool IsFlowComplete = true,
+    string? FlowIncompleteReason = null);
 
 /// <summary>
 /// DTO für Lot-Zusammenfassung pro Symbol.
@@ -118,3 +120,45 @@ public record GenerateLotsRequest(
 public record GenerateLotsResultDTO(
     int LotsCreated,
     int Errors);
+
+/// <summary>
+/// DTO für Flow-Validierungsergebnis.
+/// </summary>
+public record LotFlowValidationDTO(
+    int LotId,
+    string Symbol,
+    decimal Quantity,
+    DateTimeOffset AcquisitionDate,
+    bool IsComplete,
+    string? IncompleteReason,
+    IList<LotFlowStepDTO> FlowChain,
+    decimal EffectiveQuantity);
+
+/// <summary>
+/// DTO für einen Schritt in der Flow-Kette.
+/// </summary>
+public record LotFlowStepDTO(
+    int LotId,
+    string Symbol,
+    decimal Quantity,
+    string Type,
+    int? TradeId,
+    int? TransactionId,
+    DateTimeOffset DateTime);
+
+/// <summary>
+/// Request für Swap-Transformation.
+/// </summary>
+public record TransformLotsViaSwapRequest(
+    int SellTradeId,
+    int BuyTradeId,
+    IList<LotAllocationDTO> SourceAllocations,
+    decimal ResultingQuantity);
+
+/// <summary>
+/// Ergebnis der Flow-Revalidierung.
+/// </summary>
+public record RevalidateFlowResultDTO(
+    int UpdatedCount,
+    int CompleteCount,
+    int IncompleteCount);

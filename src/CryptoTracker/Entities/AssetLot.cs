@@ -81,6 +81,31 @@ public class AssetLot
     /// </summary>
     public ICollection<LotMovement> Movements { get; set; } = new List<LotMovement>();
 
+    // === Flow-Tracking ===
+
+    /// <summary>
+    /// Ist der gesamte Flow dieses Lots vollständig nachvollziehbar?
+    /// Nur wenn true, kann das Lot für steuerliche Zwecke verwendet werden.
+    /// </summary>
+    public bool IsFlowComplete { get; set; } = false;
+
+    /// <summary>
+    /// Grund warum der Flow unvollständig ist (falls IsFlowComplete = false)
+    /// </summary>
+    public string? FlowIncompleteReason { get; set; }
+
+    /// <summary>
+    /// Bei Crypto-zu-Crypto Swap: Das Lot wurde in ein anderes Asset transformiert.
+    /// Referenz auf das neue Lot (z.B. BTC -> ETH Swap: BTC-Lot verweist auf ETH-Lot)
+    /// </summary>
+    public int? TransformedToLotId { get; set; }
+    public AssetLot? TransformedToLot { get; set; }
+
+    /// <summary>
+    /// Lots die durch Transformation in dieses Lot eingegangen sind
+    /// </summary>
+    public ICollection<AssetLot> TransformedFromLots { get; set; } = new List<AssetLot>();
+
     /// <summary>
     /// Benutzernotiz zur Herkunft
     /// </summary>

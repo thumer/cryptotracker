@@ -11,11 +11,13 @@ namespace CryptoTracker.Controllers;
 public class LotsController : ControllerBase, ILotsApi
 {
     private readonly LotService _lotService;
+    private readonly LotFlowValidator _flowValidator;
     private readonly CryptoTrackerDbContext _dbContext;
 
-    public LotsController(LotService lotService, CryptoTrackerDbContext dbContext)
+    public LotsController(LotService lotService, LotFlowValidator flowValidator, CryptoTrackerDbContext dbContext)
     {
         _lotService = lotService;
+        _flowValidator = flowValidator;
         _dbContext = dbContext;
     }
 
@@ -153,6 +155,22 @@ public class LotsController : ControllerBase, ILotsApi
             result.EstimatedKESt);
     }
 
+    [HttpPost("TransformLotsViaSwap")]
+    public async Task<LotDTO> TransformLotsViaSwap([FromBody] TransformLotsViaSwapRequest request)
+    {
+        var allocations = request.SourceAllocations
+            .Select(a => new LotAllocation { LotId = a.LotId, Quantity = a.Quantity })
+            .ToList();
+
+        var newLot = await _lotService.TransformLotsViaSwapAsync(
+            request.SellTradeId,
+            request.BuyTradeId,
+            allocations,
+            request.ResultingQuantity);
+
+        return MapToDTO(newLot);
+    }
+
     #endregion
 
     #region Auto-FIFO
@@ -245,6 +263,60 @@ public class LotsController : ControllerBase, ILotsApi
 
     #endregion
 
+    #region Flow-Validierung
+
+    [HttpGet("ValidateLotFlow")]
+    public async Task<LotFlowValidationDTO> ValidateLotFlow([FromQuery] int lotId)
+    {
+        var result = await _flowValidator.ValidateLotFlowAsync(lotId);
+        return new LotFlowValidationDTO(
+            result.LotId,
+            result.Symbol,
+            result.Quantity,
+            result.AcquisitionDate,
+            result.IsComplete,
+            result.IncompleteReason,
+            result.FlowChain.Select(s => new LotFlowStepDTO(
+                s.LotId,
+                s.Symbol,
+                s.Quantity,
+                s.Type.ToString(),
+                s.TradeId,
+                s.TransactionId,
+                s.DateTime)).ToList(),
+            result.EffectiveQuantity);
+    }
+
+    [HttpPost("RevalidateAllLotFlows")]
+    public async Task<RevalidateFlowResultDTO> RevalidateAllLotFlows()
+    {
+        var updatedCount = await _flowValidator.ValidateAndUpdateAllLotsAsync();
+        
+        var completeCount = await _dbContext.AssetLots
+            .Where(l => l.RemainingQuantity > 0 && l.IsFlowComplete)
+            .CountAsync();
+        var incompleteCount = await _dbContext.AssetLots
+            .Where(l => l.RemainingQuantity > 0 && !l.IsFlowComplete)
+            .CountAsync();
+
+        return new RevalidateFlowResultDTO(updatedCount, completeCount, incompleteCount);
+    }
+
+    [HttpGet("GetLotsWithIncompleteFlow")]
+    public async Task<IList<LotDTO>> GetLotsWithIncompleteFlow([FromQuery] string? walletName = null)
+    {
+        int? walletId = null;
+        if (!string.IsNullOrWhiteSpace(walletName))
+        {
+            walletId = await GetWalletIdByNameAsync(walletName);
+        }
+
+        var lots = await _flowValidator.GetLotsWithIncompleteFlowAsync(walletId);
+        return lots.Select(MapToDTO).ToList();
+    }
+
+    #endregion
+
     #region ILotsApi Implementation
 
     Task<IList<LotDTO>> ILotsApi.GetAvailableLotsAsync(string walletName, string symbol)
@@ -300,7 +372,9 @@ public class LotsController : ControllerBase, ILotsApi
         lot.Note,
         lot.ParentLotId,
         lot.SourceTradeId,
-        lot.SourceTransactionId);
+        lot.SourceTransactionId,
+        lot.IsFlowComplete,
+        lot.FlowIncompleteReason);
 
     #endregion
 }

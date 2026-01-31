@@ -40,13 +40,29 @@
             {
                 var allocation = GetAllocation(lot.Id);
                 var isSelected = allocation > 0;
-                <div class="lot-item @(isSelected ? "lot-selected" : "") @(lot.IsAltbestand ? "lot-altbestand" : "lot-neubestand")">
+                var flowClass = lot.IsFlowComplete ? "" : "lot-incomplete-flow";
+                <div class="lot-item @(isSelected ? "lot-selected" : "") @(lot.IsAltbestand ? "lot-altbestand" : "lot-neubestand") @flowClass">
                     <div class="lot-header">
                         <div class="lot-id">Lot #@lot.Id</div>
-                        <span class="lot-badge @(lot.IsAltbestand ? "altbestand-badge" : "neubestand-badge")">
-                            @(lot.IsAltbestand ? "ALTBESTAND" : "Neubestand")
-                        </span>
+                        <div class="lot-badges">
+                            <span class="lot-badge @(lot.IsAltbestand ? "altbestand-badge" : "neubestand-badge")">
+                                @(lot.IsAltbestand ? "ALTBESTAND" : "Neubestand")
+                            </span>
+                            @if (!lot.IsFlowComplete)
+                            {
+                                <span class="lot-badge flow-incomplete-badge" title="@lot.FlowIncompleteReason">
+                                    Flow unvollständig
+                                </span>
+                            }
+                        </div>
                     </div>
+                    @if (!lot.IsFlowComplete && !string.IsNullOrEmpty(lot.FlowIncompleteReason))
+                    {
+                        <div class="lot-flow-warning">
+                            <span class="flow-warning-icon">&#9888;</span>
+                            @lot.FlowIncompleteReason
+                        </div>
+                    }
                     <div class="lot-details">
                         <div class="lot-detail">
                             <label>Verfügbar</label>
@@ -73,9 +89,12 @@
                                step="any"
                                value="@allocation"
                                @onchange="e => SetAllocation(lot.Id, ParseDecimal(e.Value))"
-                               class="lot-input" />
+                               class="lot-input"
+                               disabled="@(!lot.IsFlowComplete && !AllowIncompleteFlow)" />
                         <span class="lot-unit">@Symbol</span>
-                        <button type="button" class="btn btn-sm btn-link" @onclick="() => SetAllocation(lot.Id, lot.RemainingQuantity)">
+                        <button type="button" class="btn btn-sm btn-link" 
+                                @onclick="() => SetAllocation(lot.Id, lot.RemainingQuantity)"
+                                disabled="@(!lot.IsFlowComplete && !AllowIncompleteFlow)">
                             Max
                         </button>
                     </div>
@@ -141,6 +160,11 @@
     [Parameter] public bool ShowTaxPreview { get; set; } = false;
     [Parameter] public decimal? SalePriceEur { get; set; }
     [Parameter] public DateTimeOffset? MaxAcquisitionDate { get; set; }
+    /// <summary>
+    /// Wenn true, können auch Lots mit unvollständigem Flow ausgewählt werden.
+    /// Standardmäßig false - nur vollständig nachvollziehbare Lots sind wählbar.
+    /// </summary>
+    [Parameter] public bool AllowIncompleteFlow { get; set; } = false;
     [Parameter] public EventCallback<IList<LotAllocationDTO>> SelectionChanged { get; set; }
     [Parameter] public ILotsApi? LotsApi { get; set; }
 
@@ -222,17 +246,21 @@
                 lots = lots.Where(l => l.AcquisitionDate < MaxAcquisitionDate.Value).ToList();
             }
             
-            // Sortierung: Altbestand zuerst wenn priorisiert
+            // Sortierung: Vollständiger Flow zuerst, dann Altbestand wenn priorisiert, dann nach Datum
             if (PrioritizeAltbestand)
             {
                 AvailableLots = lots
-                    .OrderByDescending(l => l.IsAltbestand)
+                    .OrderByDescending(l => l.IsFlowComplete)  // Vollständiger Flow zuerst
+                    .ThenByDescending(l => l.IsAltbestand)
                     .ThenBy(l => l.AcquisitionDate)
                     .ToList();
             }
             else
             {
-                AvailableLots = lots.OrderBy(l => l.AcquisitionDate).ToList();
+                AvailableLots = lots
+                    .OrderByDescending(l => l.IsFlowComplete)  // Vollständiger Flow zuerst
+                    .ThenBy(l => l.AcquisitionDate)
+                    .ToList();
             }
         }
         finally
@@ -251,6 +279,12 @@
     {
         var lot = AvailableLots.FirstOrDefault(l => l.Id == lotId);
         if (lot == null) return;
+
+        // Blockiere Lots mit unvollständigem Flow wenn nicht erlaubt
+        if (!lot.IsFlowComplete && !AllowIncompleteFlow)
+        {
+            return;
+        }
 
         quantity = Math.Max(0, Math.Min(quantity, lot.RemainingQuantity));
 
@@ -276,7 +310,12 @@
         Allocations.Clear();
         
         // Only apply allocations for lots that are in our filtered AvailableLots list
-        var availableLotIds = AvailableLots.Select(l => l.Id).ToHashSet();
+        // and have complete flow (unless AllowIncompleteFlow is true)
+        var availableLotIds = AvailableLots
+            .Where(l => l.IsFlowComplete || AllowIncompleteFlow)
+            .Select(l => l.Id)
+            .ToHashSet();
+        
         foreach (var alloc in suggestion.Allocations)
         {
             if (availableLotIds.Contains(alloc.LotId))

@@ -31,7 +31,33 @@ public class LotService
     /// Holt alle verfügbaren (nicht vollständig verbrauchten) Lots für ein Wallet und Symbol.
     /// Sortiert nach FIFO (älteste zuerst).
     /// </summary>
-    public async Task<IList<AssetLot>> GetAvailableLotsAsync(int walletId, string symbol)
+    /// <param name="walletId">Wallet ID</param>
+    /// <param name="symbol">Asset-Symbol</param>
+    /// <param name="onlyCompleteFlow">Nur Lots mit vollständigem Flow zurückgeben</param>
+    public async Task<IList<AssetLot>> GetAvailableLotsAsync(int walletId, string symbol, bool onlyCompleteFlow = false)
+    {
+        var query = _dbContext.AssetLots
+            .AsNoTracking()
+            .Include(l => l.CurrentWallet)
+            .Where(l => l.CurrentWalletId == walletId
+                     && l.Symbol == symbol.ToUpperInvariant()
+                     && l.RemainingQuantity > 0);
+
+        if (onlyCompleteFlow)
+        {
+            query = query.Where(l => l.IsFlowComplete);
+        }
+
+        return await query
+            .OrderBy(l => l.AcquisitionDate)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Holt alle verfügbaren Lots für ein Wallet und Symbol (inkl. Flow-Status).
+    /// Gibt auch Lots mit unvollständigem Flow zurück, markiert diese aber entsprechend.
+    /// </summary>
+    public async Task<IList<AssetLot>> GetAllAvailableLotsWithFlowStatusAsync(int walletId, string symbol)
     {
         return await _dbContext.AssetLots
             .AsNoTracking()
@@ -46,33 +72,43 @@ public class LotService
     /// <summary>
     /// Holt alle verfügbaren Altbestand-Lots (vor 28.02.2021) für ein Wallet und Symbol.
     /// </summary>
-    public async Task<IList<AssetLot>> GetAltbestandLotsAsync(int walletId, string symbol)
+    public async Task<IList<AssetLot>> GetAltbestandLotsAsync(int walletId, string symbol, bool onlyCompleteFlow = false)
     {
-        return await _dbContext.AssetLots
+        var query = _dbContext.AssetLots
             .AsNoTracking()
             .Include(l => l.CurrentWallet)
             .Where(l => l.CurrentWalletId == walletId
                      && l.Symbol == symbol.ToUpperInvariant()
                      && l.RemainingQuantity > 0
-                     && l.AcquisitionDate <= AssetLot.AltbestandStichtag)
-            .OrderBy(l => l.AcquisitionDate)
-            .ToListAsync();
+                     && l.AcquisitionDate <= AssetLot.AltbestandStichtag);
+
+        if (onlyCompleteFlow)
+        {
+            query = query.Where(l => l.IsFlowComplete);
+        }
+
+        return await query.OrderBy(l => l.AcquisitionDate).ToListAsync();
     }
 
     /// <summary>
     /// Holt alle verfügbaren Neubestand-Lots (ab 01.03.2021) für ein Wallet und Symbol.
     /// </summary>
-    public async Task<IList<AssetLot>> GetNeubestandLotsAsync(int walletId, string symbol)
+    public async Task<IList<AssetLot>> GetNeubestandLotsAsync(int walletId, string symbol, bool onlyCompleteFlow = false)
     {
-        return await _dbContext.AssetLots
+        var query = _dbContext.AssetLots
             .AsNoTracking()
             .Include(l => l.CurrentWallet)
             .Where(l => l.CurrentWalletId == walletId
                      && l.Symbol == symbol.ToUpperInvariant()
                      && l.RemainingQuantity > 0
-                     && l.AcquisitionDate > AssetLot.AltbestandStichtag)
-            .OrderBy(l => l.AcquisitionDate)
-            .ToListAsync();
+                     && l.AcquisitionDate > AssetLot.AltbestandStichtag);
+
+        if (onlyCompleteFlow)
+        {
+            query = query.Where(l => l.IsFlowComplete);
+        }
+
+        return await query.OrderBy(l => l.AcquisitionDate).ToListAsync();
     }
 
     /// <summary>
@@ -367,6 +403,149 @@ public class LotService
             result.TotalQuantity, trade.Symbol, result.TotalRealizedGain, result.TaxFreeGain, result.TaxableGain);
 
         return result;
+    }
+
+    #endregion
+
+    #region Swap-Transformation
+
+    /// <summary>
+    /// Transformiert Lots durch einen Crypto-zu-Crypto-Swap.
+    /// Erstellt neue Lots für das Ziel-Asset und verknüpft sie mit den Quell-Lots.
+    /// </summary>
+    /// <param name="sellTradeId">Die Sell-Seite des Swaps (gibt Crypto ab)</param>
+    /// <param name="buyTradeId">Die Buy-Seite des Swaps (erhält Crypto)</param>
+    /// <param name="sourceAllocations">Lot-Zuordnungen für die Quell-Coins</param>
+    /// <param name="resultingQuantity">Menge der erhaltenen Coins (nach Gebühren)</param>
+    public async Task<AssetLot> TransformLotsViaSwapAsync(
+        int sellTradeId,
+        int buyTradeId,
+        IList<LotAllocation> sourceAllocations,
+        decimal resultingQuantity)
+    {
+        var sellTrade = await _dbContext.CryptoTrades
+            .Include(t => t.Wallet)
+            .FirstOrDefaultAsync(t => t.Id == sellTradeId)
+            ?? throw new ArgumentException($"Sell-Trade {sellTradeId} nicht gefunden");
+
+        var buyTrade = await _dbContext.CryptoTrades
+            .Include(t => t.Wallet)
+            .FirstOrDefaultAsync(t => t.Id == buyTradeId)
+            ?? throw new ArgumentException($"Buy-Trade {buyTradeId} nicht gefunden");
+
+        if (sellTrade.TradeType != TradeType.Sell)
+            throw new ArgumentException("sellTradeId muss auf einen Sell-Trade verweisen");
+        if (buyTrade.TradeType != TradeType.Buy)
+            throw new ArgumentException("buyTradeId muss auf einen Buy-Trade verweisen");
+
+        // Prüfen ob Trades ein Swap-Paar sind
+        if (sellTrade.OppositeTradeId != buyTradeId || buyTrade.OppositeTradeId != sellTradeId)
+        {
+            throw new InvalidOperationException(
+                "Die Trades sind kein gültiges Swap-Paar (OppositeTradeId stimmt nicht überein)");
+        }
+
+        // Berechne gewichteten durchschnittlichen Anschaffungspreis der Quell-Lots
+        decimal totalSourceQuantity = 0;
+        decimal totalSourceCost = 0;
+        DateTimeOffset earliestAcquisitionDate = DateTimeOffset.MaxValue;
+        var sourceLotIds = new List<int>();
+
+        foreach (var allocation in sourceAllocations)
+        {
+            var lot = await _dbContext.AssetLots.FindAsync(allocation.LotId)
+                ?? throw new ArgumentException($"Lot {allocation.LotId} nicht gefunden");
+
+            if (lot.RemainingQuantity < allocation.Quantity)
+                throw new InvalidOperationException(
+                    $"Lot #{lot.Id} hat nur {lot.RemainingQuantity} verfügbar, aber {allocation.Quantity} angefordert");
+
+            // Quell-Lot reduzieren
+            lot.RemainingQuantity -= allocation.Quantity;
+
+            totalSourceQuantity += allocation.Quantity;
+            totalSourceCost += lot.AcquisitionPriceEur * allocation.Quantity;
+            
+            if (lot.AcquisitionDate < earliestAcquisitionDate)
+            {
+                earliestAcquisitionDate = lot.AcquisitionDate;
+            }
+
+            sourceLotIds.Add(lot.Id);
+
+            // Movement erstellen für den Swap-Out
+            var movement = new LotMovement
+            {
+                LotId = lot.Id,
+                Quantity = allocation.Quantity,
+                DateTime = sellTrade.DateTime,
+                MovementType = LotMovementType.CryptoSwapOut,
+                TradeId = sellTradeId,
+                IsTaxFree = true, // Krypto-zu-Krypto Swaps sind in Österreich steuerfrei (Tausch)
+                TaxFreeReason = TaxFreeReason.CryptoSwap
+            };
+            _dbContext.LotMovements.Add(movement);
+        }
+
+        // Neues Lot für das Ziel-Asset erstellen
+        // Anschaffungskosten werden proportional übertragen
+        var acquisitionPricePerUnit = totalSourceQuantity > 0 
+            ? totalSourceCost / resultingQuantity 
+            : 0;
+
+        var newLot = new AssetLot
+        {
+            Symbol = buyTrade.Symbol.ToUpperInvariant(),
+            CurrentWalletId = buyTrade.WalletId,
+            RemainingQuantity = resultingQuantity,
+            OriginalQuantity = resultingQuantity,
+            // WICHTIG: Kaufdatum des ältesten Quell-Lots übernehmen (für Altbestand-Berechnung)
+            AcquisitionDate = earliestAcquisitionDate,
+            AcquisitionPriceEur = acquisitionPricePerUnit,
+            TotalAcquisitionCostEur = totalSourceCost,
+            AcquisitionType = LotAcquisitionType.CryptoSwap,
+            SourceTradeId = buyTradeId,
+            // Bei mehreren Quell-Lots: ParentLot auf das erste setzen, TransformedFromLots für alle
+            ParentLotId = sourceLotIds.FirstOrDefault(),
+            Note = $"Swap von {totalSourceQuantity} {sellTrade.Symbol}"
+        };
+
+        _dbContext.AssetLots.Add(newLot);
+        await _dbContext.SaveChangesAsync();
+
+        // Quell-Lots mit TransformedToLotId verknüpfen
+        foreach (var lotId in sourceLotIds)
+        {
+            var sourceLot = await _dbContext.AssetLots.FindAsync(lotId);
+            if (sourceLot != null)
+            {
+                sourceLot.TransformedToLotId = newLot.Id;
+            }
+        }
+
+        // Bewegungen mit neuem Lot verknüpfen
+        var movements = await _dbContext.LotMovements
+            .Where(m => m.TradeId == sellTradeId && m.ResultingLotId == null)
+            .ToListAsync();
+        foreach (var movement in movements)
+        {
+            movement.ResultingLotId = newLot.Id;
+        }
+
+        // Trades als zugeordnet markieren
+        sellTrade.LotAssignmentConfirmed = true;
+        sellTrade.SourceLotId = sourceLotIds.FirstOrDefault();
+        
+        buyTrade.LotAssignmentConfirmed = true;
+        buyTrade.ResultingLotId = newLot.Id;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Swap-Transformation abgeschlossen: {SourceQty} {SourceSymbol} -> {TargetQty} {TargetSymbol} (Lot #{NewLotId})",
+            totalSourceQuantity, sellTrade.Symbol, resultingQuantity, buyTrade.Symbol, newLot.Id);
+
+        return newLot;
     }
 
     #endregion

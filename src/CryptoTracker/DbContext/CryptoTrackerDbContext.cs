@@ -129,6 +129,11 @@ namespace CryptoTracker
                 .HasForeignKey(l => l.ParentLotId)
                 .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AssetLot>()
+                .HasOne(l => l.TransformedToLot)
+                .WithMany(l => l.TransformedFromLots)
+                .HasForeignKey(l => l.TransformedToLotId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AssetLot>()
                 .HasIndex(l => new { l.CurrentWalletId, l.Symbol });
             modelBuilder.Entity<AssetLot>()
                 .HasIndex(l => l.AcquisitionDate);
@@ -191,6 +196,11 @@ namespace CryptoTracker
                 .HasOne(t => t.ResultingLot)
                 .WithMany()
                 .HasForeignKey(t => t.ResultingLotId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CryptoTrade>()
+                .HasOne(t => t.SourceLot)
+                .WithMany()
+                .HasForeignKey(t => t.SourceLotId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);

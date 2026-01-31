@@ -67,6 +67,7 @@ namespace CryptoTracker
             services.AddScoped<OverviewService>();
             services.AddScoped<TransactionService>();
             services.AddScoped<LotService>();
+            services.AddScoped<LotFlowValidator>();
 
             services.AddScoped<IWalletApi, WalletController>();
             services.AddScoped<IFlowApi, FlowController>();

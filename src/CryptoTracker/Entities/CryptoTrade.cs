@@ -73,6 +73,13 @@ public class CryptoTrade : IFlow
     public AssetLot? ResultingLot { get; set; }
 
     /// <summary>
+    /// Bei Swap (Sell-Seite): Welches Lot wird für diesen Trade verwendet?
+    /// Ermöglicht die Verknüpfung der Source-Lots mit dem Swap.
+    /// </summary>
+    public int? SourceLotId { get; set; }
+    public AssetLot? SourceLot { get; set; }
+
+    /// <summary>
     /// Wurde die Lot-Zuordnung für diesen Trade bestätigt?
     /// Bei Fiat-Kauf automatisch true, bei Verkauf/Swap muss User Lots auswählen.
     /// </summary>
