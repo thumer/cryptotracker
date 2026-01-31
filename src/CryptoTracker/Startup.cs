@@ -133,6 +133,7 @@ namespace CryptoTracker
             // Agent Services
             services.AddScoped<TransactionLinkingService>();
             services.AddSingleton<InteractiveLinkingService>();
+            services.AddSingleton<InteractiveLotLinkingService>();
 
             // SignalR
             services.AddSignalR();

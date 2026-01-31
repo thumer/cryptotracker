@@ -24,4 +24,11 @@ public interface ILotsApi
 
     // Lot-Generierung
     Task<GenerateLotsResultDTO> GenerateLotsFromExistingDataAsync(GenerateLotsRequest request);
+
+    // Interactive Lot-Linking
+    Task<InteractiveLotLinkingSessionDTO> StartInteractiveLotLinkingSessionAsync();
+    Task StopInteractiveLotLinkingSessionAsync(string sessionId);
+    Task<IList<LotLinkingRuleDTO>> GetLotLinkingRulesAsync();
+    Task<bool> DeleteLotLinkingRuleAsync(string ruleId);
+    Task<LotLinkingStatisticsDTO> GetLotLinkingStatisticsAsync();
 }

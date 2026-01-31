@@ -6,14 +6,19 @@ namespace CryptoTracker.Hubs;
 
 /// <summary>
 /// SignalR Hub für Live-Updates während des interaktiven Linking-Prozesses
+/// (Transaktions-Verknüpfung und Lot-Verknüpfung)
 /// </summary>
 public class LinkingHub : Hub
 {
     private readonly InteractiveLinkingService _linkingService;
+    private readonly InteractiveLotLinkingService _lotLinkingService;
 
-    public LinkingHub(InteractiveLinkingService linkingService)
+    public LinkingHub(
+        InteractiveLinkingService linkingService,
+        InteractiveLotLinkingService lotLinkingService)
     {
         _linkingService = linkingService;
+        _lotLinkingService = lotLinkingService;
     }
 
     /// <summary>
@@ -33,12 +38,21 @@ public class LinkingHub : Hub
     }
 
     /// <summary>
-    /// User sendet Antwort auf Agent-Frage
+    /// User sendet Antwort auf Agent-Frage (Transaktions-Verknüpfung)
     /// </summary>
     public async Task SendUserResponse(string sessionId, UserResponseDTO response)
     {
         // Weiterleiten an den InteractiveLinkingService
         await _linkingService.SubmitUserResponseAsync(sessionId, response);
+    }
+
+    /// <summary>
+    /// User sendet Antwort auf Agent-Frage (Lot-Verknüpfung)
+    /// </summary>
+    public async Task SendLotLinkingResponse(string sessionId, LotLinkingUserResponseDTO response)
+    {
+        // Weiterleiten an den InteractiveLotLinkingService
+        await _lotLinkingService.SubmitUserResponseAsync(sessionId, response);
     }
 }
 

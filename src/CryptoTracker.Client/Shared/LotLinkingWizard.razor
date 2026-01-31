@@ -1,13 +1,14 @@
 @using CryptoTracker.Shared
+@using CryptoTracker.Client.Common
 @using Microsoft.AspNetCore.SignalR.Client
 @implements IAsyncDisposable
 
 <div class="wizard-overlay" @onclick="OnCancel">
     <div class="wizard-container wizard-container-large" @onclick:stopPropagation="true">
         <div class="wizard-header">
-            <h2>Transaktions-Verknüpfung</h2>
+            <h2>Lot-Zuordnung</h2>
             <p class="wizard-subtitle">@GetStatusText()</p>
-            <button type="button" class="wizard-close" @onclick="OnCancel">×</button>
+            <button type="button" class="wizard-close" @onclick="OnCancel">x</button>
         </div>
 
         <div class="wizard-content linking-wizard-content">
@@ -17,13 +18,13 @@
                     <div class="linking-progress-fill" style="width: @ProgressPercent%"></div>
                 </div>
                 <div class="linking-progress-stats">
-                    <span>@ProcessedCount / @TotalCount Transaktionen</span>
-                    @if (LinkedCount > 0 || MarkedExternalCount > 0 || SkippedCount > 0)
+                    <span>@ProcessedCount / @TotalCount Einträge</span>
+                    @if (AssignedCount > 0 || CreatedLotsCount > 0 || SkippedCount > 0)
                     {
                         <span class="stats-detail">
-                            ✓ @LinkedCount verknüpft | 
-                            ⊕ @MarkedExternalCount extern | 
-                            ⏭ @SkippedCount übersprungen
+                            Lots: @CreatedLotsCount erstellt | 
+                            @AssignedCount zugeordnet | 
+                            @SkippedCount übersprungen
                         </span>
                     }
                 </div>
@@ -52,28 +53,36 @@
             {
                 <div class="linking-question-section">
                     <div class="question-header">
-                        <span class="question-icon">❓</span>
+                        <span class="question-icon">?</span>
                         <span>Agent fragt:</span>
                     </div>
                     <div class="question-content">
-                        <p>@CurrentQuestion</p>
-                        @if (CurrentTransaction != null)
+                        <div class="question-text">@((MarkupString)CurrentQuestion.Replace("\n", "<br/>"))</div>
+                        @if (CurrentAssignment != null)
                         {
                             <div class="question-transaction-preview">
-                                <span class="type-badge @(CurrentTransaction.IsSend ? "send" : "receive")">
-                                    @(CurrentTransaction.IsSend ? "Send" : "Receive")
+                                <span class="type-badge @(CurrentAssignment.Direction?.ToLower() ?? "")">
+                                    @CurrentAssignment.Direction
                                 </span>
-                                <span class="tx-symbol">@CurrentTransaction.Symbol</span>
-                                <span class="tx-amount">@CurrentTransaction.Quantity.ToString("N8")</span>
-                                <span class="tx-wallet">@CurrentTransaction.WalletName</span>
-                                <span class="tx-date">@CurrentTransaction.DateTime.ToString("dd.MM.yyyy HH:mm")</span>
-                                @if (!string.IsNullOrEmpty(CurrentTransaction.Comment))
-                                {
-                                    <span class="tx-comment">"@CurrentTransaction.Comment"</span>
-                                }
+                                <span class="tx-symbol">@CurrentAssignment.Symbol</span>
+                                <span class="tx-amount">@FormatHelper.FormatAmount(CurrentAssignment.Quantity)</span>
+                                <span class="tx-wallet">@CurrentAssignment.WalletName</span>
+                                <span class="tx-date">@FormatHelper.FormatUtc(CurrentAssignment.DateTime)</span>
                             </div>
                         }
                     </div>
+
+                    @* Price Input (wenn benötigt) *@
+                    @if (RequiresPriceInput)
+                    {
+                        <div class="price-input-section">
+                            <label>Kaufpreis (EUR pro Stück):</label>
+                            <input type="number" class="form-control form-control-sm" step="any" @bind="InputAcquisitionPrice" />
+                            <small class="text-muted">Marktwert zum Zeitpunkt des Erhalts (wird automatisch ermittelt wenn leer)</small>
+                        </div>
+                    }
+
+                    @* Option Buttons *@
                     <div class="question-options">
                         @if (CurrentOptions != null)
                         {
@@ -98,6 +107,7 @@
                             }
                         }
                     </div>
+
                     @* Freitext-Eingabe *@
                     @if (ShowFreeTextInput)
                     {
@@ -114,6 +124,8 @@
                             </div>
                         </div>
                     }
+
+                    @* Remember Checkbox *@
                     <div class="question-remember">
                         <label>
                             <input type="checkbox" @bind="ShouldRemember" />
@@ -128,7 +140,7 @@
             {
                 <div class="linking-rules-section">
                     <div class="rules-header" @onclick="ToggleRulesExpanded">
-                        <span>@(RulesExpanded ? "▼" : "▶") Gelernte Regeln (@LearnedRules.Count)</span>
+                        <span>@(RulesExpanded ? "v" : ">") Gelernte Regeln (@LearnedRules.Count)</span>
                     </div>
                     @if (RulesExpanded)
                     {
@@ -137,11 +149,11 @@
                             {
                                 <div class="rule-item">
                                     <span class="rule-pattern">"@rule.Pattern"</span>
-                                    <span class="rule-arrow">→</span>
+                                    <span class="rule-arrow">-></span>
                                     <span class="rule-action">@rule.Description</span>
-                                    <span class="rule-count">(@rule.TimesApplied× angewendet)</span>
+                                    <span class="rule-count">(@rule.TimesApplied x angewendet)</span>
                                     <button type="button" class="btn-icon" @onclick="() => DeleteRule(rule.Id)" title="Regel löschen">
-                                        🗑
+                                        X
                                     </button>
                                 </div>
                             }
@@ -154,10 +166,11 @@
             @if (!IsStarted)
             {
                 <div class="linking-start-section">
-                    <div class="wizard-icon">🔗</div>
-                    <h3>Interaktive Transaktions-Verknüpfung</h3>
+                    <div class="wizard-icon">+</div>
+                    <h3>Interaktive Lot-Zuordnung</h3>
                     <p>
-                        Der Assistent verknüpft automatisch passende Send/Receive-Paare.
+                        Der Assistent erstellt Lots für Receive-Transaktionen und ordnet 
+                        Lots bei Verkäufen automatisch zu (FIFO).
                         Bei unklaren Fällen wirst du um Bestätigung gebeten.
                     </p>
                     @if (Statistics != null)
@@ -165,16 +178,16 @@
                         <div class="wizard-stats-preview">
                             <div class="stats-row">
                                 <div class="stat-item">
-                                    <span class="stat-number">@Statistics.UnlinkedTransactions</span>
-                                    <span class="stat-label">Unverknüpfte Transaktionen</span>
+                                    <span class="stat-number">@Statistics.PendingReceiveTransactions</span>
+                                    <span class="stat-label">Receive ohne Lot</span>
                                 </div>
                                 <div class="stat-item">
-                                    <span class="stat-number">@Statistics.LinkedTransactions</span>
-                                    <span class="stat-label">Bereits verknüpft</span>
+                                    <span class="stat-number">@Statistics.PendingSellTrades</span>
+                                    <span class="stat-label">Verkäufe ohne Zuordnung</span>
                                 </div>
                                 <div class="stat-item">
-                                    <span class="stat-number">@Statistics.IntentionallyUnlinked</span>
-                                    <span class="stat-label">Als extern markiert</span>
+                                    <span class="stat-number">@Statistics.LotsCreated</span>
+                                    <span class="stat-label">Lots vorhanden</span>
                                 </div>
                             </div>
                         </div>
@@ -188,7 +201,7 @@
                             }
                             else
                             {
-                                <span>Verknüpfung starten</span>
+                                <span>Lot-Zuordnung starten</span>
                             }
                         </button>
                     </div>
@@ -197,16 +210,16 @@
             else if (IsCompleted)
             {
                 <div class="linking-complete-section">
-                    <div class="wizard-icon success">✓</div>
-                    <h3>Verknüpfung abgeschlossen!</h3>
+                    <div class="wizard-icon success">OK</div>
+                    <h3>Lot-Zuordnung abgeschlossen!</h3>
                     <div class="result-stats">
                         <div class="result-stat">
-                            <span class="result-number success">@LinkedCount</span>
-                            <span class="result-label">Verknüpft</span>
+                            <span class="result-number success">@CreatedLotsCount</span>
+                            <span class="result-label">Lots erstellt</span>
                         </div>
                         <div class="result-stat">
-                            <span class="result-number info">@MarkedExternalCount</span>
-                            <span class="result-label">Extern markiert</span>
+                            <span class="result-number info">@AssignedCount</span>
+                            <span class="result-label">Zugeordnet</span>
                         </div>
                         @if (SkippedCount > 0)
                         {
@@ -223,7 +236,7 @@
             @if (!string.IsNullOrEmpty(ErrorMessage))
             {
                 <div class="linking-error">
-                    <span>⚠</span> @ErrorMessage
+                    <span>!</span> @ErrorMessage
                 </div>
             }
         </div>
@@ -314,11 +327,11 @@
         border-bottom: none;
     }
 
-    .linking-event.linked {
+    .linking-event.assigned {
         color: #28a745;
     }
 
-    .linking-event.external {
+    .linking-event.lot_created {
         color: #17a2b8;
     }
 
@@ -362,8 +375,13 @@
         font-size: 1.2rem;
     }
 
-    .question-content p {
-        margin: 0 0 12px 0;
+    .question-content {
+        margin-bottom: 12px;
+    }
+
+    .question-text {
+        margin-bottom: 12px;
+        white-space: pre-wrap;
     }
 
     .question-transaction-preview {
@@ -377,9 +395,21 @@
         font-size: 0.9rem;
     }
 
-    .tx-comment {
-        color: #666;
-        font-style: italic;
+    .price-input-section {
+        margin: 12px 0;
+        padding: 12px;
+        background: #fff;
+        border-radius: 4px;
+    }
+
+    .price-input-section label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+
+    .price-input-section input {
+        max-width: 200px;
     }
 
     .question-options {
@@ -518,7 +548,7 @@
         font-weight: 500;
     }
 
-    .type-badge.send {
+    .type-badge.sell {
         background: #f8d7da;
         color: #721c24;
     }

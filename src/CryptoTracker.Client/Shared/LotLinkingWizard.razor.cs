@@ -4,13 +4,13 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace CryptoTracker.Client.Shared;
 
-public partial class LinkingWizard : IAsyncDisposable
+public partial class LotLinkingWizard : IAsyncDisposable
 {
     [Parameter] public EventCallback OnComplete { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
-    [Parameter] public LinkingStatisticsDTO? Statistics { get; set; }
+    [Parameter] public LotLinkingStatisticsDTO? Statistics { get; set; }
     
-    [Inject] private ITransactionLinkingApi LinkingApi { get; set; } = default!;
+    [Inject] private ILotsApi LotsApi { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
     // State
@@ -24,22 +24,24 @@ public partial class LinkingWizard : IAsyncDisposable
     // Progress
     private int ProcessedCount = 0;
     private int TotalCount = 0;
-    private int LinkedCount = 0;
-    private int MarkedExternalCount = 0;
+    private int AssignedCount = 0;
+    private int CreatedLotsCount = 0;
     private int SkippedCount = 0;
     private string ProcessingMessage = "Starte...";
 
     // Question state
     private string? CurrentQuestionId;
     private string? CurrentQuestion;
-    private UnlinkedTransactionDTO? CurrentTransaction;
+    private PendingLotAssignmentDTO? CurrentAssignment;
     private IList<string>? CurrentOptions;
     private bool ShouldRemember = true;
+    private bool RequiresPriceInput = false;
+    private decimal? InputAcquisitionPrice;
     private bool ShowFreeTextInput = false;
     private string? FreeTextInput;
 
     // Learned rules
-    private List<LearnedRuleDTO> LearnedRules = new();
+    private List<LotLinkingRuleDTO> LearnedRules = new();
     private bool RulesExpanded = false;
 
     // Event log
@@ -57,7 +59,7 @@ public partial class LinkingWizard : IAsyncDisposable
         // Load learned rules
         try
         {
-            var rules = await LinkingApi.GetLearnedRulesAsync();
+            var rules = await LotsApi.GetLotLinkingRulesAsync();
             LearnedRules = rules.ToList();
         }
         catch
@@ -83,7 +85,7 @@ public partial class LinkingWizard : IAsyncDisposable
         try
         {
             // Start session via API
-            var session = await LinkingApi.StartInteractiveSessionAsync();
+            var session = await LotsApi.StartInteractiveLotLinkingSessionAsync();
             SessionId = session.SessionId;
             TotalCount = session.TotalCount;
 
@@ -95,10 +97,10 @@ public partial class LinkingWizard : IAsyncDisposable
                 .Build();
 
             // Register event handlers
-            hubConnection.On<LinkingEventDTO>("OnLinkingEvent", HandleLinkingEvent);
-            hubConnection.On<InteractiveLinkingSessionDTO>("OnSessionUpdate", HandleSessionUpdate);
-            hubConnection.On<string>("OnError", HandleError);
-            hubConnection.On<LinkingStatisticsDTO>("OnSessionCompleted", HandleSessionCompleted);
+            hubConnection.On<LotLinkingEventDTO>("OnLotLinkingEvent", HandleLotLinkingEvent);
+            hubConnection.On<InteractiveLotLinkingSessionDTO>("OnLotLinkingSessionUpdate", HandleSessionUpdate);
+            hubConnection.On<string>("OnLotLinkingError", HandleError);
+            hubConnection.On<LotLinkingStatisticsDTO>("OnLotLinkingSessionCompleted", HandleSessionCompleted);
 
             // Connect and join session
             await hubConnection.StartAsync();
@@ -106,8 +108,8 @@ public partial class LinkingWizard : IAsyncDisposable
 
             IsStarted = true;
             IsProcessing = true;
-            ProcessingMessage = "Analysiere Transaktionen...";
-            AddEvent("start", "Interaktive Verknüpfung gestartet");
+            ProcessingMessage = "Analysiere ausstehende Zuordnungen...";
+            AddEvent("start", "Interaktive Lot-Zuordnung gestartet");
         }
         catch (Exception ex)
         {
@@ -126,7 +128,7 @@ public partial class LinkingWizard : IAsyncDisposable
 
         try
         {
-            await LinkingApi.StopInteractiveSessionAsync(SessionId);
+            await LotsApi.StopInteractiveLotLinkingSessionAsync(SessionId);
             AddEvent("stop", "Session abgebrochen");
             IsCompleted = true;
             IsProcessing = false;
@@ -139,22 +141,22 @@ public partial class LinkingWizard : IAsyncDisposable
         StateHasChanged();
     }
 
-    private void HandleLinkingEvent(LinkingEventDTO evt)
+    private void HandleLotLinkingEvent(LotLinkingEventDTO evt)
     {
         InvokeAsync(() =>
         {
             switch (evt.EventType)
             {
-                case "linked":
-                    LinkedCount++;
+                case "assigned":
+                    AssignedCount++;
                     ProcessedCount = evt.ProcessedCount;
-                    AddEvent("linked", evt.Message);
+                    AddEvent("assigned", evt.Message);
                     break;
 
-                case "marked_external":
-                    MarkedExternalCount++;
+                case "lot_created":
+                    CreatedLotsCount++;
                     ProcessedCount = evt.ProcessedCount;
-                    AddEvent("external", evt.Message);
+                    AddEvent("lot_created", evt.Message);
                     break;
 
                 case "skipped":
@@ -166,8 +168,10 @@ public partial class LinkingWizard : IAsyncDisposable
                 case "question":
                     CurrentQuestionId = evt.QuestionId;
                     CurrentQuestion = evt.Message;
-                    CurrentTransaction = evt.Transaction;
+                    CurrentAssignment = evt.Assignment;
                     CurrentOptions = evt.Options;
+                    RequiresPriceInput = evt.Message?.Contains("Woher stammen") == true;
+                    InputAcquisitionPrice = null;
                     IsProcessing = false;
                     break;
 
@@ -179,7 +183,6 @@ public partial class LinkingWizard : IAsyncDisposable
 
                 case "rule_learned":
                     AddEvent("rule", evt.Message);
-                    // Refresh rules list
                     _ = RefreshRulesAsync();
                     break;
 
@@ -193,21 +196,21 @@ public partial class LinkingWizard : IAsyncDisposable
         });
     }
 
-    private void HandleSessionUpdate(InteractiveLinkingSessionDTO session)
+    private void HandleSessionUpdate(InteractiveLotLinkingSessionDTO session)
     {
         InvokeAsync(() =>
         {
             ProcessedCount = session.ProcessedCount;
             TotalCount = session.TotalCount;
-            LinkedCount = session.LinkedCount;
-            MarkedExternalCount = session.MarkedExternalCount;
+            AssignedCount = session.AssignedCount;
+            CreatedLotsCount = session.CreatedLotsCount;
             SkippedCount = session.SkippedCount;
 
             if (session.CurrentQuestionId != null)
             {
                 CurrentQuestionId = session.CurrentQuestionId;
                 CurrentQuestion = session.CurrentQuestion;
-                CurrentTransaction = session.CurrentTransaction;
+                CurrentAssignment = session.CurrentAssignment;
                 CurrentOptions = session.CurrentOptions;
                 IsProcessing = false;
             }
@@ -226,14 +229,14 @@ public partial class LinkingWizard : IAsyncDisposable
         });
     }
 
-    private void HandleSessionCompleted(LinkingStatisticsDTO stats)
+    private void HandleSessionCompleted(LotLinkingStatisticsDTO stats)
     {
         InvokeAsync(() =>
         {
             IsCompleted = true;
             IsProcessing = false;
             CurrentQuestion = null;
-            AddEvent("complete", $"Fertig! {LinkedCount} verknüpft, {MarkedExternalCount} extern, {SkippedCount} übersprungen");
+            AddEvent("complete", $"Fertig! {CreatedLotsCount} Lots erstellt, {AssignedCount} zugeordnet, {SkippedCount} übersprungen");
             StateHasChanged();
         });
     }
@@ -247,29 +250,28 @@ public partial class LinkingWizard : IAsyncDisposable
 
         try
         {
-            var response = new UserResponseDTO
+            var response = new LotLinkingUserResponseDTO
             {
                 QuestionId = CurrentQuestionId,
                 Response = answer,
-                ShouldRemember = ShouldRemember
+                ShouldRemember = ShouldRemember,
+                AcquisitionPriceEur = InputAcquisitionPrice,
+                CustomText = answer.StartsWith("[Freitext]") ? answer.Replace("[Freitext] ", "") : null
             };
 
             // Send via SignalR
             if (hubConnection?.State == HubConnectionState.Connected)
             {
-                await hubConnection.InvokeAsync("SendUserResponse", SessionId, response);
-            }
-            else
-            {
-                // Fallback to API
-                await LinkingApi.SubmitUserResponseAsync(SessionId, response);
+                await hubConnection.InvokeAsync("SendLotLinkingResponse", SessionId, response);
             }
 
             // Clear question
             CurrentQuestionId = null;
             CurrentQuestion = null;
-            CurrentTransaction = null;
+            CurrentAssignment = null;
             CurrentOptions = null;
+            RequiresPriceInput = false;
+            InputAcquisitionPrice = null;
             ShowFreeTextInput = false;
             FreeTextInput = null;
             IsProcessing = true;
@@ -290,7 +292,7 @@ public partial class LinkingWizard : IAsyncDisposable
     {
         try
         {
-            var rules = await LinkingApi.GetLearnedRulesAsync();
+            var rules = await LotsApi.GetLotLinkingRulesAsync();
             LearnedRules = rules.ToList();
             StateHasChanged();
         }
@@ -304,7 +306,7 @@ public partial class LinkingWizard : IAsyncDisposable
     {
         try
         {
-            var success = await LinkingApi.DeleteLearnedRuleAsync(ruleId);
+            var success = await LotsApi.DeleteLotLinkingRuleAsync(ruleId);
             if (success)
             {
                 LearnedRules.RemoveAll(r => r.Id == ruleId);
@@ -376,9 +378,12 @@ public partial class LinkingWizard : IAsyncDisposable
     {
         return option.ToLowerInvariant() switch
         {
-            var o when o.Contains("extern") || o.Contains("ja") => "btn-success",
+            var o when o.Contains("airdrop") => "btn-info",
+            var o when o.Contains("staking") => "btn-info",
+            var o when o.Contains("mining") => "btn-info",
+            var o when o.Contains("extern") || o.Contains("eingang") => "btn-success",
             var o when o.Contains("skip") || o.Contains("überspringen") => "btn-secondary",
-            var o when o.Contains("nein") => "btn-outline-secondary",
+            var o when o.Contains("schenkung") || o.Contains("erbe") => "btn-warning",
             _ => "btn-primary"
         };
     }
@@ -415,21 +420,21 @@ public partial class LinkingWizard : IAsyncDisposable
 
         public string Icon => Type switch
         {
-            "linked" => "✓",
-            "external" => "⊕",
-            "skipped" => "⏭",
-            "error" => "⚠",
-            "rule" => "📝",
-            "start" => "▶",
-            "stop" => "⏹",
-            "complete" => "🎉",
-            _ => "•"
+            "assigned" => "->",
+            "lot_created" => "+",
+            "skipped" => ">>",
+            "error" => "!",
+            "rule" => "#",
+            "start" => ">",
+            "stop" => "[]",
+            "complete" => "OK",
+            _ => "*"
         };
 
         public string CssClass => Type switch
         {
-            "linked" => "linked",
-            "external" => "external",
+            "assigned" => "assigned",
+            "lot_created" => "lot_created",
             "skipped" => "skipped",
             "error" => "error",
             "rule" => "rule",

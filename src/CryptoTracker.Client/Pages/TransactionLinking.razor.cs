@@ -1,6 +1,5 @@
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 
 namespace CryptoTracker.Client.Pages;
 
@@ -8,7 +7,6 @@ public partial class TransactionLinking
 {
     // State
     private bool IsLoading = true;
-    private bool IsAIConfigured = false;
     private LinkingStatisticsDTO? Statistics;
     private IList<UnlinkedTransactionDTO> UnlinkedTransactions = new List<UnlinkedTransactionDTO>();
     private IList<UnlinkedTransactionDTO> SelectedTransactions = new List<UnlinkedTransactionDTO>();
@@ -18,13 +16,6 @@ public partial class TransactionLinking
 
     // Wizard State
     private bool IsWizardOpen = false;
-
-    // Chat State
-    private bool IsChatOpen = false;
-    private bool IsChatLoading = false;
-    private string ChatInput = "";
-    private List<ChatMessageDTO> ChatMessages = new();
-    private ElementReference ChatMessagesRef;
 
     // Link Dialog State
     private bool IsLinkDialogOpen = false;
@@ -76,10 +67,6 @@ public partial class TransactionLinking
 
         try
         {
-            // Sequential calls to avoid DbContext threading issues
-            var status = await LinkingApi.GetStatusAsync();
-            IsAIConfigured = status.IsConfigured;
-
             Statistics = await LinkingApi.GetStatisticsAsync();
             UnlinkedTransactions = await LinkingApi.GetUnlinkedAsync(SelectedType, SelectedSymbol);
         }
@@ -131,108 +118,6 @@ public partial class TransactionLinking
         SelectedTransactions = list;
     }
 
-    // Chat
-    private void ToggleChat()
-    {
-        IsChatOpen = !IsChatOpen;
-        if (IsChatOpen && ChatMessages.Count == 0)
-        {
-            _ = StartChatSession();
-        }
-    }
-
-    private async Task StartChatSession()
-    {
-        IsChatLoading = true;
-        ChatMessages.Add(new ChatMessageDTO { Role = "assistant", Content = "", IsLoading = true });
-        StateHasChanged();
-
-        try
-        {
-            var result = await LinkingApi.StartSessionAsync();
-            ChatMessages.RemoveAt(ChatMessages.Count - 1);
-            ChatMessages.Add(new ChatMessageDTO 
-            { 
-                Role = "assistant", 
-                Content = result.AgentResponse,
-                Timestamp = DateTimeOffset.Now
-            });
-        }
-        catch (Exception ex)
-        {
-            ChatMessages.RemoveAt(ChatMessages.Count - 1);
-            ChatMessages.Add(new ChatMessageDTO 
-            { 
-                Role = "assistant", 
-                Content = $"Fehler: {ex.Message}",
-                Timestamp = DateTimeOffset.Now
-            });
-        }
-        finally
-        {
-            IsChatLoading = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task OnChatKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(ChatInput))
-        {
-            await SendChatMessage();
-        }
-    }
-
-    private async Task SendChatMessage()
-    {
-        if (string.IsNullOrWhiteSpace(ChatInput) || IsChatLoading)
-            return;
-
-        var userMessage = ChatInput;
-        ChatInput = "";
-
-        ChatMessages.Add(new ChatMessageDTO 
-        { 
-            Role = "user", 
-            Content = userMessage,
-            Timestamp = DateTimeOffset.Now
-        });
-
-        IsChatLoading = true;
-        ChatMessages.Add(new ChatMessageDTO { Role = "assistant", Content = "", IsLoading = true });
-        StateHasChanged();
-
-        try
-        {
-            var result = await LinkingApi.SendMessageAsync(userMessage);
-            ChatMessages.RemoveAt(ChatMessages.Count - 1);
-            ChatMessages.Add(new ChatMessageDTO 
-            { 
-                Role = "assistant", 
-                Content = result.AgentResponse,
-                Timestamp = DateTimeOffset.Now
-            });
-
-            // Refresh data after agent interaction
-            await LoadDataAsync();
-        }
-        catch (Exception ex)
-        {
-            ChatMessages.RemoveAt(ChatMessages.Count - 1);
-            ChatMessages.Add(new ChatMessageDTO 
-            { 
-                Role = "assistant", 
-                Content = $"Fehler: {ex.Message}",
-                Timestamp = DateTimeOffset.Now
-            });
-        }
-        finally
-        {
-            IsChatLoading = false;
-            StateHasChanged();
-        }
-    }
-
     // Auto-Link
     private async Task RunAutoLink()
     {
@@ -244,7 +129,7 @@ public partial class TransactionLinking
             var result = await LinkingApi.RunAutoLinkAsync();
             if (result.Success)
             {
-                SuccessMessage = $"Auto-Verknüpfung abgeschlossen: {result.LinkedCount} verknüpft, {result.MarkedUnlinkedCount} als extern markiert, {result.RemainingUnlinkedCount} offen.";
+                SuccessMessage = $"Schnell-Verknüpfung: {result.LinkedCount} verknüpft, {result.MarkedUnlinkedCount} extern, {result.RemainingUnlinkedCount} offen.";
                 await LoadDataAsync();
             }
         }
@@ -256,14 +141,15 @@ public partial class TransactionLinking
         {
             IsAutoLinking = false;
             StateHasChanged();
-
-            // Auto-hide success message
-            _ = Task.Delay(5000).ContinueWith(_ => 
-            {
-                SuccessMessage = null;
-                InvokeAsync(StateHasChanged);
-            });
+            _ = HideSuccessMessageAfterDelay();
         }
+    }
+
+    private async Task HideSuccessMessageAfterDelay()
+    {
+        await Task.Delay(5000);
+        SuccessMessage = null;
+        await InvokeAsync(StateHasChanged);
     }
 
     // Link Dialog
@@ -281,7 +167,6 @@ public partial class TransactionLinking
 
         try
         {
-            // Load opposite type transactions for the same symbol
             var oppositeType = tx.IsSend ? "receive" : "send";
             PotentialMatches = await LinkingApi.GetUnlinkedAsync(oppositeType, tx.Symbol, 50, 0);
         }
@@ -416,7 +301,7 @@ public partial class TransactionLinking
         try
         {
             var result = await LinkingApi.ResetLinksAsync(ResetKeepManual, ResetIncludeExternal);
-            SuccessMessage = $"Reset abgeschlossen: {result.ResetCount} Verknüpfungen zurückgesetzt.";
+            SuccessMessage = $"Reset: {result.ResetCount} Verknüpfungen zurückgesetzt.";
             CloseResetDialog();
             await LoadDataAsync();
         }
@@ -437,19 +322,5 @@ public partial class TransactionLinking
         if (string.IsNullOrEmpty(address) || address.Length <= 16)
             return address;
         return $"{address[..8]}...{address[^6..]}";
-    }
-
-    private static string FormatMarkdown(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return "";
-
-        // Simple markdown formatting
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"\*(.+?)\*", "<em>$1</em>");
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"`(.+?)`", "<code>$1</code>");
-        text = text.Replace("\n", "<br/>");
-
-        return text;
     }
 }

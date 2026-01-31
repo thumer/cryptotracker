@@ -106,7 +106,8 @@ public record PendingLotAssignmentDTO(
     string WalletName,
     int WalletId,
     string? Direction, // "Receive" für Transactions, "Sell" für Trades
-    string? OppositeWalletName);
+    string? OppositeWalletName,
+    string? Comment); // Kommentar der Transaktion für Regel-Matching
 
 /// <summary>
 /// Request für Lot-Generierung aus bestehenden Daten.
@@ -163,3 +164,97 @@ public record RevalidateFlowResultDTO(
     int UpdatedCount,
     int CompleteCount,
     int IncompleteCount);
+
+// ============================================
+// DTOs für interaktives Lot-Linking
+// ============================================
+
+/// <summary>
+/// Statistiken für Lot-Zuordnungen.
+/// </summary>
+public record LotLinkingStatisticsDTO
+{
+    public int TotalPendingAssignments { get; init; }
+    public int PendingReceiveTransactions { get; init; }
+    public int PendingSellTrades { get; init; }
+    public int CompletedAssignments { get; init; }
+    public int LotsCreated { get; init; }
+}
+
+/// <summary>
+/// Session-State für interaktives Lot-Linking.
+/// </summary>
+public record InteractiveLotLinkingSessionDTO
+{
+    public string SessionId { get; init; } = "";
+    public bool IsActive { get; init; }
+    public int ProcessedCount { get; init; }
+    public int TotalCount { get; init; }
+    public int AssignedCount { get; init; }
+    public int CreatedLotsCount { get; init; }
+    public int SkippedCount { get; init; }
+    public string? CurrentQuestionId { get; init; }
+    public string? CurrentQuestion { get; init; }
+    public PendingLotAssignmentDTO? CurrentAssignment { get; init; }
+    public IList<string>? CurrentOptions { get; init; }
+}
+
+/// <summary>
+/// Live-Event vom Lot-Linking Agent.
+/// </summary>
+public record LotLinkingEventDTO
+{
+    public string EventType { get; init; } = ""; // "assigned", "lot_created", "question", "progress", "error", "rule_learned"
+    public string Message { get; init; } = "";
+    public PendingLotAssignmentDTO? Assignment { get; init; }
+    public LotDTO? CreatedLot { get; init; }
+    public string? QuestionId { get; init; }
+    public IList<string>? Options { get; init; }
+    public IList<LotOptionDTO>? LotOptions { get; init; }
+    public int ProcessedCount { get; init; }
+    public int TotalCount { get; init; }
+}
+
+/// <summary>
+/// Option für Lot-Auswahl bei Fragen.
+/// </summary>
+public record LotOptionDTO
+{
+    public int LotId { get; init; }
+    public string DisplayText { get; init; } = "";
+    public decimal AvailableQuantity { get; init; }
+    public DateTimeOffset AcquisitionDate { get; init; }
+    public decimal AcquisitionPriceEur { get; init; }
+    public bool IsAltbestand { get; init; }
+    public string WalletName { get; init; } = "";
+}
+
+/// <summary>
+/// Antwort vom User auf Lot-Linking Frage.
+/// </summary>
+public record LotLinkingUserResponseDTO
+{
+    public string QuestionId { get; init; } = "";
+    public string Response { get; init; } = "";
+    public bool ShouldRemember { get; init; } = true;
+    public IList<LotAllocationDTO>? LotAllocations { get; init; }
+    public string? CustomText { get; init; }
+    // Für manuelle Lot-Erstellung
+    public string? AcquisitionType { get; init; }
+    public decimal? AcquisitionPriceEur { get; init; }
+    public string? Note { get; init; }
+}
+
+/// <summary>
+/// Gelernte Regel für Lot-Zuordnung.
+/// </summary>
+public record LotLinkingRuleDTO
+{
+    public string Id { get; init; } = "";
+    public string RuleType { get; init; } = ""; // "comment_pattern", "symbol_pattern", "wallet_pattern"
+    public string Pattern { get; init; } = "";
+    public string Action { get; init; } = ""; // "create_lot_airdrop", "create_lot_staking", "create_lot_mining", "fifo", "skip"
+    public string Description { get; init; } = "";
+    public int TimesApplied { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+}

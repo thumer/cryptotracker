@@ -11,6 +11,9 @@
         <p class="page-subtitle">Verknüpfe Transaktionen mit ihren Lots für eine lückenlose Steuerdokumentation.</p>
     </div>
     <div class="page-actions">
+        <button type="button" class="btn btn-primary" @onclick="OpenWizard" disabled="@IsLoading">
+            Assistent starten
+        </button>
         <button type="button" class="btn btn-secondary" @onclick="ValidateAllFlows" disabled="@IsValidating">
             @if (IsValidating)
             {
@@ -417,4 +420,13 @@
     <div class="toast toast-success" @onclick="() => SuccessMessage = null">
         @SuccessMessage
     </div>
+}
+
+@* Lot-Linking Wizard *@
+@if (IsWizardOpen)
+{
+    <LotLinkingWizard 
+        Statistics="@LotLinkingStatistics" 
+        OnComplete="OnWizardComplete" 
+        OnCancel="OnWizardCancel" />
 }

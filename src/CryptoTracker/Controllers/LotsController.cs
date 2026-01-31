@@ -1,3 +1,4 @@
+using CryptoTracker.Agent.Services;
 using CryptoTracker.Entities;
 using CryptoTracker.Services;
 using CryptoTracker.Shared;
@@ -13,12 +14,18 @@ public class LotsController : ControllerBase, ILotsApi
     private readonly LotService _lotService;
     private readonly LotFlowValidator _flowValidator;
     private readonly CryptoTrackerDbContext _dbContext;
+    private readonly InteractiveLotLinkingService _lotLinkingService;
 
-    public LotsController(LotService lotService, LotFlowValidator flowValidator, CryptoTrackerDbContext dbContext)
+    public LotsController(
+        LotService lotService, 
+        LotFlowValidator flowValidator, 
+        CryptoTrackerDbContext dbContext,
+        InteractiveLotLinkingService lotLinkingService)
     {
         _lotService = lotService;
         _flowValidator = flowValidator;
         _dbContext = dbContext;
+        _lotLinkingService = lotLinkingService;
     }
 
     #region Hilfsmethoden
@@ -222,7 +229,8 @@ public class LotsController : ControllerBase, ILotsApi
             t.Wallet.Name,
             t.WalletId,
             t.TransactionType.ToString(),
-            t.OppositeWallet?.Name)));
+            t.OppositeWallet?.Name,
+            t.Comment)));
 
         result.AddRange(trades.Select(t => new PendingLotAssignmentDTO(
             "Trade",
@@ -233,7 +241,8 @@ public class LotsController : ControllerBase, ILotsApi
             t.Wallet.Name,
             t.WalletId,
             t.TradeType.ToString(),
-            null)));
+            null,
+            t.Comment)));
 
         return result.OrderBy(p => p.DateTime).ToList();
     }
@@ -353,6 +362,71 @@ public class LotsController : ControllerBase, ILotsApi
 
     Task<GenerateLotsResultDTO> ILotsApi.GenerateLotsFromExistingDataAsync(GenerateLotsRequest request)
         => GenerateLotsFromExistingData(request);
+
+    Task<InteractiveLotLinkingSessionDTO> ILotsApi.StartInteractiveLotLinkingSessionAsync()
+        => StartInteractiveLotLinkingSession();
+
+    Task ILotsApi.StopInteractiveLotLinkingSessionAsync(string sessionId)
+        => StopInteractiveLotLinkingSession(sessionId);
+
+    Task<IList<LotLinkingRuleDTO>> ILotsApi.GetLotLinkingRulesAsync()
+        => GetLotLinkingRules();
+
+    Task<bool> ILotsApi.DeleteLotLinkingRuleAsync(string ruleId)
+        => DeleteLotLinkingRule(ruleId);
+
+    Task<LotLinkingStatisticsDTO> ILotsApi.GetLotLinkingStatisticsAsync()
+        => GetLotLinkingStatistics();
+
+    #endregion
+
+    #region Interactive Lot-Linking
+
+    [HttpPost("StartInteractiveLotLinkingSession")]
+    public async Task<InteractiveLotLinkingSessionDTO> StartInteractiveLotLinkingSession()
+    {
+        return await _lotLinkingService.StartSessionAsync();
+    }
+
+    [HttpPost("StopInteractiveLotLinkingSession")]
+    public async Task StopInteractiveLotLinkingSession([FromQuery] string sessionId)
+    {
+        _lotLinkingService.StopSession(sessionId);
+        await Task.CompletedTask;
+    }
+
+    [HttpGet("GetLotLinkingRules")]
+    public async Task<IList<LotLinkingRuleDTO>> GetLotLinkingRules()
+    {
+        return await _lotLinkingService.GetLearnedRulesAsync();
+    }
+
+    [HttpDelete("DeleteLotLinkingRule")]
+    public async Task<bool> DeleteLotLinkingRule([FromQuery] string ruleId)
+    {
+        return await _lotLinkingService.DeleteLearnedRuleAsync(ruleId);
+    }
+
+    [HttpGet("GetLotLinkingStatistics")]
+    public async Task<LotLinkingStatisticsDTO> GetLotLinkingStatistics()
+    {
+        var pendingReceive = await _dbContext.CryptoTransactions
+            .CountAsync(t => t.TransactionType == TransactionType.Receive && !t.LotAssignmentConfirmed);
+        var pendingSell = await _dbContext.CryptoTrades
+            .CountAsync(t => t.TradeType == TradeType.Sell && !t.LotAssignmentConfirmed);
+        var completedTx = await _dbContext.CryptoTransactions
+            .CountAsync(t => t.LotAssignmentConfirmed);
+        var totalLots = await _dbContext.AssetLots.CountAsync();
+
+        return new LotLinkingStatisticsDTO
+        {
+            TotalPendingAssignments = pendingReceive + pendingSell,
+            PendingReceiveTransactions = pendingReceive,
+            PendingSellTrades = pendingSell,
+            CompletedAssignments = completedTx,
+            LotsCreated = totalLots
+        };
+    }
 
     #endregion
 

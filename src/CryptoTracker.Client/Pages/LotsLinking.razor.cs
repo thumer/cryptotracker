@@ -14,6 +14,10 @@ public partial class LotsLinking
     private string ActiveTab = "pending";
     private string? SuccessMessage;
 
+    // Wizard State
+    private bool IsWizardOpen = false;
+    private LotLinkingStatisticsDTO? LotLinkingStatistics;
+
     // Data
     private FlowStatisticsDTO? FlowStatistics;
     private IList<PendingLotAssignmentDTO> PendingAssignments = new List<PendingLotAssignmentDTO>();
@@ -91,6 +95,34 @@ public partial class LotsLinking
     private void SetActiveTab(string tab)
     {
         ActiveTab = tab;
+    }
+
+    // Wizard Methods
+    private async Task OpenWizard()
+    {
+        try
+        {
+            LotLinkingStatistics = await LotsApi.GetLotLinkingStatisticsAsync();
+        }
+        catch
+        {
+            LotLinkingStatistics = null;
+        }
+        IsWizardOpen = true;
+        StateHasChanged();
+    }
+
+    private async Task OnWizardComplete()
+    {
+        IsWizardOpen = false;
+        await LoadDataAsync();
+        SuccessMessage = "Lot-Zuordnung abgeschlossen";
+        _ = HideSuccessMessage();
+    }
+
+    private void OnWizardCancel()
+    {
+        IsWizardOpen = false;
     }
 
     private async Task ValidateAllFlows()

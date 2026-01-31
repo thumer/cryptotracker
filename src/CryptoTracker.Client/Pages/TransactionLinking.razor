@@ -20,26 +20,20 @@
         <p class="page-subtitle">Verknüpfe Send/Receive-Transaktionen für korrekte Steuerberechnung.</p>
     </div>
     <div class="page-actions">
-        <button type="button" class="btn btn-secondary" @onclick="OpenWizard" disabled="@IsLoading">
-            Wizard starten
+        <button type="button" class="btn btn-primary" @onclick="OpenWizard" disabled="@IsLoading">
+            Assistent starten
         </button>
-        @if (IsAIConfigured)
-        {
-            <button type="button" class="btn btn-secondary" @onclick="ToggleChat" disabled="@IsLoading">
-                @(IsChatOpen ? "Chat schließen" : "AI-Assistent")
-            </button>
-            <button type="button" class="btn btn-primary" @onclick="RunAutoLink" disabled="@IsAutoLinking">
-                @if (IsAutoLinking)
-                {
-                    <span class="loading-spinner-small"></span>
-                    <span>Verknüpfe...</span>
-                }
-                else
-                {
-                    <span>Auto-Verknüpfung</span>
-                }
-            </button>
-        }
+        <button type="button" class="btn btn-secondary" @onclick="RunAutoLink" disabled="@IsAutoLinking">
+            @if (IsAutoLinking)
+            {
+                <span class="loading-spinner-small"></span>
+                <span>Verknüpfe...</span>
+            }
+            else
+            {
+                <span>Schnell-Verknüpfung</span>
+            }
+        </button>
         <button type="button" class="btn btn-danger" @onclick="OpenResetDialog" disabled="@IsLoading">
             Reset
         </button>
@@ -98,49 +92,6 @@
             }
         </div>
     }
-}
-
-@* AI Chat Panel (aufklappbar) *@
-@if (IsChatOpen && IsAIConfigured)
-{
-    <div class="chat-panel">
-        <div class="chat-header">
-            <h3>AI-Assistent</h3>
-            <button type="button" class="chat-close" @onclick="ToggleChat">x</button>
-        </div>
-        <div class="chat-messages" @ref="ChatMessagesRef">
-            @foreach (var msg in ChatMessages)
-            {
-                <div class="chat-message @(msg.Role == "user" ? "user" : "assistant")">
-                    @if (msg.IsLoading)
-                    {
-                        <div class="chat-loading">
-                            <span class="loading-dot"></span>
-                            <span class="loading-dot"></span>
-                            <span class="loading-dot"></span>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="chat-content">@((MarkupString)FormatMarkdown(msg.Content))</div>
-                        <div class="chat-time">@msg.Timestamp.ToLocalTime().ToString("HH:mm")</div>
-                    }
-                </div>
-            }
-        </div>
-        <div class="chat-input-area">
-            <input type="text" 
-                   class="chat-input" 
-                   placeholder="Nachricht eingeben..." 
-                   @bind="ChatInput"
-                   @bind:event="oninput"
-                   @onkeydown="OnChatKeyDown"
-                   disabled="@IsChatLoading" />
-            <button type="button" class="chat-send" @onclick="SendChatMessage" disabled="@(IsChatLoading || string.IsNullOrWhiteSpace(ChatInput))">
-                Senden
-            </button>
-        </div>
-    </div>
 }
 
 @* Typ-Filter Tabs *@
