@@ -515,7 +515,7 @@ public class ImportAutoService
 
                 if (isDeposit)
                 {
-                    var txid = EnsureTxId(null, "binance-statement-deposit", date.ToString("O"), coin, amount.ToString(CultureEn), entry.Operation, comment);
+                    var txid = EnsureTxId(null);
                     deposits.Add(new BinanceDeposit
                     {
                         Date = date,
@@ -530,7 +530,7 @@ public class ImportAutoService
                 }
                 else
                 {
-                    var txid = EnsureTxId(null, "binance-statement-withdrawal", date.ToString("O"), coin, amount.ToString(CultureEn), entry.Operation, comment);
+                    var txid = EnsureTxId(null);
                     withdrawals.Add(new BinanceWithdrawal
                     {
                         Date = date,
@@ -1179,7 +1179,7 @@ public class ImportAutoService
         var amount = ParseDecimal(GetValue(row, "amount")) ?? 0m;
         var address = GetValue(row, "address") ?? string.Empty;
         var comment = GetValue(row, "comment", "remark", "status") ?? string.Empty;
-        var txid = EnsureTxId(GetValue(row, "txid"), "binance-deposit", date.ToString("O"), coin, amount.ToString(CultureEn), address, comment);
+        var txid = EnsureTxId(GetValue(row, "txid"));
 
         return new BinanceDeposit
         {
@@ -1207,7 +1207,7 @@ public class ImportAutoService
         var amount = ParseDecimal(GetValue(row, "amount")) ?? 0m;
         var address = GetValue(row, "address") ?? string.Empty;
         var comment = GetValue(row, "comment", "remark", "status") ?? string.Empty;
-        var txid = EnsureTxId(GetValue(row, "txid"), "binance-withdrawal", date.ToString("O"), coin, amount.ToString(CultureEn), address, comment);
+        var txid = EnsureTxId(GetValue(row, "txid"));
 
         return new BinanceWithdrawal
         {
@@ -1234,7 +1234,7 @@ public class ImportAutoService
         var address = GetValue(row, "walletaddress");
         var coin = InferCoinFromAddress(address);
         var comment = GetValue(row, "comment") ?? string.Empty;
-        var txid = EnsureTxId(null, "cexio-withdrawal", date.ToString("O"), coin, amount.Value.ToString(CultureEn), address, comment);
+        var txid = EnsureTxId(null);
 
         return new BinanceWithdrawal
         {
@@ -2184,16 +2184,8 @@ public class ImportAutoService
         return sb.ToString();
     }
 
-    private static string EnsureTxId(string? txid, params string?[] parts)
-    {
-        if (!string.IsNullOrWhiteSpace(txid))
-        {
-            return txid.Trim();
-        }
-
-        var fallback = string.Join("|", parts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!.Trim()));
-        return string.IsNullOrWhiteSpace(fallback) ? Guid.NewGuid().ToString("N") : fallback;
-    }
+    private static string EnsureTxId(string? txid)
+        => string.IsNullOrWhiteSpace(txid) ? string.Empty : txid.Trim();
 
     private static (string baseSymbol, string quoteSymbol) SplitBinancePair(string? pair)
     {
