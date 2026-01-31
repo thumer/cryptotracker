@@ -17,4 +17,5 @@ public record TransactionRowDTO(FlowType FlowType,
                                 string? TargetSymbol,
                                 decimal? TargetAmount,
                                 string? TargetSlug,
-                                Guid RowKey);
+                                Guid RowKey,
+                                bool IsHidden);

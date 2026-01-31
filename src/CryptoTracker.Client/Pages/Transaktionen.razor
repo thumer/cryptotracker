@@ -12,6 +12,12 @@
         <h1>Transaktionen</h1>
         <p class="page-subtitle">Alle Bewegungen, sauber filterbar nach Wallet und Coin.</p>
     </div>
+    <div class="page-actions">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="showHiddenToggle" checked="@ShowHidden" @onchange="OnShowHiddenChanged" />
+            <label class="form-check-label" for="showHiddenToggle">Hidden anzeigen</label>
+        </div>
+    </div>
 </div>
 
 <LoadingOverlay IsLoading="IsLoading" Text="Lade Transaktionen…" />
@@ -34,7 +40,7 @@
     }
     else
     {
-        <RadzenDataGrid TItem="TransactionRowDTO" Data="Transactions" KeyProperty="@nameof(TransactionRowDTO.RowKey)" AllowSorting="false" AllowFiltering="false" AllowColumnResize="true" AllowPaging="false" Class="styled-grid">
+        <RadzenDataGrid TItem="TransactionRowDTO" Data="Transactions" KeyProperty="@nameof(TransactionRowDTO.RowKey)" AllowSorting="false" AllowFiltering="false" AllowColumnResize="true" AllowPaging="false" Class="styled-grid" RowRender="@OnRowRender">
             <Columns>
                 <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Datum (UTC)">
                     <Template Context="row">
@@ -46,6 +52,14 @@
                         @(row.FlowType == FlowType.Trade ? "Trade" : "Transaction")
                     </Template>
                 </RadzenDataGridColumn>
+                @if (ShowHidden)
+                {
+                    <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Hidden">
+                        <Template Context="row">
+                            @(row.IsHidden ? "Ja" : "Nein")
+                        </Template>
+                    </RadzenDataGridColumn>
+                }
                 <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Flow">
                     <Template Context="row">
                         <span class="flow-badge @(row.FlowDirection == FlowDirection.Inflow ? "flow-in" : "flow-out")">
@@ -148,7 +162,15 @@
         <div class="modal-card details-modal" @onclick:stopPropagation="true">
             <div class="details-header">
                 <h3>Details</h3>
-                <button type="button" class="details-close" @onclick="CloseDetails">x</button>
+                <div class="details-header-actions">
+                    @if (CanToggleHidden)
+                    {
+                        <button type="button" class="details-toggle @(IsCurrentHidden ? "is-hidden" : string.Empty)" @onclick="ToggleHiddenAsync" disabled="@IsToggleHiddenBusy">
+                            @(IsCurrentHidden ? "Unhide" : "Hide")
+                        </button>
+                    }
+                    <button type="button" class="details-close" @onclick="CloseDetails">x</button>
+                </div>
             </div>
 
             @if (IsDetailsLoading)

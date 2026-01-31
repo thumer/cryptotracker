@@ -50,6 +50,7 @@ public class CryptoTrade : IFlow
     /// </summary>
     public string? Referenz {  get; set; }
     public string? Comment { get; set; }
+    public bool IsHidden { get; set; }
 
     public int? OppositeTradeId { get; set; }
 

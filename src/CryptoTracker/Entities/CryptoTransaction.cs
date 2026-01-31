@@ -52,6 +52,7 @@ public class CryptoTransaction : IFlow
     public string? Address { get; set; }
     public string? Network { get; set; }
     public string? Comment { get; set; }
+    public bool IsHidden { get; set; }
 
     FlowDirection IFlow.FlowDirection => TransactionType switch
     {

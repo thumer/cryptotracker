@@ -45,6 +45,8 @@ namespace CryptoTracker
                 .WithMany()
                 .HasForeignKey(c => c.OppositeWalletId)
                 .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CryptoTransaction>()
+                .HasQueryFilter(c => !c.IsHidden);
 
             modelBuilder.Entity<CryptoTrade>().HasKey(c => c.Id);
             modelBuilder.Entity<CryptoTrade>()
@@ -56,6 +58,8 @@ namespace CryptoTracker
                 .HasOne(c => c.Wallet)
                 .WithMany()
                 .HasForeignKey(c => c.WalletId);
+            modelBuilder.Entity<CryptoTrade>()
+                .HasQueryFilter(c => !c.IsHidden);
 
             modelBuilder.Entity<BinanceDepositEntity>().HasKey(b => b.Id);
             modelBuilder.Entity<BinanceWithdrawalEntity>().HasKey(b => b.Id);

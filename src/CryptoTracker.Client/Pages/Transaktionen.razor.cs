@@ -1,6 +1,7 @@
 using CryptoTracker.Client.Shared;
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Components;
+using Radzen;
 
 namespace CryptoTracker.Client.Pages;
 
@@ -15,12 +16,16 @@ public partial class Transaktionen
 
     private string? SelectedWalletName { get; set; }
     private string? SelectedCoinSymbol { get; set; }
+    private bool ShowHidden { get; set; } = false;
 
     private IList<TransactionRowDTO> Transactions { get; set; } = new List<TransactionRowDTO>();
     private bool IsDetailsOpen { get; set; }
     private bool IsDetailsLoading { get; set; }
     private string? DetailsError { get; set; }
     private FlowDetailsDTO? Details { get; set; }
+    private FlowType? SelectedFlowType { get; set; }
+    private int? SelectedFlowId { get; set; }
+    private bool IsToggleHiddenBusy { get; set; }
 
     [Inject] public NavigationManager NavigationManager { get; set; } = null!;
 
@@ -31,8 +36,10 @@ public partial class Transaktionen
 
         var walletFromQuery = GetQueryValue("wallet")?.Trim();
         var coinFromQuery = GetQueryValue("coin")?.Trim();
+        var showHiddenFromQuery = GetQueryValue("showHidden")?.Trim();
         SelectedWalletName = string.IsNullOrWhiteSpace(walletFromQuery) ? null : walletFromQuery;
         SelectedCoinSymbol = string.IsNullOrWhiteSpace(coinFromQuery) ? null : coinFromQuery;
+        ShowHidden = ParseBool(showHiddenFromQuery, ShowHidden);
 
         if (SelectedWalletName != null && !Wallets.Any(w => string.Equals(w.Name?.Trim(), SelectedWalletName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -89,7 +96,7 @@ public partial class Transaktionen
         ErrorMessage = null;
         try
         {
-            Transactions = await TransactionsApi.GetTransactionsAsync(SelectedWalletName, SelectedCoinSymbol);
+            Transactions = await TransactionsApi.GetTransactionsAsync(SelectedWalletName, SelectedCoinSymbol, ShowHidden);
             if (SelectedWalletName != null)
             {
                 var normalized = SelectedWalletName.Trim();
@@ -117,6 +124,13 @@ public partial class Transaktionen
     private async Task OnCoinChanged(string? coin)
     {
         SelectedCoinSymbol = coin?.Trim();
+        UpdateQuery();
+        await LoadTransactionsAsync();
+    }
+
+    private async Task OnShowHiddenChanged(ChangeEventArgs args)
+    {
+        ShowHidden = ParseBool(args.Value, ShowHidden);
         UpdateQuery();
         await LoadTransactionsAsync();
     }
@@ -151,6 +165,8 @@ public partial class Transaktionen
             query.Add($"wallet={Uri.EscapeDataString(SelectedWalletName)}");
         if (!string.IsNullOrWhiteSpace(SelectedCoinSymbol))
             query.Add($"coin={Uri.EscapeDataString(SelectedCoinSymbol)}");
+        if (!ShowHidden)
+            query.Add("showHidden=false");
 
         var suffix = query.Count > 0 ? "?" + string.Join("&", query) : string.Empty;
         NavigationManager.NavigateTo($"transaktionen{suffix}", replace: true);
@@ -162,9 +178,11 @@ public partial class Transaktionen
         IsDetailsLoading = true;
         DetailsError = null;
         Details = null;
+        SelectedFlowType = row.FlowType;
+        SelectedFlowId = row.FlowId;
         try
         {
-            Details = await TransactionsApi.GetTransactionDetailsAsync(row.FlowType, row.FlowId);
+            Details = await TransactionsApi.GetTransactionDetailsAsync(row.FlowType, row.FlowId, ShowHidden);
             if (Details == null)
             {
                 DetailsError = "Keine Details gefunden.";
@@ -182,5 +200,113 @@ public partial class Transaktionen
         IsDetailsOpen = false;
         Details = null;
         DetailsError = null;
+        SelectedFlowType = null;
+        SelectedFlowId = null;
+        IsToggleHiddenBusy = false;
+    }
+
+    private bool CanToggleHidden => CurrentHidden.HasValue && SelectedFlowType.HasValue && SelectedFlowId.HasValue;
+
+    private bool IsCurrentHidden => CurrentHidden ?? false;
+
+    private bool? CurrentHidden => Details?.FlowType switch
+    {
+        FlowType.Trade => Details?.Trade?.IsHidden,
+        FlowType.Transaction => Details?.Transaction?.IsHidden,
+        _ => null
+    };
+
+    private async Task ToggleHiddenAsync()
+    {
+        if (!SelectedFlowType.HasValue || !SelectedFlowId.HasValue || CurrentHidden == null)
+            return;
+
+        IsToggleHiddenBusy = true;
+        DetailsError = null;
+
+        try
+        {
+            var newHiddenState = !CurrentHidden.Value;
+            var success = await TransactionsApi.SetHiddenAsync(new SetHiddenRequest(SelectedFlowType.Value, SelectedFlowId.Value, newHiddenState));
+            if (!success)
+            {
+                DetailsError = "Eintrag konnte nicht aktualisiert werden.";
+            }
+            else
+            {
+                UpdateCurrentHiddenState(newHiddenState);
+                await LoadTransactionsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            DetailsError = ex.Message;
+        }
+        IsToggleHiddenBusy = false;
+    }
+
+    private void UpdateCurrentHiddenState(bool isHidden)
+    {
+        if (Details == null)
+            return;
+
+        if (Details.FlowType == FlowType.Trade && Details.Trade != null)
+        {
+            Details = Details with { Trade = Details.Trade with { IsHidden = isHidden } };
+        }
+        else if (Details.FlowType == FlowType.Transaction && Details.Transaction != null)
+        {
+            Details = Details with { Transaction = Details.Transaction with { IsHidden = isHidden } };
+        }
+    }
+
+    private void OnRowRender(RowRenderEventArgs<TransactionRowDTO> args)
+    {
+        if (args.Data == null || !args.Data.IsHidden)
+            return;
+
+        var attributes = args.Attributes;
+        if (attributes == null)
+            return;
+
+        if (attributes.TryGetValue("class", out var existing))
+        {
+            attributes["class"] = $"{existing} hidden-row";
+        }
+        else
+        {
+            attributes["class"] = "hidden-row";
+        }
+    }
+
+    private static bool ParseBool(object? value, bool fallback)
+    {
+        if (value is bool boolValue)
+            return boolValue;
+
+        if (value is string stringValue)
+        {
+            return ParseBool(stringValue, fallback);
+        }
+
+        return fallback;
+    }
+
+    private static bool ParseBool(string? value, bool fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return fallback;
+
+        if (bool.TryParse(value, out var parsed))
+            return parsed;
+
+        return value.Trim() switch
+        {
+            "1" => true,
+            "0" => false,
+            "on" => true,
+            "off" => false,
+            _ => fallback
+        };
     }
 }
