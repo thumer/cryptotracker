@@ -29,9 +29,6 @@ namespace CryptoTracker.Import
         {
             foreach (var record in records)
             {
-                if (string.IsNullOrWhiteSpace(record.TXID))
-                    continue;
-
                 var transaction = new CryptoTransaction
                 {
                     TransactionType = TransactionType.Send,
@@ -40,7 +37,7 @@ namespace CryptoTracker.Import
                     Symbol = record.Coin,
                     Quantity = record.Amount + record.TransactionFee,
                     Fee = record.TransactionFee,
-                    TransactionId = record.TXID,
+                    TransactionId = string.IsNullOrWhiteSpace(record.TXID) ? null : record.TXID.Trim(),
                     Address = record.Address,
                     Network = record.Network,
                     Comment = record.Comment
