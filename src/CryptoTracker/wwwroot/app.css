@@ -791,3 +791,415 @@ h1, h2, h3, .app-title {
     gap: 0.35rem;
     align-items: center;
 }
+
+/* ============================================
+   LOT MANAGEMENT STYLES
+   ============================================ */
+
+.lots-overview {
+    margin-top: 1.5rem;
+}
+
+.lot-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.lot-summary-card {
+    background: var(--surface-100);
+    border: 1px solid var(--surface-300);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lot-summary-card:hover {
+    border-color: var(--ink-700);
+    box-shadow: var(--shadow-soft);
+}
+
+.lot-summary-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--surface-300);
+}
+
+.lot-count {
+    font-size: 0.75rem;
+    color: var(--ink-500);
+    background: var(--surface-200);
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+}
+
+.lot-summary-card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.lot-summary-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.lot-summary-stat label {
+    font-size: 0.7rem;
+    color: var(--ink-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.lot-summary-stat span {
+    font-weight: 600;
+    color: var(--ink-900);
+}
+
+.lot-summary-stat.altbestand span {
+    color: var(--mint-500);
+}
+
+.lot-summary-stat.neubestand span {
+    color: var(--ink-700);
+}
+
+.lots-detail {
+    margin-top: 2rem;
+}
+
+.lots-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.pending-assignments {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--surface-300);
+}
+
+/* Lot Badge */
+.lot-badge {
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.altbestand-badge {
+    background: rgba(31, 143, 106, 0.15);
+    color: var(--mint-500);
+}
+
+.neubestand-badge {
+    background: rgba(47, 52, 58, 0.12);
+    color: var(--ink-700);
+}
+
+/* Lot Selector Component */
+.lot-selector {
+    background: var(--surface-100);
+    border: 1px solid var(--surface-300);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+}
+
+.lot-selector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--surface-300);
+}
+
+.lot-selector-header h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.lot-selector-loading,
+.lot-selector-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--ink-500);
+}
+
+.lot-selector-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.lot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.lot-item {
+    background: var(--surface-200);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.lot-item.lot-selected {
+    border-color: var(--ink-700);
+    background: var(--surface-100);
+}
+
+.lot-item.lot-altbestand {
+    border-left: 4px solid var(--mint-500);
+}
+
+.lot-item.lot-neubestand {
+    border-left: 4px solid var(--ink-500);
+}
+
+.lot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.lot-id {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--ink-900);
+}
+
+.lot-details {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+}
+
+.lot-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.lot-detail label {
+    font-size: 0.65rem;
+    color: var(--ink-500);
+    text-transform: uppercase;
+}
+
+.lot-detail span {
+    color: var(--ink-900);
+}
+
+.lot-allocation {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--surface-300);
+}
+
+.lot-allocation label {
+    font-size: 0.8rem;
+    color: var(--ink-500);
+}
+
+.lot-input {
+    width: 120px;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--surface-300);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.lot-input:focus {
+    outline: none;
+    border-color: var(--ink-700);
+}
+
+.lot-unit {
+    font-size: 0.8rem;
+    color: var(--ink-500);
+}
+
+.lot-summary {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--surface-300);
+}
+
+.lot-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.lot-summary-section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--surface-300);
+}
+
+.lot-summary-title {
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    color: var(--ink-700);
+}
+
+.lot-summary-highlight {
+    font-weight: 600;
+    background: var(--surface-200);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    margin-top: 0.5rem;
+}
+
+.lot-summary-warning {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(194, 70, 84, 0.1);
+    color: var(--rose-500);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.text-success {
+    color: var(--mint-500) !important;
+}
+
+.text-warning {
+    color: #a26d00 !important;
+}
+
+.text-danger {
+    color: var(--rose-500) !important;
+}
+
+.text-muted {
+    color: var(--ink-500);
+}
+
+.text-info {
+    color: #0d6efd;
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    z-index: 9999;
+    cursor: pointer;
+    animation: slideIn 0.3s ease;
+}
+
+.toast-success {
+    background: var(--mint-500);
+    color: white;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-card {
+    background: var(--surface-100);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--surface-300);
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--surface-300);
+}
+
+.page-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.loading-spinner-small {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+

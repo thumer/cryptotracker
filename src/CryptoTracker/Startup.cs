@@ -66,6 +66,7 @@ namespace CryptoTracker
             services.AddScoped<BalanceService>();
             services.AddScoped<OverviewService>();
             services.AddScoped<TransactionService>();
+            services.AddScoped<LotService>();
 
             services.AddScoped<IWalletApi, WalletController>();
             services.AddScoped<IFlowApi, FlowController>();
@@ -76,6 +77,7 @@ namespace CryptoTracker
             services.AddScoped<IDataImportApi, DataImportController>();
             services.AddScoped<IImportEntriesApi, ImportEntriesController>();
             services.AddScoped<IImportOverviewApi, ImportOverviewController>();
+            services.AddScoped<ILotsApi, LotsController>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

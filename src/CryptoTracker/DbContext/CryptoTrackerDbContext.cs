@@ -1,4 +1,4 @@
-﻿using CryptoTracker.Entities;
+using CryptoTracker.Entities;
 using CryptoTracker.Entities.Import;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +20,8 @@ namespace CryptoTracker
         public DbSet<OkxDepositEntity> OkxDeposits { get; set; }
         public DbSet<OkxTradeEntity> OkxTrades { get; set; }
         public DbSet<ManualCoinPrice> ManualCoinPrices { get; set; }
+        public DbSet<AssetLot> AssetLots { get; set; }
+        public DbSet<LotMovement> LotMovements { get; set; }
 
         public CryptoTrackerDbContext(DbContextOptions<CryptoTrackerDbContext> options) : base(options)
         {
@@ -103,6 +105,93 @@ namespace CryptoTracker
             modelBuilder.Entity<ManualCoinPrice>()
                 .Property(p => p.Date)
                 .HasColumnType("date");
+
+            // === AssetLot Configuration ===
+            modelBuilder.Entity<AssetLot>().HasKey(l => l.Id);
+            modelBuilder.Entity<AssetLot>()
+                .HasOne(l => l.CurrentWallet)
+                .WithMany()
+                .HasForeignKey(l => l.CurrentWalletId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AssetLot>()
+                .HasOne(l => l.SourceTransaction)
+                .WithMany()
+                .HasForeignKey(l => l.SourceTransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AssetLot>()
+                .HasOne(l => l.SourceTrade)
+                .WithMany()
+                .HasForeignKey(l => l.SourceTradeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AssetLot>()
+                .HasOne(l => l.ParentLot)
+                .WithMany(l => l.ChildLots)
+                .HasForeignKey(l => l.ParentLotId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AssetLot>()
+                .HasIndex(l => new { l.CurrentWalletId, l.Symbol });
+            modelBuilder.Entity<AssetLot>()
+                .HasIndex(l => l.AcquisitionDate);
+            modelBuilder.Entity<AssetLot>()
+                .Property(l => l.RemainingQuantity)
+                .HasColumnType("decimal(27, 12)");
+            modelBuilder.Entity<AssetLot>()
+                .Property(l => l.OriginalQuantity)
+                .HasColumnType("decimal(27, 12)");
+            modelBuilder.Entity<AssetLot>()
+                .Property(l => l.AcquisitionPriceEur)
+                .HasColumnType("decimal(27, 12)");
+            modelBuilder.Entity<AssetLot>()
+                .Property(l => l.TotalAcquisitionCostEur)
+                .HasColumnType("decimal(27, 12)");
+
+            // === LotMovement Configuration ===
+            modelBuilder.Entity<LotMovement>().HasKey(m => m.Id);
+            modelBuilder.Entity<LotMovement>()
+                .HasOne(m => m.Lot)
+                .WithMany(l => l.Movements)
+                .HasForeignKey(m => m.LotId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<LotMovement>()
+                .HasOne(m => m.Trade)
+                .WithMany(t => t.LotMovements)
+                .HasForeignKey(m => m.TradeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<LotMovement>()
+                .HasOne(m => m.Transaction)
+                .WithMany(t => t.LotMovements)
+                .HasForeignKey(m => m.TransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<LotMovement>()
+                .HasOne(m => m.ResultingLot)
+                .WithMany()
+                .HasForeignKey(m => m.ResultingLotId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<LotMovement>()
+                .HasIndex(m => m.DateTime);
+            modelBuilder.Entity<LotMovement>()
+                .Property(m => m.Quantity)
+                .HasColumnType("decimal(27, 12)");
+            modelBuilder.Entity<LotMovement>()
+                .Property(m => m.SalePriceEur)
+                .HasColumnType("decimal(27, 12)");
+            modelBuilder.Entity<LotMovement>()
+                .Property(m => m.RealizedGainEur)
+                .HasColumnType("decimal(27, 12)");
+
+            // === CryptoTransaction Lot References ===
+            modelBuilder.Entity<CryptoTransaction>()
+                .HasOne(t => t.ResultingLot)
+                .WithMany()
+                .HasForeignKey(t => t.ResultingLotId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // === CryptoTrade Lot References ===
+            modelBuilder.Entity<CryptoTrade>()
+                .HasOne(t => t.ResultingLot)
+                .WithMany()
+                .HasForeignKey(t => t.ResultingLotId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
         }

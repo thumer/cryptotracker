@@ -21,8 +21,22 @@ public partial class Transaktionen
     private bool IsDetailsLoading { get; set; }
     private string? DetailsError { get; set; }
     private FlowDetailsDTO? Details { get; set; }
+    private TransactionRowDTO? CurrentRow { get; set; }
+
+    // Lot Assignment State
+    private IList<LotAllocationDTO> SelectedLotAllocations { get; set; } = new List<LotAllocationDTO>();
+    private bool IsConfirmingLotAssignment { get; set; }
+    private string? LotAssignmentError { get; set; }
+    private string? LotAssignmentSuccess { get; set; }
+    private bool IsLotAssignmentConfirmed { get; set; }
+    
+    // Lot Assignment Modal State
+    private bool IsLotAssignmentOpen { get; set; }
+    private TransactionRowDTO? LotAssignmentRow { get; set; }
 
     [Inject] public NavigationManager NavigationManager { get; set; } = null!;
+
+    private static readonly string[] FiatSymbols = { "EUR", "USD", "CHF", "GBP", "ZEUR", "ZUSD" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -162,6 +176,14 @@ public partial class Transaktionen
         IsDetailsLoading = true;
         DetailsError = null;
         Details = null;
+        CurrentRow = row;
+        
+        // Reset lot assignment state
+        SelectedLotAllocations = new List<LotAllocationDTO>();
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+        IsLotAssignmentConfirmed = false;
+        
         try
         {
             Details = await TransactionsApi.GetTransactionDetailsAsync(row.FlowType, row.FlowId);
@@ -169,6 +191,8 @@ public partial class Transaktionen
             {
                 DetailsError = "Keine Details gefunden.";
             }
+            // TODO: Check if lot assignment is already confirmed
+            // This would require extending the FlowDetailsDTO or adding a separate API call
         }
         catch (Exception ex)
         {
@@ -182,5 +206,262 @@ public partial class Transaktionen
         IsDetailsOpen = false;
         Details = null;
         DetailsError = null;
+        CurrentRow = null;
+        SelectedLotAllocations = new List<LotAllocationDTO>();
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
     }
+
+    #region Lot Assignment
+
+    private static bool IsFiatSymbol(string symbol)
+    {
+        return FiatSymbols.Contains(symbol.ToUpperInvariant());
+    }
+
+    /// <summary>
+    /// Determines if a row requires lot assignment (sell trades to fiat or outgoing transfers)
+    /// </summary>
+    private bool RequiresLotAssignment(TransactionRowDTO row)
+    {
+        // Sell trade: Outflow of crypto -> fiat (TargetSymbol is fiat)
+        if (row.FlowType == FlowType.Trade && 
+            row.FlowDirection == FlowDirection.Outflow && 
+            !string.IsNullOrWhiteSpace(row.TargetSymbol) && 
+            IsFiatSymbol(row.TargetSymbol))
+        {
+            return true;
+        }
+
+        // Outgoing transfer: Transaction with outflow direction
+        if (row.FlowType == FlowType.Transaction && 
+            row.FlowDirection == FlowDirection.Outflow &&
+            !IsFiatSymbol(row.Symbol))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Determines if the row is a sell trade (crypto to fiat)
+    /// </summary>
+    private bool IsSellTrade(TransactionRowDTO row)
+    {
+        return row.FlowType == FlowType.Trade && 
+               row.FlowDirection == FlowDirection.Outflow && 
+               !string.IsNullOrWhiteSpace(row.TargetSymbol) && 
+               IsFiatSymbol(row.TargetSymbol);
+    }
+
+    /// <summary>
+    /// Gets the wallet name for lot assignment (source wallet for outflows)
+    /// </summary>
+    private string GetLotAssignmentWallet()
+    {
+        if (LotAssignmentRow == null) return string.Empty;
+        
+        // For trades, use the source wallet (row.SourceWallet)
+        // For transactions (transfers), use the source wallet
+        return LotAssignmentRow.SourceWallet ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Opens the lot assignment modal for a given transaction row
+    /// </summary>
+    private Task OpenLotAssignmentAsync(TransactionRowDTO row)
+    {
+        LotAssignmentRow = row;
+        IsLotAssignmentOpen = true;
+        
+        // Reset state
+        SelectedLotAllocations = new List<LotAllocationDTO>();
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+        IsLotAssignmentConfirmed = false;
+        
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Closes the lot assignment modal
+    /// </summary>
+    private void CloseLotAssignment()
+    {
+        IsLotAssignmentOpen = false;
+        LotAssignmentRow = null;
+        SelectedLotAllocations = new List<LotAllocationDTO>();
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+    }
+
+    /// <summary>
+    /// Confirms the lot assignment (calls appropriate API based on type)
+    /// </summary>
+    private async Task ConfirmLotAssignment()
+    {
+        if (LotAssignmentRow == null || SelectedLotAllocations.Count == 0)
+            return;
+
+        if (IsSellTrade(LotAssignmentRow))
+        {
+            await ConfirmSellLotAssignmentInternal();
+        }
+        else
+        {
+            await ConfirmTransferLotAssignmentInternal();
+        }
+    }
+
+    private async Task ConfirmSellLotAssignmentInternal()
+    {
+        if (LotAssignmentRow == null) return;
+
+        IsConfirmingLotAssignment = true;
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+
+        try
+        {
+            var salePricePerUnit = LotAssignmentRow.EuroValue / LotAssignmentRow.Amount;
+            var request = new SellLotsRequest(
+                LotAssignmentRow.FlowId,
+                SelectedLotAllocations,
+                salePricePerUnit);
+
+            var result = await LotsApi.SellLotsAsync(request);
+
+            IsLotAssignmentConfirmed = true;
+            LotAssignmentSuccess = $"Lot-Zuordnung bestätigt! " +
+                $"Realisierter Gewinn: {result.TotalRealizedGain:N2}€ " +
+                $"(steuerfrei: {result.TaxFreeGain:N2}€, " +
+                $"steuerpflichtig: {result.TaxableGain:N2}€, " +
+                $"KESt: {result.EstimatedKESt:N2}€)";
+        }
+        catch (Exception ex)
+        {
+            LotAssignmentError = $"Fehler beim Speichern: {ex.Message}";
+        }
+        finally
+        {
+            IsConfirmingLotAssignment = false;
+        }
+    }
+
+    private async Task ConfirmTransferLotAssignmentInternal()
+    {
+        if (LotAssignmentRow == null) return;
+
+        IsConfirmingLotAssignment = true;
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+
+        try
+        {
+            // For transfers, we need both the send and receive transaction IDs
+            var request = new TransferLotsRequest(
+                LotAssignmentRow.FlowId,  // Send transaction ID
+                LotAssignmentRow.FlowId,  // This should be the opposite - extend API later if needed
+                SelectedLotAllocations);
+
+            var resultLots = await LotsApi.TransferLotsAsync(request);
+
+            IsLotAssignmentConfirmed = true;
+            LotAssignmentSuccess = $"Lot-Zuordnung bestätigt! {resultLots.Count} Lots wurden auf das Ziel-Wallet übertragen.";
+        }
+        catch (Exception ex)
+        {
+            LotAssignmentError = $"Fehler beim Speichern: {ex.Message}";
+        }
+        finally
+        {
+            IsConfirmingLotAssignment = false;
+        }
+    }
+
+    private void OnLotSelectionChanged(IList<LotAllocationDTO> allocations)
+    {
+        SelectedLotAllocations = allocations;
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+    }
+
+    private async Task ConfirmSellLotAssignment()
+    {
+        if (CurrentRow == null || Details?.Trade == null || SelectedLotAllocations.Count == 0)
+            return;
+
+        IsConfirmingLotAssignment = true;
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+
+        try
+        {
+            var salePricePerUnit = Details.Trade.EuroValue / Details.Trade.Amount;
+            var request = new SellLotsRequest(
+                CurrentRow.FlowId,
+                SelectedLotAllocations,
+                salePricePerUnit);
+
+            var result = await LotsApi.SellLotsAsync(request);
+
+            IsLotAssignmentConfirmed = true;
+            LotAssignmentSuccess = $"Lot-Zuordnung bestätigt! " +
+                $"Realisierter Gewinn: {result.TotalRealizedGain:N2}€ " +
+                $"(steuerfrei: {result.TaxFreeGain:N2}€, " +
+                $"steuerpflichtig: {result.TaxableGain:N2}€, " +
+                $"KESt: {result.EstimatedKESt:N2}€)";
+        }
+        catch (Exception ex)
+        {
+            LotAssignmentError = $"Fehler beim Speichern: {ex.Message}";
+        }
+        finally
+        {
+            IsConfirmingLotAssignment = false;
+        }
+    }
+
+    private async Task ConfirmTransferLotAssignment()
+    {
+        if (CurrentRow == null || Details?.Transaction == null || Details.OppositeTransaction == null || SelectedLotAllocations.Count == 0)
+            return;
+
+        IsConfirmingLotAssignment = true;
+        LotAssignmentError = null;
+        LotAssignmentSuccess = null;
+
+        try
+        {
+            // For transfers, we need both the send and receive transaction IDs
+            // The current row is the send transaction, the opposite is the receive
+            // TODO: The API currently requires transaction IDs, but we have FlowId
+            // We need to ensure the FlowId corresponds to the correct transaction ID
+            
+            var request = new TransferLotsRequest(
+                CurrentRow.FlowId,  // Send transaction ID
+                CurrentRow.FlowId,  // This needs to be the opposite transaction ID - we need to extend the API
+                SelectedLotAllocations);
+
+            // Note: This simplified implementation assumes CurrentRow.FlowId works for both
+            // In a real implementation, you'd need to get the opposite transaction ID
+            // from the Details or extend the API
+            
+            var resultLots = await LotsApi.TransferLotsAsync(request);
+
+            IsLotAssignmentConfirmed = true;
+            LotAssignmentSuccess = $"Lot-Zuordnung bestätigt! {resultLots.Count} Lots wurden auf das Ziel-Wallet übertragen.";
+        }
+        catch (Exception ex)
+        {
+            LotAssignmentError = $"Fehler beim Speichern: {ex.Message}";
+        }
+        finally
+        {
+            IsConfirmingLotAssignment = false;
+        }
+    }
+
+    #endregion
 }

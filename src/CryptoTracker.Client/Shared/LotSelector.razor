@@ -1,0 +1,314 @@
+@namespace CryptoTracker.Client.Shared
+@using CryptoTracker.Client.Common
+@using CryptoTracker.Shared
+
+<div class="lot-selector">
+    <div class="lot-selector-header">
+        <h4>Lot-Auswahl für @RequiredQuantity @Symbol</h4>
+        @if (PrioritizeAltbestand)
+        {
+            <span class="lot-badge altbestand-badge">Altbestand priorisiert</span>
+        }
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="lot-selector-loading">
+            <div class="loading-spinner"></div>
+            <span>Lade Lots...</span>
+        </div>
+    }
+    else if (AvailableLots.Count == 0)
+    {
+        <div class="lot-selector-empty">
+            Keine verfügbaren Lots für @Symbol auf diesem Wallet.
+        </div>
+    }
+    else
+    {
+        <div class="lot-selector-actions">
+            <button type="button" class="btn btn-secondary btn-sm" @onclick="ApplyFifoSuggestion">
+                FIFO-Vorschlag übernehmen
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" @onclick="ClearSelection">
+                Auswahl zurücksetzen
+            </button>
+        </div>
+
+        <div class="lot-list">
+            @foreach (var lot in AvailableLots)
+            {
+                var allocation = GetAllocation(lot.Id);
+                var isSelected = allocation > 0;
+                <div class="lot-item @(isSelected ? "lot-selected" : "") @(lot.IsAltbestand ? "lot-altbestand" : "lot-neubestand")">
+                    <div class="lot-header">
+                        <div class="lot-id">Lot #@lot.Id</div>
+                        <span class="lot-badge @(lot.IsAltbestand ? "altbestand-badge" : "neubestand-badge")">
+                            @(lot.IsAltbestand ? "ALTBESTAND" : "Neubestand")
+                        </span>
+                    </div>
+                    <div class="lot-details">
+                        <div class="lot-detail">
+                            <label>Verfügbar</label>
+                            <span>@FormatHelper.FormatAmount(lot.RemainingQuantity) @Symbol</span>
+                        </div>
+                        <div class="lot-detail">
+                            <label>Erworben</label>
+                            <span>@lot.AcquisitionDate.ToString("dd.MM.yyyy")</span>
+                        </div>
+                        <div class="lot-detail">
+                            <label>Kaufpreis</label>
+                            <span>@FormatHelper.FormatEuro(lot.AcquisitionPriceEur) / @Symbol</span>
+                        </div>
+                        <div class="lot-detail">
+                            <label>Herkunft</label>
+                            <span>@lot.AcquisitionType</span>
+                        </div>
+                    </div>
+                    <div class="lot-allocation">
+                        <label>Verwenden:</label>
+                        <input type="number"
+                               min="0"
+                               max="@lot.RemainingQuantity"
+                               step="any"
+                               value="@allocation"
+                               @onchange="e => SetAllocation(lot.Id, ParseDecimal(e.Value))"
+                               class="lot-input" />
+                        <span class="lot-unit">@Symbol</span>
+                        <button type="button" class="btn btn-sm btn-link" @onclick="() => SetAllocation(lot.Id, lot.RemainingQuantity)">
+                            Max
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="lot-summary">
+            <div class="lot-summary-row">
+                <span>Ausgewählt:</span>
+                <span class="@(TotalAllocated >= RequiredQuantity ? "text-success" : "text-warning")">
+                    @FormatHelper.FormatAmount(TotalAllocated) / @FormatHelper.FormatAmount(RequiredQuantity) @Symbol
+                </span>
+            </div>
+            @if (TotalAllocated > 0)
+            {
+                <div class="lot-summary-row">
+                    <span>Altbestand:</span>
+                    <span>@FormatHelper.FormatAmount(AltbestandAllocated) @Symbol</span>
+                </div>
+                <div class="lot-summary-row">
+                    <span>Neubestand:</span>
+                    <span>@FormatHelper.FormatAmount(NeubestandAllocated) @Symbol</span>
+                </div>
+                @if (ShowTaxPreview && SalePriceEur.HasValue)
+                {
+                    <div class="lot-summary-section">
+                        <div class="lot-summary-title">Steuer-Vorschau</div>
+                        <div class="lot-summary-row">
+                            <span>Gesamter Gewinn:</span>
+                            <span>@FormatHelper.FormatEuro(EstimatedTotalGain)</span>
+                        </div>
+                        <div class="lot-summary-row">
+                            <span>Steuerfrei (Altbestand):</span>
+                            <span class="text-success">@FormatHelper.FormatEuro(EstimatedTaxFreeGain)</span>
+                        </div>
+                        <div class="lot-summary-row">
+                            <span>Steuerpflichtig:</span>
+                            <span>@FormatHelper.FormatEuro(EstimatedTaxableGain)</span>
+                        </div>
+                        <div class="lot-summary-row lot-summary-highlight">
+                            <span>Geschätzte KESt (27,5%):</span>
+                            <span class="text-danger">@FormatHelper.FormatEuro(EstimatedKESt)</span>
+                        </div>
+                    </div>
+                }
+            }
+            @if (MissingQuantity > 0)
+            {
+                <div class="lot-summary-warning">
+                    Es fehlen noch @FormatHelper.FormatAmount(MissingQuantity) @Symbol!
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string WalletName { get; set; } = string.Empty;
+    [Parameter] public string Symbol { get; set; } = string.Empty;
+    [Parameter] public decimal RequiredQuantity { get; set; }
+    [Parameter] public bool PrioritizeAltbestand { get; set; } = true;
+    [Parameter] public bool ShowTaxPreview { get; set; } = false;
+    [Parameter] public decimal? SalePriceEur { get; set; }
+    [Parameter] public DateTimeOffset? MaxAcquisitionDate { get; set; }
+    [Parameter] public EventCallback<IList<LotAllocationDTO>> SelectionChanged { get; set; }
+    [Parameter] public ILotsApi? LotsApi { get; set; }
+
+    private bool IsLoading { get; set; } = true;
+    private IList<LotDTO> AvailableLots { get; set; } = new List<LotDTO>();
+    private Dictionary<int, decimal> Allocations { get; set; } = new();
+
+    private decimal TotalAllocated => Allocations.Values.Sum();
+    private decimal MissingQuantity => Math.Max(0, RequiredQuantity - TotalAllocated);
+
+    private decimal AltbestandAllocated => Allocations
+        .Where(kvp => AvailableLots.FirstOrDefault(l => l.Id == kvp.Key)?.IsAltbestand == true)
+        .Sum(kvp => kvp.Value);
+
+    private decimal NeubestandAllocated => TotalAllocated - AltbestandAllocated;
+
+    // Steuer-Vorschau
+    private decimal EstimatedTotalGain
+    {
+        get
+        {
+            if (!SalePriceEur.HasValue) return 0;
+            return Allocations.Sum(kvp =>
+            {
+                var lot = AvailableLots.FirstOrDefault(l => l.Id == kvp.Key);
+                if (lot == null) return 0;
+                return (SalePriceEur.Value - lot.AcquisitionPriceEur) * kvp.Value;
+            });
+        }
+    }
+
+    private decimal EstimatedTaxFreeGain
+    {
+        get
+        {
+            if (!SalePriceEur.HasValue) return 0;
+            return Allocations
+                .Where(kvp => AvailableLots.FirstOrDefault(l => l.Id == kvp.Key)?.IsAltbestand == true)
+                .Sum(kvp =>
+                {
+                    var lot = AvailableLots.First(l => l.Id == kvp.Key);
+                    return (SalePriceEur.Value - lot.AcquisitionPriceEur) * kvp.Value;
+                });
+        }
+    }
+
+    private decimal EstimatedTaxableGain => EstimatedTotalGain - EstimatedTaxFreeGain;
+    private decimal EstimatedKESt => EstimatedTaxableGain > 0 ? EstimatedTaxableGain * 0.275m : 0;
+
+    private string? _lastLoadedKey;
+    private bool _isLoadingLots;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (LotsApi != null && !string.IsNullOrWhiteSpace(WalletName) && !string.IsNullOrWhiteSpace(Symbol))
+        {
+            // Prevent multiple concurrent loads for the same parameters
+            var key = $"{WalletName}|{Symbol}|{MaxAcquisitionDate}";
+            if (key != _lastLoadedKey && !_isLoadingLots)
+            {
+                _lastLoadedKey = key;
+                await LoadLotsAsync();
+            }
+        }
+    }
+
+    private async Task LoadLotsAsync()
+    {
+        if (_isLoadingLots) return;
+        _isLoadingLots = true;
+        IsLoading = true;
+        try
+        {
+            var lots = await LotsApi!.GetAvailableLotsAsync(WalletName, Symbol);
+            
+            // Filter by MaxAcquisitionDate if specified (only show lots acquired BEFORE the sale/transfer date)
+            if (MaxAcquisitionDate.HasValue)
+            {
+                lots = lots.Where(l => l.AcquisitionDate < MaxAcquisitionDate.Value).ToList();
+            }
+            
+            // Sortierung: Altbestand zuerst wenn priorisiert
+            if (PrioritizeAltbestand)
+            {
+                AvailableLots = lots
+                    .OrderByDescending(l => l.IsAltbestand)
+                    .ThenBy(l => l.AcquisitionDate)
+                    .ToList();
+            }
+            else
+            {
+                AvailableLots = lots.OrderBy(l => l.AcquisitionDate).ToList();
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+            _isLoadingLots = false;
+        }
+    }
+
+    private decimal GetAllocation(int lotId)
+    {
+        return Allocations.TryGetValue(lotId, out var value) ? value : 0;
+    }
+
+    private async Task SetAllocation(int lotId, decimal quantity)
+    {
+        var lot = AvailableLots.FirstOrDefault(l => l.Id == lotId);
+        if (lot == null) return;
+
+        quantity = Math.Max(0, Math.Min(quantity, lot.RemainingQuantity));
+
+        if (quantity > 0)
+        {
+            Allocations[lotId] = quantity;
+        }
+        else
+        {
+            Allocations.Remove(lotId);
+        }
+
+        await NotifySelectionChanged();
+    }
+
+    private async Task ApplyFifoSuggestion()
+    {
+        if (LotsApi == null) return;
+
+        var suggestion = await LotsApi.SuggestFifoAllocationAsync(
+            WalletName, Symbol, RequiredQuantity, PrioritizeAltbestand);
+
+        Allocations.Clear();
+        
+        // Only apply allocations for lots that are in our filtered AvailableLots list
+        var availableLotIds = AvailableLots.Select(l => l.Id).ToHashSet();
+        foreach (var alloc in suggestion.Allocations)
+        {
+            if (availableLotIds.Contains(alloc.LotId))
+            {
+                Allocations[alloc.LotId] = alloc.Quantity;
+            }
+        }
+
+        await NotifySelectionChanged();
+    }
+
+    private async Task ClearSelection()
+    {
+        Allocations.Clear();
+        await NotifySelectionChanged();
+    }
+
+    private async Task NotifySelectionChanged()
+    {
+        var allocations = Allocations
+            .Where(kvp => kvp.Value > 0)
+            .Select(kvp => new LotAllocationDTO(kvp.Key, kvp.Value))
+            .ToList();
+
+        await SelectionChanged.InvokeAsync(allocations);
+    }
+
+    private static decimal ParseDecimal(object? value)
+    {
+        if (value == null) return 0;
+        if (decimal.TryParse(value.ToString(), out var result))
+            return result;
+        return 0;
+    }
+}

@@ -1,4 +1,4 @@
-﻿using CryptoTracker.Shared;
+using CryptoTracker.Shared;
 
 namespace CryptoTracker.Entities;
 
@@ -52,6 +52,34 @@ public class CryptoTransaction : IFlow
     public string? Address { get; set; }
     public string? Network { get; set; }
     public string? Comment { get; set; }
+
+    // === Lot-Tracking ===
+
+    /// <summary>
+    /// Bei Send: Welche Lots wurden für diese Transaktion verwendet?
+    /// Bei Receive: Welches Lot wurde erstellt?
+    /// </summary>
+    public ICollection<LotMovement> LotMovements { get; set; } = new List<LotMovement>();
+
+    /// <summary>
+    /// Bei Receive: Das erstellte Lot (falls zugeordnet)
+    /// </summary>
+    public int? ResultingLotId { get; set; }
+    public AssetLot? ResultingLot { get; set; }
+
+    /// <summary>
+    /// Wurde die Lot-Zuordnung für diese Transaktion bestätigt?
+    /// </summary>
+    public bool LotAssignmentConfirmed { get; set; }
+
+    /// <summary>
+    /// Benötigt manuelle Lot-Zuordnung?
+    /// Bei Receive ohne verknüpfte Gegentransaktion muss Herkunft dokumentiert werden.
+    /// </summary>
+    public bool RequiresLotAssignment =>
+        TransactionType == TransactionType.Receive &&
+        OppositeTransactionId == null &&
+        !LotAssignmentConfirmed;
 
     FlowDirection IFlow.FlowDirection => TransactionType switch
     {
