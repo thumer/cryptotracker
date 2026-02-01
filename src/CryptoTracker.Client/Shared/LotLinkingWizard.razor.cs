@@ -1,6 +1,7 @@
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.JSInterop;
 
 namespace CryptoTracker.Client.Shared;
 
@@ -12,6 +13,7 @@ public partial class LotLinkingWizard : IAsyncDisposable
     
     [Inject] private ILotsApi LotsApi { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
     // State
     private bool IsStarted = false;
@@ -35,8 +37,8 @@ public partial class LotLinkingWizard : IAsyncDisposable
     private PendingLotAssignmentDTO? CurrentAssignment;
     private IList<string>? CurrentOptions;
     private bool ShouldRemember = true;
-    private bool RequiresPriceInput = false;
-    private decimal? InputAcquisitionPrice;
+    private IList<LotOptionDTO>? CurrentLotOptions;
+    private List<LotAllocationInput> AllocationInputs = new();
     private bool ShowFreeTextInput = false;
     private string? FreeTextInput;
 
@@ -51,8 +53,15 @@ public partial class LotLinkingWizard : IAsyncDisposable
     // Session
     private string? SessionId;
     private HubConnection? hubConnection;
+    private const string FreeTextOptionLabel = "Andere Option (Freitext)";
+    private bool BodyLockApplied = false;
 
     private int ProgressPercent => TotalCount > 0 ? (int)(ProcessedCount * 100.0 / TotalCount) : 0;
+    private bool HasFreeTextOption => CurrentOptions?.Any(o => o.Equals(FreeTextOptionLabel, StringComparison.OrdinalIgnoreCase)) == true;
+    private decimal RequiredQuantity => CurrentAssignment?.Quantity ?? 0m;
+    private const decimal AllocationTolerance = 0.00000001m;
+    private bool HasAllocations => RequiredQuantity > 0
+        && Math.Abs(TotalAllocatedQuantity - RequiredQuantity) <= AllocationTolerance;
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,8 +179,10 @@ public partial class LotLinkingWizard : IAsyncDisposable
                     CurrentQuestion = evt.Message;
                     CurrentAssignment = evt.Assignment;
                     CurrentOptions = evt.Options;
-                    RequiresPriceInput = evt.Message?.Contains("Woher stammen") == true;
-                    InputAcquisitionPrice = null;
+                    CurrentLotOptions = evt.LotOptions;
+                    InitializeLotAllocations(evt.LotOptions);
+                    ShowFreeTextInput = false;
+                    FreeTextInput = null;
                     IsProcessing = false;
                     break;
 
@@ -188,6 +199,10 @@ public partial class LotLinkingWizard : IAsyncDisposable
 
                 case "error":
                     AddEvent("error", evt.Message);
+                    break;
+
+                case "info":
+                    AddEvent("info", evt.Message);
                     break;
             }
 
@@ -212,6 +227,8 @@ public partial class LotLinkingWizard : IAsyncDisposable
                 CurrentQuestion = session.CurrentQuestion;
                 CurrentAssignment = session.CurrentAssignment;
                 CurrentOptions = session.CurrentOptions;
+                CurrentLotOptions = session.CurrentLotOptions;
+                InitializeLotAllocations(session.CurrentLotOptions);
                 IsProcessing = false;
             }
 
@@ -241,6 +258,25 @@ public partial class LotLinkingWizard : IAsyncDisposable
         });
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SetBodyLockAsync(true);
+        }
+    }
+
+    private async Task OnOptionSelected(string option)
+    {
+        if (string.Equals(option, FreeTextOptionLabel, StringComparison.OrdinalIgnoreCase))
+        {
+            ShowFreeText();
+            return;
+        }
+
+        await AnswerQuestion(option);
+    }
+
     private async Task AnswerQuestion(string answer)
     {
         if (CurrentQuestionId == null || SessionId == null) return;
@@ -255,8 +291,7 @@ public partial class LotLinkingWizard : IAsyncDisposable
                 QuestionId = CurrentQuestionId,
                 Response = answer,
                 ShouldRemember = ShouldRemember,
-                AcquisitionPriceEur = InputAcquisitionPrice,
-                CustomText = answer.StartsWith("[Freitext]") ? answer.Replace("[Freitext] ", "") : null
+                CustomText = string.IsNullOrWhiteSpace(FreeTextInput) ? null : FreeTextInput
             };
 
             // Send via SignalR
@@ -270,8 +305,8 @@ public partial class LotLinkingWizard : IAsyncDisposable
             CurrentQuestion = null;
             CurrentAssignment = null;
             CurrentOptions = null;
-            RequiresPriceInput = false;
-            InputAcquisitionPrice = null;
+            CurrentLotOptions = null;
+            AllocationInputs = new List<LotAllocationInput>();
             ShowFreeTextInput = false;
             FreeTextInput = null;
             IsProcessing = true;
@@ -337,12 +372,146 @@ public partial class LotLinkingWizard : IAsyncDisposable
         FreeTextInput = null;
     }
 
+    private void InitializeLotAllocations(IList<LotOptionDTO>? options)
+    {
+        AllocationInputs = options?
+            .Select(o => new LotAllocationInput
+            {
+                LotId = o.LotId,
+                DisplayText = o.DisplayText,
+                AvailableQuantity = o.AvailableQuantity
+            })
+            .ToList() ?? new List<LotAllocationInput>();
+    }
+
+    private void UpdateQuantity(LotAllocationInput input)
+    {
+        if (input.Quantity < 0)
+            input.Quantity = 0;
+        if (input.Quantity > input.AvailableQuantity)
+            input.Quantity = input.AvailableQuantity;
+
+        input.Percent = RequiredQuantity > 0
+            ? Math.Round(input.Quantity / RequiredQuantity * 100m, 4)
+            : 0m;
+    }
+
+    private void OnQuantityInput(ChangeEventArgs e, LotAllocationInput input)
+    {
+        if (e.Value == null)
+        {
+            input.Quantity = 0m;
+            UpdateQuantity(input);
+            return;
+        }
+
+        if (decimal.TryParse(e.Value.ToString(), out var value))
+        {
+            input.Quantity = value;
+            UpdateQuantity(input);
+        }
+    }
+
+    private void UpdatePercent(LotAllocationInput input)
+    {
+        if (input.Percent < 0)
+            input.Percent = 0;
+        if (input.Percent > 100)
+            input.Percent = 100;
+
+        input.Quantity = RequiredQuantity > 0
+            ? Math.Round(RequiredQuantity * input.Percent / 100m, 8)
+            : 0m;
+
+        if (input.Quantity > input.AvailableQuantity)
+        {
+            input.Quantity = input.AvailableQuantity;
+            input.Percent = RequiredQuantity > 0
+                ? Math.Round(input.Quantity / RequiredQuantity * 100m, 4)
+                : 0m;
+        }
+    }
+
+    private void OnPercentInput(ChangeEventArgs e, LotAllocationInput input)
+    {
+        if (e.Value == null)
+        {
+            input.Percent = 0m;
+            UpdatePercent(input);
+            return;
+        }
+
+        if (decimal.TryParse(e.Value.ToString(), out var value))
+        {
+            input.Percent = value;
+            UpdatePercent(input);
+        }
+    }
+
+    private decimal TotalAllocatedQuantity => AllocationInputs.Sum(a => a.Quantity);
+    private decimal TotalAllocatedPercent => RequiredQuantity > 0
+        ? Math.Round(TotalAllocatedQuantity / RequiredQuantity * 100m, 2)
+        : 0m;
+
+    private async Task SubmitAllocations()
+    {
+        if (CurrentQuestionId == null || SessionId == null)
+            return;
+
+        var allocations = AllocationInputs
+            .Where(a => a.Quantity > 0)
+            .Select(a => new LotAllocationDTO(a.LotId, a.Quantity))
+            .ToList();
+
+        if (allocations.Count == 0 || !HasAllocations)
+            return;
+
+        IsAnswering = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = new LotLinkingUserResponseDTO
+            {
+                QuestionId = CurrentQuestionId,
+                Response = "LOT_ALLOCATIONS",
+                ShouldRemember = ShouldRemember,
+                LotAllocations = allocations,
+                CustomText = string.IsNullOrWhiteSpace(FreeTextInput) ? null : FreeTextInput
+            };
+
+            if (hubConnection?.State == HubConnectionState.Connected)
+            {
+                await hubConnection.InvokeAsync("SendLotLinkingResponse", SessionId, response);
+            }
+
+            CurrentQuestionId = null;
+            CurrentQuestion = null;
+            CurrentAssignment = null;
+            CurrentOptions = null;
+            CurrentLotOptions = null;
+            AllocationInputs = new List<LotAllocationInput>();
+            ShowFreeTextInput = false;
+            FreeTextInput = null;
+            IsProcessing = true;
+            ProcessingMessage = "Verarbeite Antwort...";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Fehler beim Senden: {ex.Message}";
+        }
+        finally
+        {
+            IsAnswering = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task SubmitFreeText()
     {
         if (string.IsNullOrWhiteSpace(FreeTextInput)) return;
-        
-        // Send free text as the answer with a prefix to identify it
-        await AnswerQuestion($"[Freitext] {FreeTextInput}");
+
+        await AnswerQuestion(FreeTextOptionLabel);
     }
 
     private void AddEvent(string type, string message)
@@ -395,6 +564,11 @@ public partial class LotLinkingWizard : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (BodyLockApplied)
+        {
+            await SetBodyLockAsync(false);
+        }
+
         if (hubConnection != null)
         {
             if (SessionId != null)
@@ -412,6 +586,17 @@ public partial class LotLinkingWizard : IAsyncDisposable
         }
     }
 
+    private async Task SetBodyLockAsync(bool isLocked)
+    {
+        if (JsRuntime == null)
+        {
+            return;
+        }
+
+        BodyLockApplied = isLocked;
+        await JsRuntime.InvokeVoidAsync("cryptoTracker.setWizardOpen", isLocked);
+    }
+
     private class EventLogEntry
     {
         public string Type { get; set; } = "";
@@ -425,6 +610,7 @@ public partial class LotLinkingWizard : IAsyncDisposable
             "skipped" => ">>",
             "error" => "!",
             "rule" => "#",
+            "info" => "i",
             "start" => ">",
             "stop" => "[]",
             "complete" => "OK",
@@ -438,7 +624,17 @@ public partial class LotLinkingWizard : IAsyncDisposable
             "skipped" => "skipped",
             "error" => "error",
             "rule" => "rule",
+            "info" => "info",
             _ => ""
         };
+    }
+
+    private sealed class LotAllocationInput
+    {
+        public int LotId { get; set; }
+        public string DisplayText { get; set; } = "";
+        public decimal AvailableQuantity { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal Percent { get; set; }
     }
 }

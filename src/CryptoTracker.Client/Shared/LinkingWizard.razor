@@ -86,14 +86,14 @@
                                     @option
                                 </button>
                             }
-                            @* Freitext-Option *@
-                            @if (!ShowFreeTextInput)
+                            @* Freitext-Option (Fallback, falls Agent-Option fehlt) *@
+                            @if (!ShowFreeTextInput && !HasFreeTextOption)
                             {
                                 <button type="button" 
                                         class="btn btn-outline-secondary" 
                                         @onclick="ShowFreeText"
                                         disabled="@IsAnswering">
-                                    Andere Begründung...
+                                    Andere Option (Freitext)
                                 </button>
                             }
                         }
@@ -311,7 +311,7 @@
 
     .linking-progress-section {
         padding: 12px 16px;
-        background: var(--bs-light);
+        background: var(--surface-200, #f1f2f4);
         border-radius: 8px;
     }
 
@@ -324,7 +324,7 @@
 
     .linking-progress-fill {
         height: 100%;
-        background: var(--bs-primary);
+        background: var(--brand-600, #2f343a);
         transition: width 0.3s ease;
     }
 
@@ -382,6 +382,10 @@
 
     .linking-event.rule {
         color: #6f42c1;
+    }
+
+    .linking-event.info {
+        color: #0d6efd;
     }
 
     .linking-event.processing {

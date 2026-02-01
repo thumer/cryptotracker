@@ -605,23 +605,17 @@ public class LotService
     #region Lot-Generierung aus bestehenden Daten
 
     /// <summary>
-    /// Fiat-Symbole für EF Core Query (muss als statisches Array definiert sein).
-    /// Enthält auch Lowercase-Varianten für Case-Insensitive-Vergleich.
-    /// </summary>
-    private static readonly string[] FiatSymbolsForQuery = { "EUR", "USD", "CHF", "GBP", "ZEUR", "ZUSD", "eur", "usd", "chf", "gbp", "zeur", "zusd" };
-
-    /// <summary>
     /// Generiert Lots aus bestehenden Buy-Trades die noch kein Lot haben.
     /// </summary>
     public async Task<int> GenerateLotsFromExistingTradesAsync()
     {
-        // Hinweis: FiatSymbolsForQuery muss inline verwendet werden, da EF Core keine Methodenaufrufe übersetzen kann
+        // Hinweis: FiatSymbols.ForQuery muss inline verwendet werden, da EF Core keine Methodenaufrufe übersetzen kann
         // Contains-Vergleich ist case-sensitive, daher enthält das Array beide Varianten
         var tradesWithoutLots = await _dbContext.CryptoTrades
             .Include(t => t.Wallet)
             .Where(t => t.TradeType == TradeType.Buy
                      && t.ResultingLotId == null
-                     && FiatSymbolsForQuery.Contains(t.OppositeSymbol))
+                     && FiatSymbols.ForQuery.Contains(t.OppositeSymbol))
             .OrderBy(t => t.DateTime)
             .ToListAsync();
 
@@ -656,11 +650,6 @@ public class LotService
 
         _logger.LogInformation("{Count} Lots aus bestehenden Trades generiert", count);
         return count;
-    }
-
-    private static bool IsFiatSymbol(string symbol)
-    {
-        return FiatSymbolsForQuery.Contains(symbol.ToUpperInvariant());
     }
 
     #endregion

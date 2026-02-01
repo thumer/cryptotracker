@@ -1,6 +1,7 @@
 using CryptoTracker.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.JSInterop;
 
 namespace CryptoTracker.Client.Shared;
 
@@ -13,6 +14,7 @@ public partial class LinkingWizard : IAsyncDisposable
     [Inject] private ITransactionLinkingApi LinkingApi { get; set; } = default!;
     [Inject] private IWalletApi WalletApi { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
     // State
     private bool IsStarted = false;
@@ -56,8 +58,11 @@ public partial class LinkingWizard : IAsyncDisposable
     private string? SessionId;
     private HubConnection? hubConnection;
     private const string VirtualWalletOptionLabel = "Gegenstück in virtuelles Wallet buchen";
+    private const string FreeTextOptionLabel = "Andere Option (Freitext)";
+    private bool BodyLockApplied = false;
 
     private int ProgressPercent => TotalCount > 0 ? (int)(ProcessedCount * 100.0 / TotalCount) : 0;
+    private bool HasFreeTextOption => CurrentOptions?.Any(o => o.Equals(FreeTextOptionLabel, StringComparison.OrdinalIgnoreCase)) == true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,6 +201,10 @@ public partial class LinkingWizard : IAsyncDisposable
                 case "error":
                     AddEvent("error", evt.Message);
                     break;
+
+                case "info":
+                    AddEvent("info", evt.Message);
+                    break;
             }
 
             StateHasChanged();
@@ -254,7 +263,7 @@ public partial class LinkingWizard : IAsyncDisposable
 
     private async Task OnOptionSelected(string option)
     {
-        if (option == VirtualWalletOptionLabel)
+        if (string.Equals(option, VirtualWalletOptionLabel, StringComparison.OrdinalIgnoreCase))
         {
             ShowVirtualWalletSelection = true;
             ShowFreeTextInput = false;
@@ -264,7 +273,21 @@ public partial class LinkingWizard : IAsyncDisposable
             return;
         }
 
+        if (string.Equals(option, FreeTextOptionLabel, StringComparison.OrdinalIgnoreCase))
+        {
+            ShowFreeText();
+            return;
+        }
+
         await AnswerQuestion(option);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SetBodyLockAsync(true);
+        }
     }
 
     private async Task AnswerQuestion(string answer)
@@ -503,6 +526,11 @@ public partial class LinkingWizard : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (BodyLockApplied)
+        {
+            await SetBodyLockAsync(false);
+        }
+
         if (hubConnection != null)
         {
             if (SessionId != null)
@@ -520,6 +548,17 @@ public partial class LinkingWizard : IAsyncDisposable
         }
     }
 
+    private async Task SetBodyLockAsync(bool isLocked)
+    {
+        if (JsRuntime == null)
+        {
+            return;
+        }
+
+        BodyLockApplied = isLocked;
+        await JsRuntime.InvokeVoidAsync("cryptoTracker.setWizardOpen", isLocked);
+    }
+
     private class EventLogEntry
     {
         public string Type { get; set; } = "";
@@ -533,6 +572,7 @@ public partial class LinkingWizard : IAsyncDisposable
             "skipped" => "⏭",
             "error" => "⚠",
             "rule" => "📝",
+            "info" => "ℹ",
             "start" => "▶",
             "stop" => "⏹",
             "complete" => "🎉",
@@ -546,6 +586,7 @@ public partial class LinkingWizard : IAsyncDisposable
             "skipped" => "skipped",
             "error" => "error",
             "rule" => "rule",
+            "info" => "info",
             _ => ""
         };
     }

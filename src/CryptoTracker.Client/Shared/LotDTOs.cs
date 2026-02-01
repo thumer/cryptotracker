@@ -107,7 +107,12 @@ public record PendingLotAssignmentDTO(
     int WalletId,
     string? Direction, // "Receive" für Transactions, "Sell" für Trades
     string? OppositeWalletName,
-    string? Comment); // Kommentar der Transaktion für Regel-Matching
+    string? Comment) // Kommentar der Transaktion für Regel-Matching
+{
+    public int? OppositeTransactionId { get; init; }
+    public int? OppositeTradeId { get; init; }
+    public string? OppositeSymbol { get; init; }
+}
 
 /// <summary>
 /// Request für Lot-Generierung aus bestehenden Daten.
@@ -177,6 +182,7 @@ public record LotLinkingStatisticsDTO
     public int TotalPendingAssignments { get; init; }
     public int PendingReceiveTransactions { get; init; }
     public int PendingSellTrades { get; init; }
+    public int PendingBuyTrades { get; init; }
     public int CompletedAssignments { get; init; }
     public int LotsCreated { get; init; }
 }
@@ -197,6 +203,7 @@ public record InteractiveLotLinkingSessionDTO
     public string? CurrentQuestion { get; init; }
     public PendingLotAssignmentDTO? CurrentAssignment { get; init; }
     public IList<string>? CurrentOptions { get; init; }
+    public IList<LotOptionDTO>? CurrentLotOptions { get; init; }
 }
 
 /// <summary>

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CryptoTracker.Migrations
 {
     [DbContext(typeof(CryptoTrackerDbContext))]
-    [Migration("20260201135201_TransactionLinkingAndLots")]
+    [Migration("20260201160654_TransactionLinkingAndLots")]
     partial class TransactionLinkingAndLots
     {
         /// <inheritdoc />

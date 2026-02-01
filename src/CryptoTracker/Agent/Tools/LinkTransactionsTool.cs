@@ -1,5 +1,6 @@
 using CryptoTracker.Agent.Common;
 using CryptoTracker.Entities;
+using CryptoTracker.Shared;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.Text.Json;
@@ -12,10 +13,14 @@ namespace CryptoTracker.Agent.Tools;
 public sealed class LinkTransactionsTool : IAgentTool
 {
     private readonly CryptoTrackerDbContext _dbContext;
+    private readonly ILinkingAgentContextAccessor _contextAccessor;
 
-    public LinkTransactionsTool(CryptoTrackerDbContext dbContext)
+    public LinkTransactionsTool(
+        CryptoTrackerDbContext dbContext,
+        ILinkingAgentContextAccessor contextAccessor)
     {
         _dbContext = dbContext;
+        _contextAccessor = contextAccessor;
     }
 
     public Delegate GetToolRunner() => LinkTransactionsAsync;
@@ -100,6 +105,25 @@ public sealed class LinkTransactionsTool : IAgentTool
         _dbContext.TransactionLinkMetadata.Add(receiveMetadata);
 
         await _dbContext.SaveChangesAsync();
+
+        var context = _contextAccessor.Current;
+        if (context != null)
+        {
+            context.Session.LinkedCount++;
+            context.Session.ProcessedCount = context.Session.LinkedCount +
+                                            context.Session.MarkedExternalCount +
+                                            context.Session.SkippedCount;
+
+            await context.SendEventAsync(new LinkingEventDTO
+            {
+                EventType = "linked",
+                Message = $"Verknüpft: {send.Symbol} {send.QuantityAfterFee:F8} ({send.Wallet.Name} → {receive.Wallet.Name})",
+                SendId = send.Id,
+                ReceiveId = receive.Id,
+                ProcessedCount = context.Session.ProcessedCount,
+                TotalCount = context.Session.TotalCount
+            });
+        }
 
         return JsonSerializer.Serialize(new
         {

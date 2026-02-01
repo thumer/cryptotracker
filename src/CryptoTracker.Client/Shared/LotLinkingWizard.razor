@@ -72,13 +72,49 @@
                         }
                     </div>
 
-                    @* Price Input (wenn benötigt) *@
-                    @if (RequiresPriceInput)
+                    @* Lot-Allocation *@
+                    @if (CurrentLotOptions != null && CurrentLotOptions.Count > 0)
                     {
-                        <div class="price-input-section">
-                            <label>Kaufpreis (EUR pro Stück):</label>
-                            <input type="number" class="form-control form-control-sm" step="any" @bind="InputAcquisitionPrice" />
-                            <small class="text-muted">Marktwert zum Zeitpunkt des Erhalts (wird automatisch ermittelt wenn leer)</small>
+                        <div class="lot-allocation-section">
+                            <div class="allocation-summary">
+                                <span><strong>Benötigt:</strong> @FormatHelper.FormatAmount(RequiredQuantity) @CurrentAssignment?.Symbol</span>
+                                <span><strong>Zugewiesen:</strong> @FormatHelper.FormatAmount(TotalAllocatedQuantity) (@TotalAllocatedPercent%)</span>
+                            </div>
+                            <div class="allocation-table">
+                                <div class="allocation-header">
+                                    <span>Lot</span>
+                                    <span>Verfügbar</span>
+                                    <span>Menge</span>
+                                    <span>%</span>
+                                </div>
+                                @foreach (var input in AllocationInputs)
+                                {
+                                    <div class="allocation-row">
+                                        <span class="allocation-lot">@input.DisplayText</span>
+                                        <span class="allocation-available">@FormatHelper.FormatAmount(input.AvailableQuantity)</span>
+                                        <input type="number"
+                                               step="any"
+                                               class="form-control form-control-sm allocation-input"
+                                               value="@input.Quantity"
+                                               @oninput="e => OnQuantityInput(e, input)"
+                                               disabled="@IsAnswering" />
+                                        <input type="number"
+                                               step="any"
+                                               class="form-control form-control-sm allocation-input"
+                                               value="@input.Percent"
+                                               @oninput="e => OnPercentInput(e, input)"
+                                               disabled="@IsAnswering" />
+                                    </div>
+                                }
+                            </div>
+                            <div class="allocation-actions">
+                                <button type="button"
+                                        class="btn btn-primary btn-sm"
+                                        @onclick="SubmitAllocations"
+                                        disabled="@(!HasAllocations || IsAnswering)">
+                                    Zuordnen
+                                </button>
+                            </div>
                         </div>
                     }
 
@@ -90,19 +126,19 @@
                             {
                                 <button type="button" 
                                         class="btn @GetOptionButtonClass(option)" 
-                                        @onclick="() => AnswerQuestion(option)"
+                                        @onclick="() => OnOptionSelected(option)"
                                         disabled="@IsAnswering">
                                     @option
                                 </button>
                             }
                             @* Freitext-Option *@
-                            @if (!ShowFreeTextInput)
+                            @if (!ShowFreeTextInput && !HasFreeTextOption)
                             {
                                 <button type="button" 
                                         class="btn btn-outline-secondary" 
                                         @onclick="ShowFreeText"
                                         disabled="@IsAnswering">
-                                    Andere Begründung...
+                                    Andere Option (Freitext)
                                 </button>
                             }
                         }
@@ -169,9 +205,9 @@
                     <div class="wizard-icon">+</div>
                     <h3>Interaktive Lot-Zuordnung</h3>
                     <p>
-                        Der Assistent erstellt Lots für Receive-Transaktionen und ordnet 
-                        Lots bei Verkäufen automatisch zu (FIFO).
-                        Bei unklaren Fällen wirst du um Bestätigung gebeten.
+                        Der Assistent erstellt Root-Lots für Fiat-Käufe sowie externe Receive-Transaktionen
+                        und ordnet Lots bei Verkäufen/Transfers intelligent zu.
+                        Bei unklaren Splits wirst du immer um Bestätigung gebeten.
                     </p>
                     @if (Statistics != null)
                     {
@@ -180,6 +216,10 @@
                                 <div class="stat-item">
                                     <span class="stat-number">@Statistics.PendingReceiveTransactions</span>
                                     <span class="stat-label">Receive ohne Lot</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.PendingBuyTrades</span>
+                                    <span class="stat-label">Fiat-Käufe ohne Lot</span>
                                 </div>
                                 <div class="stat-item">
                                     <span class="stat-number">@Statistics.PendingSellTrades</span>
@@ -274,7 +314,7 @@
 
     .linking-progress-section {
         padding: 12px 16px;
-        background: var(--bs-light);
+        background: var(--surface-200, #f1f2f4);
         border-radius: 8px;
     }
 
@@ -287,7 +327,7 @@
 
     .linking-progress-fill {
         height: 100%;
-        background: var(--bs-primary);
+        background: var(--brand-600, #2f343a);
         transition: width 0.3s ease;
     }
 
@@ -347,6 +387,10 @@
         color: #6f42c1;
     }
 
+    .linking-event.info {
+        color: #0d6efd;
+    }
+
     .linking-event.processing {
         color: #666;
     }
@@ -382,6 +426,62 @@
     .question-text {
         margin-bottom: 12px;
         white-space: pre-wrap;
+    }
+
+    .lot-allocation-section {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f7f9ff;
+        border: 1px solid #d0dcff;
+        border-radius: 6px;
+    }
+
+    .allocation-summary {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        color: #333;
+    }
+
+    .allocation-table {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .allocation-header,
+    .allocation-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 8px;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+
+    .allocation-header {
+        font-weight: 600;
+        color: #555;
+    }
+
+    .allocation-lot {
+        font-size: 0.8rem;
+        color: #333;
+    }
+
+    .allocation-available {
+        font-size: 0.8rem;
+        color: #666;
+    }
+
+    .allocation-input {
+        min-width: 80px;
+    }
+
+    .allocation-actions {
+        margin-top: 8px;
+        display: flex;
+        justify-content: flex-end;
     }
 
     .question-transaction-preview {

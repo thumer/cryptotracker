@@ -117,18 +117,38 @@ namespace CryptoTracker
 
             // Agent Builder
             services.AddScoped<AILinkingAgentBuilder>();
+            services.AddSingleton<ILinkingAgentContextAccessor, LinkingAgentContextAccessor>();
+            services.AddSingleton<ILotLinkingAgentContextAccessor, LotLinkingAgentContextAccessor>();
 
             // Agent Tools
             services.AddScoped<GetUnlinkedTransactionsTool>();
             services.AddScoped<GetTransactionDetailsTool>();
             services.AddScoped<FindMatchingTransactionsTool>();
             services.AddScoped<LinkTransactionsTool>();
+            services.AddScoped<LinkVirtualWalletTool>();
             services.AddScoped<MarkAsIntentionallyUnlinkedTool>();
+            services.AddScoped<AskLinkingQuestionTool>();
+            services.AddScoped<SkipTransactionTool>();
+            services.AddScoped<LogLinkingEventTool>();
             services.AddScoped<SaveAgentMemoryTool>();
             services.AddScoped<GetAgentMemoryTool>();
 
+            services.AddScoped<GetPendingLotAssignmentsTool>();
+            services.AddScoped<GetLotOptionsTool>();
+            services.AddScoped<GetTradeDetailsTool>();
+            services.AddScoped<TransferLotsTool>();
+            services.AddScoped<SellLotsTool>();
+            services.AddScoped<TransformSwapLotsTool>();
+            services.AddScoped<CreateRootLotTool>();
+            services.AddScoped<AskLotLinkingQuestionTool>();
+            services.AddScoped<LogLotLinkingEventTool>();
+            services.AddScoped<SkipLotAssignmentTool>();
+            services.AddScoped<SaveLotMemoryTool>();
+            services.AddScoped<GetLotMemoryTool>();
+
             // Agent Definitions
             services.AddScoped<IAgentDefinition, TransactionLinkingAgentDefinition>();
+            services.AddScoped<IAgentDefinition, LotLinkingAgentDefinition>();
 
             // Agent Services
             services.AddScoped<TransactionLinkingService>();

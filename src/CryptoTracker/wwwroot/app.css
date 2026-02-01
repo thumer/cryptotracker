@@ -536,8 +536,14 @@ h1, h2, h3, .app-title {
 
 .details-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.6rem 1rem;
+}
+
+@media (min-width: 900px) {
+    .details-grid {
+        grid-template-columns: repeat(2, minmax(240px, 1fr));
+    }
 }
 
 .details-item label {
@@ -1195,6 +1201,13 @@ h1, h2, h3, .app-title {
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
+}
+
+.modal-card.details-modal {
+    width: min(860px, 92vw);
+    max-width: 860px;
+    max-height: 85vh;
+    overflow: auto;
 }
 
 .modal-header {
@@ -1964,15 +1977,26 @@ h1, h2, h3, .app-title {
 
 .wizard-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2000;
+    overscroll-behavior: contain;
+}
+
+html.overlay-open,
+body.overlay-open {
+    overflow: hidden;
+}
+
+body.overlay-open .rz-body,
+body.overlay-open .rz-layout {
+    overflow: hidden;
+    transform: none !important;
 }
 
 .wizard-container {

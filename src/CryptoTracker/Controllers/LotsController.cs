@@ -230,7 +230,10 @@ public class LotsController : ControllerBase, ILotsApi
             t.WalletId,
             t.TransactionType.ToString(),
             t.OppositeWallet?.Name,
-            t.Comment)));
+            t.Comment)
+        {
+            OppositeTransactionId = t.OppositeTransactionId
+        }));
 
         result.AddRange(trades.Select(t => new PendingLotAssignmentDTO(
             "Trade",
@@ -242,7 +245,11 @@ public class LotsController : ControllerBase, ILotsApi
             t.WalletId,
             t.TradeType.ToString(),
             null,
-            t.Comment)));
+            t.Comment)
+        {
+            OppositeTradeId = t.OppositeTradeId,
+            OppositeSymbol = t.OppositeSymbol
+        }));
 
         return result.OrderBy(p => p.DateTime).ToList();
     }
@@ -414,15 +421,20 @@ public class LotsController : ControllerBase, ILotsApi
             .CountAsync(t => t.TransactionType == TransactionType.Receive && !t.LotAssignmentConfirmed);
         var pendingSell = await _dbContext.CryptoTrades
             .CountAsync(t => t.TradeType == TradeType.Sell && !t.LotAssignmentConfirmed);
+        var pendingBuy = await _dbContext.CryptoTrades
+            .CountAsync(t => t.TradeType == TradeType.Buy
+                          && t.ResultingLotId == null
+                          && FiatSymbols.ForQuery.Contains(t.OppositeSymbol));
         var completedTx = await _dbContext.CryptoTransactions
             .CountAsync(t => t.LotAssignmentConfirmed);
         var totalLots = await _dbContext.AssetLots.CountAsync();
 
         return new LotLinkingStatisticsDTO
         {
-            TotalPendingAssignments = pendingReceive + pendingSell,
+            TotalPendingAssignments = pendingReceive + pendingSell + pendingBuy,
             PendingReceiveTransactions = pendingReceive,
             PendingSellTrades = pendingSell,
+            PendingBuyTrades = pendingBuy,
             CompletedAssignments = completedTx,
             LotsCreated = totalLots
         };
