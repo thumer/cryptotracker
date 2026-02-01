@@ -36,7 +36,15 @@ public class WalletController : ControllerBase, IWalletApi
 
     [HttpGet("GetWalletInfos")]
     public async Task<IActionResult> GetWalletInfos()
-        => Ok(await _walletService.GetWallets());
+        => Ok((await _walletService.GetWallets())
+            .Select(w => new WalletInfoDTO(w.Id, w.Name, w.IsVirtual))
+            .ToList());
+
+    [HttpGet("GetVirtualWalletInfos")]
+    public async Task<IActionResult> GetVirtualWalletInfos()
+        => Ok((await _walletService.GetVirtualWallets())
+            .Select(w => new WalletInfoDTO(w.Id, w.Name, w.IsVirtual))
+            .ToList());
 
     [HttpPost("SaveWallet")]
     public async Task<IActionResult> SaveWallet([FromBody] Wallet wallet)
@@ -59,12 +67,24 @@ public class WalletController : ControllerBase, IWalletApi
     }
 
     async Task<IList<WalletInfoDTO>> IWalletApi.GetWalletInfosAsync()
-        => (await _walletService.GetWallets()).Select(w => new WalletInfoDTO(w.Id, w.Name)).ToList();
+        => (await _walletService.GetWallets())
+            .Select(w => new WalletInfoDTO(w.Id, w.Name, w.IsVirtual))
+            .ToList();
+
+    async Task<IList<WalletInfoDTO>> IWalletApi.GetVirtualWalletInfosAsync()
+        => (await _walletService.GetVirtualWallets())
+            .Select(w => new WalletInfoDTO(w.Id, w.Name, w.IsVirtual))
+            .ToList();
 
     async Task<WalletInfoDTO> IWalletApi.SaveWalletAsync(WalletInfoDTO wallet)
     {
-        var entity = await _walletService.SaveWallet(new Wallet { Id = wallet.Id, Name = wallet.Name });
-        return new WalletInfoDTO(entity.Id, entity.Name);
+        var entity = await _walletService.SaveWallet(new Wallet 
+        { 
+            Id = wallet.Id, 
+            Name = wallet.Name,
+            IsVirtual = wallet.IsVirtual 
+        });
+        return new WalletInfoDTO(entity.Id, entity.Name, entity.IsVirtual);
     }
 
     Task IWalletApi.DeleteWalletAsync(int id)

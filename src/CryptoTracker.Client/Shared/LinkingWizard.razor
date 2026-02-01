@@ -81,7 +81,7 @@
                             {
                                 <button type="button" 
                                         class="btn @GetOptionButtonClass(option)" 
-                                        @onclick="() => AnswerQuestion(option)"
+                                        @onclick="() => OnOptionSelected(option)"
                                         disabled="@IsAnswering">
                                     @option
                                 </button>
@@ -98,6 +98,56 @@
                             }
                         }
                     </div>
+                    @if (ShowVirtualWalletSelection)
+                    {
+                        <div class="virtual-wallet-section">
+                            <label>Vorhandenes virtuelles Wallet</label>
+                            <select class="form-select" @bind="SelectedVirtualWalletId" disabled="@IsAnswering">
+                                <option value="">Bitte wählen...</option>
+                                @foreach (var wallet in VirtualWallets)
+                                {
+                                    <option value="@wallet.Id">@wallet.Name</option>
+                                }
+                            </select>
+                            @if (IsLoadingVirtualWallets)
+                            {
+                                <div class="virtual-wallet-loading">
+                                    <span class="loading-spinner-small"></span>
+                                    <span>Lade virtuelle Wallets...</span>
+                                </div>
+                            }
+                            @if (!IsLoadingVirtualWallets && VirtualWallets.Count == 0)
+                            {
+                                <div class="virtual-wallet-empty">Noch keine virtuellen Wallets vorhanden.</div>
+                            }
+                            <div class="virtual-wallet-divider">oder</div>
+                            <label>Neues virtuelles Wallet</label>
+                            <input class="form-control"
+                                   placeholder="z.B. Extern - Binance"
+                                   @bind="NewVirtualWalletName"
+                                   disabled="@IsAnswering" />
+                            <div class="virtual-wallet-actions">
+                                <button type="button"
+                                        class="btn btn-primary btn-sm"
+                                        @onclick="LinkWithExistingVirtualWallet"
+                                        disabled="@(SelectedVirtualWalletId == null || IsAnswering)">
+                                    Verknüpfen
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm"
+                                        @onclick="CreateAndLinkVirtualWallet"
+                                        disabled="@(string.IsNullOrWhiteSpace(NewVirtualWalletName) || IsAnswering)">
+                                    Neu anlegen &amp; verknüpfen
+                                </button>
+                                <button type="button"
+                                        class="btn btn-secondary btn-sm"
+                                        @onclick="CancelVirtualWalletSelection"
+                                        disabled="@IsAnswering">
+                                    Abbrechen
+                                </button>
+                            </div>
+                        </div>
+                    }
                     @* Freitext-Eingabe *@
                     @if (ShowFreeTextInput)
                     {
@@ -422,6 +472,50 @@
     .freetext-actions {
         display: flex;
         gap: 8px;
+    }
+
+    .virtual-wallet-section {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f5f9ff;
+        border: 1px dashed #90caf9;
+        border-radius: 6px;
+    }
+
+    .virtual-wallet-section label {
+        display: block;
+        margin: 6px 0 4px;
+        font-weight: 500;
+    }
+
+    .virtual-wallet-divider {
+        margin: 10px 0;
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .virtual-wallet-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .virtual-wallet-loading {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .virtual-wallet-empty {
+        margin-top: 6px;
+        font-size: 0.85rem;
+        color: #888;
     }
 
     .linking-rules-section {

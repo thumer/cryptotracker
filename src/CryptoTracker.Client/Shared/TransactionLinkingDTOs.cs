@@ -192,6 +192,9 @@ public record UserResponseDTO
     public string QuestionId { get; init; } = "";
     public string Response { get; init; } = "";
     public bool ShouldRemember { get; init; } = true;
+    public string? Action { get; init; }
+    public int? VirtualWalletId { get; init; }
+    public string? VirtualWalletName { get; init; }
 }
 
 /// <summary>

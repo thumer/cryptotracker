@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CryptoTracker.Migrations
 {
     [DbContext(typeof(CryptoTrackerDbContext))]
-    [Migration("20260131133250_AddAILinkingEntities")]
-    partial class AddAILinkingEntities
+    [Migration("20260201135201_TransactionLinkingAndLots")]
+    partial class TransactionLinkingAndLots
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -165,6 +165,9 @@ namespace CryptoTracker.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("LotAssignmentConfirmed")
                         .HasColumnType("bit");
 
@@ -234,6 +237,9 @@ namespace CryptoTracker.Migrations
 
                     b.Property<decimal>("Fee")
                         .HasColumnType("decimal(27, 12)");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsIntentionallyUnlinked")
                         .HasColumnType("bit");
@@ -943,6 +949,9 @@ namespace CryptoTracker.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsVirtual")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()

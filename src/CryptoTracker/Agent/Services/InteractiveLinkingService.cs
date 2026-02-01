@@ -15,6 +15,7 @@ public class InteractiveLinkingService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHubContext<LinkingHub> _hubContext;
     private readonly ILogger<InteractiveLinkingService> _logger;
+    private const string VirtualWalletAction = "virtual_wallet";
 
     // Aktive Sessions
     private readonly ConcurrentDictionary<string, InteractiveLinkingSession> _sessions = new();
@@ -540,6 +541,7 @@ public class InteractiveLinkingService
             }
         }
 
+        options.Add("Gegenstück in virtuelles Wallet buchen");
         options.Add("Als externe Einnahme/Ausgabe markieren");
         options.Add("Überspringen (später bearbeiten)");
 
@@ -596,6 +598,24 @@ public class InteractiveLinkingService
     {
         var responseText = response.Response;
         var responseTextLower = responseText.ToLowerInvariant();
+
+        if (string.Equals(response.Action, VirtualWalletAction, StringComparison.OrdinalIgnoreCase))
+        {
+            var error = await LinkToVirtualWalletAsync(dbContext, session, tx, response, ct);
+            if (!string.IsNullOrEmpty(error))
+            {
+                session.SkippedCount++;
+                await SendEventAsync(session, new LinkingEventDTO
+                {
+                    EventType = "skipped",
+                    Message = $"Übersprungen: {error}",
+                    Transaction = tx,
+                    ProcessedCount = session.ProcessedCount,
+                    TotalCount = session.TotalCount
+                });
+            }
+            return null;
+        }
 
         // Option: Verknüpfen - prüfe ob die Response im OptionToHintIndex-Mapping ist
         if (session.OptionToHintIndex != null && session.OptionToHintIndex.TryGetValue(responseText, out var hintIndex))
@@ -678,6 +698,106 @@ public class InteractiveLinkingService
         });
         
         return null;
+    }
+
+    private async Task<string?> LinkToVirtualWalletAsync(
+        CryptoTrackerDbContext dbContext,
+        InteractiveLinkingSession session,
+        UnlinkedTransactionDTO tx,
+        UserResponseDTO response,
+        CancellationToken ct)
+    {
+        var virtualWallet = await ResolveVirtualWalletAsync(dbContext, response, ct);
+        if (virtualWallet == null)
+        {
+            return "Virtuelles Wallet konnte nicht gefunden oder erstellt werden.";
+        }
+
+        var oppositeType = tx.IsSend ? TransactionType.Receive : TransactionType.Send;
+        var oppositeQuantity = tx.IsSend ? tx.QuantityAfterFee : tx.Quantity;
+
+        if (oppositeQuantity <= 0)
+        {
+            return "Ungültige Menge für virtuelles Gegenstück.";
+        }
+
+        var oppositeTransaction = new CryptoTransaction
+        {
+            WalletId = virtualWallet.Id,
+            DateTime = tx.DateTime,
+            TransactionType = oppositeType,
+            Symbol = tx.Symbol,
+            Quantity = oppositeQuantity,
+            Fee = 0m,
+            Comment = $"Virtuelles Gegenstück zu #{tx.Id} ({tx.WalletName})",
+            Address = tx.Address,
+            Network = tx.Network,
+            TransactionId = tx.TransactionId
+        };
+
+        dbContext.CryptoTransactions.Add(oppositeTransaction);
+        await dbContext.SaveChangesAsync(ct);
+
+        var oppositeDto = new UnlinkedTransactionDTO
+        {
+            Id = oppositeTransaction.Id,
+            DateTime = oppositeTransaction.DateTime,
+            Type = oppositeType.ToString(),
+            Symbol = oppositeTransaction.Symbol,
+            Quantity = oppositeTransaction.Quantity,
+            QuantityAfterFee = oppositeTransaction.QuantityAfterFee,
+            Comment = oppositeTransaction.Comment,
+            Address = oppositeTransaction.Address,
+            WalletName = virtualWallet.Name,
+            TransactionId = oppositeTransaction.TransactionId,
+            Network = oppositeTransaction.Network
+        };
+
+        await LinkTransactionsAsync(
+            dbContext,
+            session,
+            tx,
+            oppositeDto,
+            $"Virtuelles Wallet: {virtualWallet.Name}",
+            ct);
+
+        return null;
+    }
+
+    private static async Task<Wallet?> ResolveVirtualWalletAsync(
+        CryptoTrackerDbContext dbContext,
+        UserResponseDTO response,
+        CancellationToken ct)
+    {
+        if (response.VirtualWalletId.HasValue)
+        {
+            return await dbContext.Wallets
+                .FirstOrDefaultAsync(w => w.Id == response.VirtualWalletId.Value && w.IsVirtual, ct);
+        }
+
+        var name = response.VirtualWalletName?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var existing = await dbContext.Wallets
+            .FirstOrDefaultAsync(w => w.Name == name, ct);
+
+        if (existing != null)
+        {
+            return existing.IsVirtual ? existing : null;
+        }
+
+        var wallet = new Wallet
+        {
+            Name = name,
+            IsVirtual = true
+        };
+
+        dbContext.Wallets.Add(wallet);
+        await dbContext.SaveChangesAsync(ct);
+        return wallet;
     }
 
     private async Task<UnlinkedTransactionDTO?> GetTransactionDTOAsync(

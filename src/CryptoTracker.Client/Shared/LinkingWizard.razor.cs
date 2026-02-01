@@ -11,6 +11,7 @@ public partial class LinkingWizard : IAsyncDisposable
     [Parameter] public LinkingStatisticsDTO? Statistics { get; set; }
     
     [Inject] private ITransactionLinkingApi LinkingApi { get; set; } = default!;
+    [Inject] private IWalletApi WalletApi { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
     // State
@@ -37,6 +38,11 @@ public partial class LinkingWizard : IAsyncDisposable
     private bool ShouldRemember = true;
     private bool ShowFreeTextInput = false;
     private string? FreeTextInput;
+    private bool ShowVirtualWalletSelection = false;
+    private bool IsLoadingVirtualWallets = false;
+    private IList<WalletInfoDTO> VirtualWallets = new List<WalletInfoDTO>();
+    private int? SelectedVirtualWalletId;
+    private string? NewVirtualWalletName;
 
     // Learned rules
     private List<LearnedRuleDTO> LearnedRules = new();
@@ -49,6 +55,7 @@ public partial class LinkingWizard : IAsyncDisposable
     // Session
     private string? SessionId;
     private HubConnection? hubConnection;
+    private const string VirtualWalletOptionLabel = "Gegenstück in virtuelles Wallet buchen";
 
     private int ProgressPercent => TotalCount > 0 ? (int)(ProcessedCount * 100.0 / TotalCount) : 0;
 
@@ -168,6 +175,9 @@ public partial class LinkingWizard : IAsyncDisposable
                     CurrentQuestion = evt.Message;
                     CurrentTransaction = evt.Transaction;
                     CurrentOptions = evt.Options;
+                    ShowVirtualWalletSelection = false;
+                    SelectedVirtualWalletId = null;
+                    NewVirtualWalletName = null;
                     IsProcessing = false;
                     break;
 
@@ -209,6 +219,9 @@ public partial class LinkingWizard : IAsyncDisposable
                 CurrentQuestion = session.CurrentQuestion;
                 CurrentTransaction = session.CurrentTransaction;
                 CurrentOptions = session.CurrentOptions;
+                ShowVirtualWalletSelection = false;
+                SelectedVirtualWalletId = null;
+                NewVirtualWalletName = null;
                 IsProcessing = false;
             }
 
@@ -233,27 +246,50 @@ public partial class LinkingWizard : IAsyncDisposable
             IsCompleted = true;
             IsProcessing = false;
             CurrentQuestion = null;
+            ShowVirtualWalletSelection = false;
             AddEvent("complete", $"Fertig! {LinkedCount} verknüpft, {MarkedExternalCount} extern, {SkippedCount} übersprungen");
             StateHasChanged();
         });
     }
 
+    private async Task OnOptionSelected(string option)
+    {
+        if (option == VirtualWalletOptionLabel)
+        {
+            ShowVirtualWalletSelection = true;
+            ShowFreeTextInput = false;
+            FreeTextInput = null;
+            await LoadVirtualWalletsAsync();
+            StateHasChanged();
+            return;
+        }
+
+        await AnswerQuestion(option);
+    }
+
     private async Task AnswerQuestion(string answer)
     {
-        if (CurrentQuestionId == null || SessionId == null) return;
+        if (CurrentQuestionId == null) return;
+
+        var response = new UserResponseDTO
+        {
+            QuestionId = CurrentQuestionId,
+            Response = answer,
+            ShouldRemember = ShouldRemember
+        };
+
+        await SendResponseAsync(response);
+    }
+
+    private async Task SendResponseAsync(UserResponseDTO response)
+    {
+        if (SessionId == null) return;
 
         IsAnswering = true;
         StateHasChanged();
 
         try
         {
-            var response = new UserResponseDTO
-            {
-                QuestionId = CurrentQuestionId,
-                Response = answer,
-                ShouldRemember = ShouldRemember
-            };
-
             // Send via SignalR
             if (hubConnection?.State == HubConnectionState.Connected)
             {
@@ -272,6 +308,9 @@ public partial class LinkingWizard : IAsyncDisposable
             CurrentOptions = null;
             ShowFreeTextInput = false;
             FreeTextInput = null;
+            ShowVirtualWalletSelection = false;
+            SelectedVirtualWalletId = null;
+            NewVirtualWalletName = null;
             IsProcessing = true;
             ProcessingMessage = "Verarbeite Antwort...";
         }
@@ -327,6 +366,9 @@ public partial class LinkingWizard : IAsyncDisposable
     {
         ShowFreeTextInput = true;
         FreeTextInput = null;
+        ShowVirtualWalletSelection = false;
+        SelectedVirtualWalletId = null;
+        NewVirtualWalletName = null;
     }
 
     private void CancelFreeText()
@@ -341,6 +383,76 @@ public partial class LinkingWizard : IAsyncDisposable
         
         // Send free text as the answer with a prefix to identify it
         await AnswerQuestion($"[Freitext] {FreeTextInput}");
+    }
+
+    private async Task LoadVirtualWalletsAsync()
+    {
+        if (IsLoadingVirtualWallets)
+            return;
+
+        IsLoadingVirtualWallets = true;
+        try
+        {
+            var wallets = await WalletApi.GetVirtualWalletInfosAsync();
+            VirtualWallets = wallets
+                .Where(w => w.IsVirtual)
+                .OrderBy(w => w.Name)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Fehler beim Laden der virtuellen Wallets: {ex.Message}";
+        }
+        finally
+        {
+            IsLoadingVirtualWallets = false;
+        }
+    }
+
+    private async Task LinkWithExistingVirtualWallet()
+    {
+        if (CurrentQuestionId == null || SelectedVirtualWalletId == null)
+            return;
+
+        var response = new UserResponseDTO
+        {
+            QuestionId = CurrentQuestionId,
+            Response = VirtualWalletOptionLabel,
+            ShouldRemember = ShouldRemember,
+            Action = "virtual_wallet",
+            VirtualWalletId = SelectedVirtualWalletId
+        };
+
+        await SendResponseAsync(response);
+    }
+
+    private async Task CreateAndLinkVirtualWallet()
+    {
+        if (CurrentQuestionId == null)
+            return;
+
+        var walletName = NewVirtualWalletName?.Trim();
+        if (string.IsNullOrWhiteSpace(walletName))
+            return;
+
+        var response = new UserResponseDTO
+        {
+            QuestionId = CurrentQuestionId,
+            Response = VirtualWalletOptionLabel,
+            ShouldRemember = ShouldRemember,
+            Action = "virtual_wallet",
+            VirtualWalletName = walletName
+        };
+
+        await SendResponseAsync(response);
+        await LoadVirtualWalletsAsync();
+    }
+
+    private void CancelVirtualWalletSelection()
+    {
+        ShowVirtualWalletSelection = false;
+        SelectedVirtualWalletId = null;
+        NewVirtualWalletName = null;
     }
 
     private void AddEvent(string type, string message)
@@ -377,6 +489,7 @@ public partial class LinkingWizard : IAsyncDisposable
         return option.ToLowerInvariant() switch
         {
             var o when o.Contains("extern") || o.Contains("ja") => "btn-success",
+            var o when o.Contains("virtuell") => "btn-outline-primary",
             var o when o.Contains("skip") || o.Contains("überspringen") => "btn-secondary",
             var o when o.Contains("nein") => "btn-outline-secondary",
             _ => "btn-primary"
