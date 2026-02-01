@@ -1,0 +1,213 @@
+@page "/lots"
+@using CryptoTracker.Client.Common
+@using CryptoTracker.Client.Shared
+@using CryptoTracker.Shared
+@inject ILotsApi LotsApi
+@inject IWalletApi WalletApi
+
+<PageTitle>Lot-Verwaltung</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Lot-Verwaltung</h1>
+        <p class="page-subtitle">Verwalten Sie Ihre Asset-Tranchen für die Steuerberechnung.</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" @onclick="OpenGenerateDialog">
+            Lots generieren
+        </button>
+    </div>
+</div>
+
+<LoadingOverlay IsLoading="IsLoading" Text="Lade Daten…" />
+
+@if (WalletNavItems.Count > 0)
+{
+    <TopNavigator Items="WalletNavItems" SelectedValue="@SelectedWalletName" ActiveValue="@SelectedWalletName" SelectedValueChanged="OnWalletChanged" />
+}
+
+@if (!IsLoading && !string.IsNullOrEmpty(SelectedWalletName))
+{
+    <div class="lots-overview">
+        <h3>Lot-Übersicht für @SelectedWalletName</h3>
+
+        @if (LotSummaries.Count == 0)
+        {
+            <div class="empty-state">
+                Keine Lots für dieses Wallet vorhanden.
+                <br /><br />
+                <button type="button" class="btn btn-primary" @onclick="OpenGenerateDialog">
+                    Lots aus bestehenden Trades generieren
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="lot-summary-cards">
+                @foreach (var (symbol, summary) in LotSummaries.OrderBy(kvp => kvp.Key))
+                {
+                    <div class="lot-summary-card" @onclick="() => ShowLotsForSymbol(symbol)">
+                        <div class="lot-summary-card-header">
+                            <CoinLink Symbol="@symbol" />
+                            <span class="lot-count">@summary.LotCount Lots</span>
+                        </div>
+                        <div class="lot-summary-card-body">
+                            <div class="lot-summary-stat">
+                                <label>Gesamt</label>
+                                <span>@FormatHelper.FormatAmount(summary.TotalQuantity)</span>
+                            </div>
+                            <div class="lot-summary-stat altbestand">
+                                <label>Altbestand</label>
+                                <span>@FormatHelper.FormatAmount(summary.AltbestandQuantity)</span>
+                            </div>
+                            <div class="lot-summary-stat neubestand">
+                                <label>Neubestand</label>
+                                <span>@FormatHelper.FormatAmount(summary.NeubestandQuantity)</span>
+                            </div>
+                            <div class="lot-summary-stat">
+                                <label>Ø Kaufpreis</label>
+                                <span>@FormatHelper.FormatEuro(summary.AverageAcquisitionPrice)</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(SelectedSymbol))
+    {
+        <div class="lots-detail">
+            <div class="lots-detail-header">
+                <h3>@SelectedSymbol Lots</h3>
+                <button type="button" class="btn btn-secondary btn-sm" @onclick="() => SelectedSymbol = null">
+                    Zurück zur Übersicht
+                </button>
+            </div>
+
+            @if (SymbolLots.Count == 0)
+            {
+                <div class="empty-state">Keine Lots für @SelectedSymbol</div>
+            }
+            else
+            {
+                <RadzenDataGrid TItem="LotDTO" Data="SymbolLots" KeyProperty="Id" AllowSorting="true" AllowPaging="true" PageSize="20" Class="styled-grid">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="LotDTO" Property="Id" Title="ID" Width="60px" />
+                        <RadzenDataGridColumn TItem="LotDTO" Title="Status" Width="100px">
+                            <Template Context="lot">
+                                <span class="lot-badge @(lot.IsAltbestand ? "altbestand-badge" : "neubestand-badge")">
+                                    @(lot.IsAltbestand ? "Altbestand" : "Neubestand")
+                                </span>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="LotDTO" Title="Verfügbar">
+                            <Template Context="lot">
+                                @FormatHelper.FormatAmount(lot.RemainingQuantity) / @FormatHelper.FormatAmount(lot.OriginalQuantity)
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="LotDTO" Title="Kaufdatum">
+                            <Template Context="lot">
+                                @lot.AcquisitionDate.ToString("dd.MM.yyyy HH:mm")
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="LotDTO" Title="Kaufpreis">
+                            <Template Context="lot">
+                                @FormatHelper.FormatEuro(lot.AcquisitionPriceEur)
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="LotDTO" Property="AcquisitionType" Title="Herkunft" />
+                        <RadzenDataGridColumn TItem="LotDTO" Property="Note" Title="Notiz" />
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </div>
+    }
+
+    @if (PendingAssignments.Count > 0)
+    {
+        <div class="pending-assignments">
+            <h3>Ausstehende Lot-Zuordnungen</h3>
+            <p class="text-muted">Diese Transaktionen/Trades benötigen eine Lot-Zuordnung.</p>
+
+            <RadzenDataGrid TItem="PendingLotAssignmentDTO" Data="PendingAssignments" KeyProperty="Id" AllowSorting="true" AllowPaging="true" PageSize="10" Class="styled-grid">
+                <Columns>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Property="Type" Title="Typ" Width="100px" />
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="Datum">
+                        <Template Context="item">
+                            @item.DateTime.ToString("dd.MM.yyyy HH:mm")
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="Asset">
+                        <Template Context="item">
+                            <CoinLink Symbol="@item.Symbol" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="Menge">
+                        <Template Context="item">
+                            @FormatHelper.FormatAmount(item.Quantity)
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Property="WalletName" Title="Wallet" />
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Property="Direction" Title="Richtung" />
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="">
+                        <Template Context="item">
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="() => OpenAssignmentDialog(item)">
+                                Zuordnen
+                            </button>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    }
+}
+
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
+}
+
+@* Generate Dialog *@
+@if (IsGenerateDialogOpen)
+{
+    <div class="modal-overlay" @onclick="CloseGenerateDialog">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Lots generieren</h3>
+                <button type="button" class="details-close" @onclick="CloseGenerateDialog">×</button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Diese Funktion erstellt Lots aus bestehenden Kauf-Trades, die noch keine Lots haben.
+                    Für jeden Kauf wird ein separates Lot mit dem jeweiligen Kaufdatum und Preis erstellt.
+                </p>
+                <p class="text-info">
+                    <strong>Hinweis:</strong> Altbestand (vor 28.02.2021) wird automatisch erkannt.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseGenerateDialog">Abbrechen</button>
+                <button type="button" class="btn btn-primary" @onclick="GenerateLots" disabled="@IsGenerating">
+                    @if (IsGenerating)
+                    {
+                        <span class="loading-spinner-small"></span>
+                        <span>Generiere...</span>
+                    }
+                    else
+                    {
+                        <span>Lots generieren</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Success Message *@
+@if (SuccessMessage != null)
+{
+    <div class="toast toast-success" @onclick="() => SuccessMessage = null">
+        @SuccessMessage
+    </div>
+}

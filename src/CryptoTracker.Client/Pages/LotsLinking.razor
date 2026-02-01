@@ -1,0 +1,432 @@
+@page "/lots-linking"
+@using CryptoTracker.Client.Common
+@using CryptoTracker.Client.Shared
+@using CryptoTracker.Shared
+
+<PageTitle>Lot-Verknüpfung</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Lot-Verknüpfung</h1>
+        <p class="page-subtitle">Verknüpfe Transaktionen mit ihren Lots für eine lückenlose Steuerdokumentation.</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" @onclick="OpenWizard" disabled="@IsLoading">
+            Assistent starten
+        </button>
+        <button type="button" class="btn btn-secondary" @onclick="ValidateAllFlows" disabled="@IsValidating">
+            @if (IsValidating)
+            {
+                <span class="loading-spinner-small"></span>
+            }
+            Flows validieren
+        </button>
+    </div>
+</div>
+
+<LoadingOverlay IsLoading="IsLoading" Text="Lade Daten..." />
+
+@* Statistik-Übersicht *@
+@if (FlowStatistics != null)
+{
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">@FlowStatistics.TotalLots</div>
+            <div class="stat-label">Lots gesamt</div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-value">@FlowStatistics.CompleteFlows</div>
+            <div class="stat-label">Vollständige Flows</div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-value">@FlowStatistics.IncompleteFlows</div>
+            <div class="stat-label">Unvollständige Flows</div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-value">@FlowStatistics.PendingAssignments</div>
+            <div class="stat-label">Ausstehende Zuordnungen</div>
+        </div>
+    </div>
+}
+
+@* Tabs für verschiedene Ansichten *@
+<div class="type-tabs">
+    <button type="button" class="type-tab @(ActiveTab == "pending" ? "active" : "")" @onclick="@(() => SetActiveTab("pending"))">
+        Ausstehend
+        @if (PendingAssignments.Count > 0)
+        {
+            <span class="tab-badge">@PendingAssignments.Count</span>
+        }
+    </button>
+    <button type="button" class="type-tab @(ActiveTab == "incomplete" ? "active" : "")" @onclick="@(() => SetActiveTab("incomplete"))">
+        Unvollständig
+        @if (IncompleteLots.Count > 0)
+        {
+            <span class="tab-badge">@IncompleteLots.Count</span>
+        }
+    </button>
+    <button type="button" class="type-tab @(ActiveTab == "flow" ? "active" : "")" @onclick="@(() => SetActiveTab("flow"))">
+        Flow-Ansicht
+    </button>
+</div>
+
+@* Tab Content *@
+@if (!IsLoading)
+{
+    @if (ActiveTab == "pending")
+    {
+        @* Ausstehende Zuordnungen *@
+        @if (PendingAssignments.Count == 0)
+        {
+            <div class="empty-state success-state">
+                <div class="empty-icon">✓</div>
+                <div class="empty-text">Alle Transaktionen haben Lot-Zuordnungen!</div>
+            </div>
+        }
+        else
+        {
+            <div class="section-header">
+                <h3>Ausstehende Lot-Zuordnungen</h3>
+                <p class="text-muted">Diese Transaktionen/Trades benötigen eine manuelle Lot-Zuordnung.</p>
+            </div>
+
+            <RadzenDataGrid TItem="PendingLotAssignmentDTO" 
+                            Data="PendingAssignments" 
+                            KeyProperty="Id" 
+                            AllowSorting="true" 
+                            AllowPaging="true" 
+                            PageSize="20"
+                            Class="styled-grid">
+                <Columns>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="Typ" Width="100px">
+                        <Template Context="item">
+                            <span class="type-badge @(item.Type.ToLower())">@item.Type</span>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="Datum">
+                        <Template Context="item">
+                            @FormatHelper.FormatUtc(item.DateTime)
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="Asset">
+                        <Template Context="item">
+                            <CoinLink Symbol="@item.Symbol" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="Menge">
+                        <Template Context="item">
+                            @FormatHelper.FormatAmount(item.Quantity)
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Property="WalletName" Title="Wallet" />
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Property="Direction" Title="Richtung" />
+                    <RadzenDataGridColumn TItem="PendingLotAssignmentDTO" Title="" Width="180px">
+                        <Template Context="item">
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-sm btn-primary" @onclick="() => OpenAssignmentDialog(item)">
+                                    Lot zuordnen
+                                </button>
+                                @if (item.Type == "Transaction" && item.Direction == "Receive")
+                                {
+                                    <button type="button" class="btn btn-sm btn-secondary" @onclick="() => OpenCreateLotDialog(item)">
+                                        Neues Lot
+                                    </button>
+                                }
+                            </div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+    }
+    else if (ActiveTab == "incomplete")
+    {
+        @* Unvollständige Flows *@
+        @if (IncompleteLots.Count == 0)
+        {
+            <div class="empty-state success-state">
+                <div class="empty-icon">✓</div>
+                <div class="empty-text">Alle Lot-Flows sind vollständig!</div>
+            </div>
+        }
+        else
+        {
+            <div class="section-header">
+                <h3>Lots mit unvollständigem Flow</h3>
+                <p class="text-muted">Diese Lots haben Lücken in ihrer Herkunfts-Dokumentation.</p>
+            </div>
+
+            <RadzenDataGrid TItem="LotDTO" 
+                            Data="IncompleteLots" 
+                            KeyProperty="Id" 
+                            AllowSorting="true" 
+                            AllowPaging="true" 
+                            PageSize="20"
+                            Class="styled-grid">
+                <Columns>
+                    <RadzenDataGridColumn TItem="LotDTO" Property="Id" Title="ID" Width="60px" />
+                    <RadzenDataGridColumn TItem="LotDTO" Title="Asset">
+                        <Template Context="lot">
+                            <CoinLink Symbol="@lot.Symbol" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="LotDTO" Title="Status" Width="120px">
+                        <Template Context="lot">
+                            <span class="lot-badge @(lot.IsAltbestand ? "altbestand-badge" : "neubestand-badge")">
+                                @(lot.IsAltbestand ? "Altbestand" : "Neubestand")
+                            </span>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="LotDTO" Title="Menge">
+                        <Template Context="lot">
+                            @FormatHelper.FormatAmount(lot.RemainingQuantity)
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="LotDTO" Property="WalletName" Title="Wallet" />
+                    <RadzenDataGridColumn TItem="LotDTO" Title="Kaufdatum">
+                        <Template Context="lot">
+                            @lot.AcquisitionDate.ToString("dd.MM.yyyy")
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="LotDTO" Property="FlowIncompleteReason" Title="Problem" />
+                    <RadzenDataGridColumn TItem="LotDTO" Title="" Width="150px">
+                        <Template Context="lot">
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-sm btn-primary" @onclick="() => OpenFlowDetails(lot)">
+                                    Flow anzeigen
+                                </button>
+                            </div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+    }
+    else if (ActiveTab == "flow")
+    {
+        @* Flow-Visualisierung *@
+        <div class="section-header">
+            <h3>Lot-Flow Visualisierung</h3>
+            <p class="text-muted">Wähle ein Lot, um seinen vollständigen Flow zu sehen.</p>
+        </div>
+
+        <div class="flow-search">
+            <div class="form-group">
+                <label>Lot-ID eingeben:</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" @bind="SearchLotId" placeholder="z.B. 42" />
+                    <button type="button" class="btn btn-primary" @onclick="LoadLotFlow" disabled="@(SearchLotId == null)">
+                        Flow laden
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (SelectedLotFlow != null)
+        {
+            <LotFlowVisualization Flow="@SelectedLotFlow" />
+        }
+    }
+}
+
+@* Lot-Zuordnungs-Dialog *@
+@if (IsAssignmentDialogOpen && SelectedAssignment != null)
+{
+    <div class="modal-overlay" @onclick="CloseAssignmentDialog">
+        <div class="modal-card link-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Lot zuordnen</h3>
+                <button type="button" class="details-close" @onclick="CloseAssignmentDialog">x</button>
+            </div>
+            <div class="modal-body">
+                <div class="assignment-source">
+                    <div class="assignment-header">
+                        <span class="type-badge @(SelectedAssignment.Type.ToLower())">@SelectedAssignment.Type</span>
+                        <strong>@SelectedAssignment.Symbol</strong>
+                    </div>
+                    <div class="assignment-details">
+                        <div>Datum: @FormatHelper.FormatUtc(SelectedAssignment.DateTime)</div>
+                        <div>Menge: @FormatHelper.FormatAmount(SelectedAssignment.Quantity)</div>
+                        <div>Wallet: @SelectedAssignment.WalletName</div>
+                    </div>
+                </div>
+
+                <div class="assignment-lots">
+                    <h4>Verfügbare Lots wählen:</h4>
+                    
+                    @if (IsLoadingAvailableLots)
+                    {
+                        <div class="loading-spinner"></div>
+                    }
+                    else if (AvailableLots.Count == 0)
+                    {
+                        <div class="empty-state">
+                            <p>Keine passenden Lots verfügbar.</p>
+                            <button type="button" class="btn btn-primary btn-sm" @onclick="() => OpenCreateLotDialog(SelectedAssignment)">
+                                Neues Lot erstellen
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="lot-allocation-list">
+                            @foreach (var lot in AvailableLots)
+                            {
+                                var allocation = LotAllocations.FirstOrDefault(a => a.LotId == lot.Id);
+                                <div class="lot-allocation-item @(allocation != null ? "selected" : "")">
+                                    <div class="lot-info">
+                                        <span class="lot-badge @(lot.IsAltbestand ? "altbestand-badge" : "neubestand-badge")">
+                                            @(lot.IsAltbestand ? "Alt" : "Neu")
+                                        </span>
+                                        <span class="lot-date">@lot.AcquisitionDate.ToString("dd.MM.yy")</span>
+                                        <span class="lot-available">Verfügbar: @FormatHelper.FormatAmount(lot.RemainingQuantity)</span>
+                                        <span class="lot-price">@FormatHelper.FormatEuro(lot.AcquisitionPriceEur)/Stk</span>
+                                    </div>
+                                    <div class="lot-allocation-input">
+                                        <input type="number" 
+                                               class="form-control form-control-sm" 
+                                               step="any" 
+                                               min="0" 
+                                               max="@lot.RemainingQuantity"
+                                               value="@(allocation?.Quantity ?? 0)"
+                                               @onchange="@(e => SetAllocation(lot.Id, e))" />
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="allocation-summary">
+                            <div>Benötigt: @FormatHelper.FormatAmount(SelectedAssignment.Quantity)</div>
+                            <div>Zugeordnet: @FormatHelper.FormatAmount(LotAllocations.Sum(a => a.Quantity))</div>
+                            <div class="@(AllocationDifference == 0 ? "text-success" : "text-warning")">
+                                Differenz: @FormatHelper.FormatAmount(AllocationDifference)
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (AssignmentError != null)
+                {
+                    <div class="alert alert-danger" style="margin-top:10px">@AssignmentError</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseAssignmentDialog">Abbrechen</button>
+                <button type="button" class="btn btn-primary" @onclick="ConfirmAssignment" 
+                        disabled="@(LotAllocations.Count == 0 || AllocationDifference != 0 || IsAssigning)">
+                    @if (IsAssigning)
+                    {
+                        <span class="loading-spinner-small"></span>
+                    }
+                    Zuordnen
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Neues Lot erstellen Dialog *@
+@if (IsCreateLotDialogOpen && CreateLotForAssignment != null)
+{
+    <div class="modal-overlay" @onclick="CloseCreateLotDialog">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Neues Lot erstellen</h3>
+                <button type="button" class="details-close" @onclick="CloseCreateLotDialog">x</button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Erstelle ein neues Lot für diese Transaktion.
+                    Bitte gib die Herkunftsinformationen an.
+                </p>
+
+                <div class="form-group">
+                    <label>Herkunftstyp:</label>
+                    <select class="form-control" @bind="NewLotAcquisitionType">
+                        <option value="ExternalDeposit">Externer Eingang</option>
+                        <option value="Mining">Mining</option>
+                        <option value="Staking">Staking</option>
+                        <option value="Airdrop">Airdrop</option>
+                        <option value="Gift">Schenkung</option>
+                        <option value="Manual">Manueller Eintrag</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Kaufdatum:</label>
+                    <input type="date" class="form-control" @bind="NewLotAcquisitionDate" />
+                </div>
+
+                <div class="form-group">
+                    <label>Kaufpreis (EUR pro Stück):</label>
+                    <input type="number" class="form-control" step="any" @bind="NewLotAcquisitionPrice" />
+                    <small class="text-muted">Marktwert zum Zeitpunkt des Erhalts</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Notiz (optional):</label>
+                    <input type="text" class="form-control" @bind="NewLotNote" placeholder="z.B. Staking Reward von Kraken" />
+                </div>
+
+                @if (CreateLotError != null)
+                {
+                    <div class="alert alert-danger" style="margin-top:10px">@CreateLotError</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseCreateLotDialog">Abbrechen</button>
+                <button type="button" class="btn btn-primary" @onclick="CreateLot" disabled="@IsCreatingLot">
+                    @if (IsCreatingLot)
+                    {
+                        <span class="loading-spinner-small"></span>
+                    }
+                    Lot erstellen
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Flow Details Dialog *@
+@if (IsFlowDetailsOpen && SelectedLotForFlow != null)
+{
+    <div class="modal-overlay" @onclick="CloseFlowDetails">
+        <div class="modal-card modal-large" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Lot-Flow #@SelectedLotForFlow.Id</h3>
+                <button type="button" class="details-close" @onclick="CloseFlowDetails">x</button>
+            </div>
+            <div class="modal-body">
+                @if (SelectedLotFlow != null)
+                {
+                    <LotFlowVisualization Flow="@SelectedLotFlow" />
+                }
+                else
+                {
+                    <div class="loading-spinner"></div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseFlowDetails">Schließen</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Toast/Success Messages *@
+@if (SuccessMessage != null)
+{
+    <div class="toast toast-success" @onclick="() => SuccessMessage = null">
+        @SuccessMessage
+    </div>
+}
+
+@* Lot-Linking Wizard *@
+@if (IsWizardOpen)
+{
+    <LotLinkingWizard 
+        Statistics="@LotLinkingStatistics" 
+        OnComplete="OnWizardComplete" 
+        OnCancel="OnWizardCancel" />
+}

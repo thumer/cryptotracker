@@ -1,0 +1,673 @@
+@using CryptoTracker.Shared
+@using CryptoTracker.Client.Common
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+
+<div class="wizard-overlay" @onclick="OnCancel">
+    <div class="wizard-container wizard-container-large" @onclick:stopPropagation="true">
+        <div class="wizard-header">
+            <h2>Lot-Zuordnung</h2>
+            <p class="wizard-subtitle">@GetStatusText()</p>
+            <button type="button" class="wizard-close" @onclick="OnCancel">x</button>
+        </div>
+
+        <div class="wizard-content linking-wizard-content">
+            @* Progress Section *@
+            <div class="linking-progress-section">
+                <div class="linking-progress-bar">
+                    <div class="linking-progress-fill" style="width: @ProgressPercent%"></div>
+                </div>
+                <div class="linking-progress-stats">
+                    <span>@ProcessedCount / @TotalCount Einträge</span>
+                    @if (AssignedCount > 0 || CreatedLotsCount > 0 || SkippedCount > 0)
+                    {
+                        <span class="stats-detail">
+                            Lots: @CreatedLotsCount erstellt | 
+                            @AssignedCount zugeordnet | 
+                            @SkippedCount übersprungen
+                        </span>
+                    }
+                </div>
+            </div>
+
+            @* Live Event Log *@
+            <div class="linking-event-log" @ref="eventLogElement">
+                @foreach (var evt in EventLog)
+                {
+                    <div class="linking-event @evt.CssClass">
+                        <span class="event-icon">@evt.Icon</span>
+                        <span class="event-message">@evt.Message</span>
+                    </div>
+                }
+                @if (IsProcessing && CurrentQuestion == null)
+                {
+                    <div class="linking-event processing">
+                        <span class="event-icon"><span class="loading-spinner-small"></span></span>
+                        <span class="event-message">@ProcessingMessage</span>
+                    </div>
+                }
+            </div>
+
+            @* Question Section (inline) *@
+            @if (CurrentQuestion != null)
+            {
+                <div class="linking-question-section">
+                    <div class="question-header">
+                        <span class="question-icon">?</span>
+                        <span>Agent fragt:</span>
+                    </div>
+                    <div class="question-content">
+                        <div class="question-text">@((MarkupString)CurrentQuestion.Replace("\n", "<br/>"))</div>
+                        @if (CurrentAssignment != null)
+                        {
+                            <div class="question-transaction-preview">
+                                <span class="type-badge @(CurrentAssignment.Direction?.ToLower() ?? "")">
+                                    @CurrentAssignment.Direction
+                                </span>
+                                <span class="tx-symbol">@CurrentAssignment.Symbol</span>
+                                <span class="tx-amount">@FormatHelper.FormatAmount(CurrentAssignment.Quantity)</span>
+                                <span class="tx-wallet">@CurrentAssignment.WalletName</span>
+                                <span class="tx-date">@FormatHelper.FormatUtc(CurrentAssignment.DateTime)</span>
+                            </div>
+                        }
+                    </div>
+
+                    @* Lot-Allocation *@
+                    @if (CurrentLotOptions != null && CurrentLotOptions.Count > 0)
+                    {
+                        <div class="lot-allocation-section">
+                            <div class="allocation-summary">
+                                <span><strong>Benötigt:</strong> @FormatHelper.FormatAmount(RequiredQuantity) @CurrentAssignment?.Symbol</span>
+                                <span><strong>Zugewiesen:</strong> @FormatHelper.FormatAmount(TotalAllocatedQuantity) (@TotalAllocatedPercent%)</span>
+                            </div>
+                            <div class="allocation-table">
+                                <div class="allocation-header">
+                                    <span>Lot</span>
+                                    <span>Verfügbar</span>
+                                    <span>Menge</span>
+                                    <span>%</span>
+                                </div>
+                                @foreach (var input in AllocationInputs)
+                                {
+                                    <div class="allocation-row">
+                                        <span class="allocation-lot">@input.DisplayText</span>
+                                        <span class="allocation-available">@FormatHelper.FormatAmount(input.AvailableQuantity)</span>
+                                        <input type="number"
+                                               step="any"
+                                               class="form-control form-control-sm allocation-input"
+                                               value="@input.Quantity"
+                                               @oninput="e => OnQuantityInput(e, input)"
+                                               disabled="@IsAnswering" />
+                                        <input type="number"
+                                               step="any"
+                                               class="form-control form-control-sm allocation-input"
+                                               value="@input.Percent"
+                                               @oninput="e => OnPercentInput(e, input)"
+                                               disabled="@IsAnswering" />
+                                    </div>
+                                }
+                            </div>
+                            <div class="allocation-actions">
+                                <button type="button"
+                                        class="btn btn-primary btn-sm"
+                                        @onclick="SubmitAllocations"
+                                        disabled="@(!HasAllocations || IsAnswering)">
+                                    Zuordnen
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    @* Option Buttons *@
+                    <div class="question-options">
+                        @if (CurrentOptions != null)
+                        {
+                            @foreach (var option in CurrentOptions)
+                            {
+                                <button type="button" 
+                                        class="btn @GetOptionButtonClass(option)" 
+                                        @onclick="() => OnOptionSelected(option)"
+                                        disabled="@IsAnswering">
+                                    @option
+                                </button>
+                            }
+                            @* Freitext-Option *@
+                            @if (!ShowFreeTextInput && !HasFreeTextOption)
+                            {
+                                <button type="button" 
+                                        class="btn btn-outline-secondary" 
+                                        @onclick="ShowFreeText"
+                                        disabled="@IsAnswering">
+                                    Andere Option (Freitext)
+                                </button>
+                            }
+                        }
+                    </div>
+
+                    @* Freitext-Eingabe *@
+                    @if (ShowFreeTextInput)
+                    {
+                        <div class="freetext-input-section">
+                            <label>Eigene Begründung eingeben:</label>
+                            <textarea class="form-control" rows="2" @bind="FreeTextInput" placeholder="Beschreibe die Situation..."></textarea>
+                            <div class="freetext-actions">
+                                <button type="button" class="btn btn-primary btn-sm" @onclick="SubmitFreeText" disabled="@(string.IsNullOrWhiteSpace(FreeTextInput) || IsAnswering)">
+                                    Absenden
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" @onclick="CancelFreeText">
+                                    Abbrechen
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    @* Remember Checkbox *@
+                    <div class="question-remember">
+                        <label>
+                            <input type="checkbox" @bind="ShouldRemember" />
+                            Diese Entscheidung für ähnliche Fälle merken
+                        </label>
+                    </div>
+                </div>
+            }
+
+            @* Learned Rules Section *@
+            @if (LearnedRules.Count > 0)
+            {
+                <div class="linking-rules-section">
+                    <div class="rules-header" @onclick="ToggleRulesExpanded">
+                        <span>@(RulesExpanded ? "v" : ">") Gelernte Regeln (@LearnedRules.Count)</span>
+                    </div>
+                    @if (RulesExpanded)
+                    {
+                        <div class="rules-list">
+                            @foreach (var rule in LearnedRules)
+                            {
+                                <div class="rule-item">
+                                    <span class="rule-pattern">"@rule.Pattern"</span>
+                                    <span class="rule-arrow">-></span>
+                                    <span class="rule-action">@rule.Description</span>
+                                    <span class="rule-count">(@rule.TimesApplied x angewendet)</span>
+                                    <button type="button" class="btn-icon" @onclick="() => DeleteRule(rule.Id)" title="Regel löschen">
+                                        X
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Start / Completion Section *@
+            @if (!IsStarted)
+            {
+                <div class="linking-start-section">
+                    <div class="wizard-icon">+</div>
+                    <h3>Interaktive Lot-Zuordnung</h3>
+                    <p>
+                        Der Assistent erstellt Root-Lots für Fiat-Käufe sowie externe Receive-Transaktionen
+                        und ordnet Lots bei Verkäufen/Transfers intelligent zu.
+                        Bei unklaren Splits wirst du immer um Bestätigung gebeten.
+                    </p>
+                    @if (Statistics != null)
+                    {
+                        <div class="wizard-stats-preview">
+                            <div class="stats-row">
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.PendingReceiveTransactions</span>
+                                    <span class="stat-label">Receive ohne Lot</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.PendingBuyTrades</span>
+                                    <span class="stat-label">Fiat-Käufe ohne Lot</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.PendingSellTrades</span>
+                                    <span class="stat-label">Verkäufe ohne Zuordnung</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">@Statistics.LotsCreated</span>
+                                    <span class="stat-label">Lots vorhanden</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div class="wizard-action-area">
+                        <button type="button" class="btn btn-primary btn-lg" @onclick="StartInteractiveSession" disabled="@IsConnecting">
+                            @if (IsConnecting)
+                            {
+                                <span class="loading-spinner-small"></span>
+                                <span>Verbinde...</span>
+                            }
+                            else
+                            {
+                                <span>Lot-Zuordnung starten</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (IsCompleted)
+            {
+                <div class="linking-complete-section">
+                    <div class="wizard-icon success">OK</div>
+                    <h3>Lot-Zuordnung abgeschlossen!</h3>
+                    <div class="result-stats">
+                        <div class="result-stat">
+                            <span class="result-number success">@CreatedLotsCount</span>
+                            <span class="result-label">Lots erstellt</span>
+                        </div>
+                        <div class="result-stat">
+                            <span class="result-number info">@AssignedCount</span>
+                            <span class="result-label">Zugeordnet</span>
+                        </div>
+                        @if (SkippedCount > 0)
+                        {
+                            <div class="result-stat">
+                                <span class="result-number warning">@SkippedCount</span>
+                                <span class="result-label">Übersprungen</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Error Display *@
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="linking-error">
+                    <span>!</span> @ErrorMessage
+                </div>
+            }
+        </div>
+
+        <div class="wizard-footer">
+            @if (IsStarted && !IsCompleted)
+            {
+                <button type="button" class="btn btn-secondary" @onclick="StopSession" disabled="@IsAnswering">
+                    Abbrechen
+                </button>
+            }
+            <div class="wizard-footer-spacer"></div>
+            @if (IsCompleted || !IsStarted)
+            {
+                <button type="button" class="btn btn-primary" @onclick="Complete">
+                    @(IsCompleted ? "Fertig" : "Schließen")
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .wizard-container-large {
+        max-width: 800px;
+        max-height: 90vh;
+    }
+
+    .linking-wizard-content {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-height: 400px;
+    }
+
+    .linking-progress-section {
+        padding: 12px 16px;
+        background: var(--surface-200, #f1f2f4);
+        border-radius: 8px;
+    }
+
+    .linking-progress-bar {
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .linking-progress-fill {
+        height: 100%;
+        background: var(--brand-600, #2f343a);
+        transition: width 0.3s ease;
+    }
+
+    .linking-progress-stats {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .stats-detail {
+        color: #888;
+    }
+
+    .linking-event-log {
+        flex: 1;
+        min-height: 150px;
+        max-height: 250px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 12px;
+        background: #fafafa;
+    }
+
+    .linking-event {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .linking-event:last-child {
+        border-bottom: none;
+    }
+
+    .linking-event.assigned {
+        color: #28a745;
+    }
+
+    .linking-event.lot_created {
+        color: #17a2b8;
+    }
+
+    .linking-event.skipped {
+        color: #6c757d;
+    }
+
+    .linking-event.error {
+        color: #dc3545;
+    }
+
+    .linking-event.rule {
+        color: #6f42c1;
+    }
+
+    .linking-event.info {
+        color: #0d6efd;
+    }
+
+    .linking-event.processing {
+        color: #666;
+    }
+
+    .event-icon {
+        width: 20px;
+        text-align: center;
+    }
+
+    .linking-question-section {
+        background: #fff8e1;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .question-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    .question-icon {
+        font-size: 1.2rem;
+    }
+
+    .question-content {
+        margin-bottom: 12px;
+    }
+
+    .question-text {
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+    }
+
+    .lot-allocation-section {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f7f9ff;
+        border: 1px solid #d0dcff;
+        border-radius: 6px;
+    }
+
+    .allocation-summary {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        color: #333;
+    }
+
+    .allocation-table {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .allocation-header,
+    .allocation-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 8px;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+
+    .allocation-header {
+        font-weight: 600;
+        color: #555;
+    }
+
+    .allocation-lot {
+        font-size: 0.8rem;
+        color: #333;
+    }
+
+    .allocation-available {
+        font-size: 0.8rem;
+        color: #666;
+    }
+
+    .allocation-input {
+        min-width: 80px;
+    }
+
+    .allocation-actions {
+        margin-top: 8px;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .question-transaction-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 12px;
+        background: #fff;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .price-input-section {
+        margin: 12px 0;
+        padding: 12px;
+        background: #fff;
+        border-radius: 4px;
+    }
+
+    .price-input-section label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+
+    .price-input-section input {
+        max-width: 200px;
+    }
+
+    .question-options {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .question-remember {
+        margin-top: 12px;
+        font-size: 0.9rem;
+    }
+
+    .question-remember label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+    .freetext-input-section {
+        margin-top: 12px;
+        padding: 12px;
+        background: #fff;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+
+    .freetext-input-section label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .freetext-input-section textarea {
+        margin-bottom: 8px;
+    }
+
+    .freetext-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .linking-rules-section {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .rules-header {
+        padding: 10px 16px;
+        background: #f5f5f5;
+        cursor: pointer;
+        font-weight: 500;
+        user-select: none;
+    }
+
+    .rules-header:hover {
+        background: #eee;
+    }
+
+    .rules-list {
+        padding: 8px 16px;
+    }
+
+    .rule-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .rule-item:last-child {
+        border-bottom: none;
+    }
+
+    .rule-pattern {
+        font-family: monospace;
+        background: #e9ecef;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+
+    .rule-arrow {
+        color: #888;
+    }
+
+    .rule-action {
+        flex: 1;
+    }
+
+    .rule-count {
+        color: #888;
+        font-size: 0.8rem;
+    }
+
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        opacity: 0.6;
+    }
+
+    .btn-icon:hover {
+        opacity: 1;
+    }
+
+    .linking-start-section,
+    .linking-complete-section {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .linking-start-section h3,
+    .linking-complete-section h3 {
+        margin-bottom: 12px;
+    }
+
+    .linking-error {
+        padding: 12px 16px;
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 8px;
+        color: #721c24;
+    }
+
+    .type-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .type-badge.sell {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .type-badge.receive {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .tx-symbol {
+        font-weight: 600;
+    }
+
+    .tx-wallet {
+        color: #666;
+    }
+
+    .tx-date {
+        color: #888;
+        font-size: 0.85rem;
+    }
+</style>

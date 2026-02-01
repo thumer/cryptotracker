@@ -8,6 +8,7 @@ public partial class Wallets
     private IList<WalletInfoDTO> WalletsList { get; set; } = new List<WalletInfoDTO>();
     private string EditName { get; set; } = string.Empty;
     private int EditId { get; set; }
+    private bool EditIsVirtual { get; set; }
     private string? ErrorMessage { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -19,17 +20,19 @@ public partial class Wallets
     {
         EditId = 0;
         EditName = string.Empty;
+        EditIsVirtual = false;
     }
 
     private void Edit(WalletInfoDTO wallet)
     {
         EditId = wallet.Id;
         EditName = wallet.Name;
+        EditIsVirtual = wallet.IsVirtual;
     }
 
     private async Task Save()
     {
-        var wallet = new WalletInfoDTO(EditId, EditName);
+        var wallet = new WalletInfoDTO(EditId, EditName, EditIsVirtual);
         try
         {
             await WalletApi.SaveWalletAsync(wallet);

@@ -4,6 +4,7 @@
 @using CryptoTracker.Shared
 @inject ITransactionsApi TransactionsApi
 @inject IWalletApi WalletApi
+@inject ILotsApi LotsApi
 
 <PageTitle>Transaktionen</PageTitle>
 
@@ -78,72 +79,66 @@
                         @FormatHelper.FormatAmount(row.Amount)
                     </Template>
                 </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Wert €">
-                <Template Context="row">
-                    @FormatHelper.FormatEuro(row.EuroValue)
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Gebühr">
-                <Template Context="row">
-                    @if (row.Fee > 0)
-                    {
-                        <span>@FormatHelper.FormatAmount(row.Fee) @row.Symbol</span>
-                    }
-                    else
-                    {
-                        <span>—</span>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Kommentar">
-                <Template Context="row">
-                    @(string.IsNullOrWhiteSpace(row.Comment) ? "—" : row.Comment)
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Ziel-Coin">
-                <Template Context="row">
-                    @if (row.FlowType == FlowType.Trade && !string.IsNullOrWhiteSpace(row.TargetSymbol))
-                    {
-                        <CoinLink Symbol="@row.TargetSymbol" Slug="@row.TargetSlug" />
-                    }
-                    else
-                    {
-                        <span>—</span>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Ziel-Menge">
-                <Template Context="row">
-                    @if (row.FlowType == FlowType.Trade && row.TargetAmount.HasValue)
-                    {
-                        @FormatHelper.FormatAmount(row.TargetAmount.Value)
-                    }
-                    else
-                    {
-                        <span>—</span>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Source Wallet">
-                <Template Context="row">
-                    @(string.IsNullOrWhiteSpace(row.SourceWallet) ? "—" : row.SourceWallet)
-                </Template>
-            </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Wert €">
+                    <Template Context="row">
+                        @FormatHelper.FormatEuro(row.EuroValue)
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Gebühr">
+                    <Template Context="row">
+                        @if (row.Fee > 0)
+                        {
+                            <span>@FormatHelper.FormatAmount(row.Fee) @row.Symbol</span>
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Ziel-Coin">
+                    <Template Context="row">
+                        @if (row.FlowType == FlowType.Trade && !string.IsNullOrWhiteSpace(row.TargetSymbol))
+                        {
+                            <CoinLink Symbol="@row.TargetSymbol" Slug="@row.TargetSlug" />
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Ziel-Menge">
+                    <Template Context="row">
+                        @if (row.FlowType == FlowType.Trade && row.TargetAmount.HasValue)
+                        {
+                            @FormatHelper.FormatAmount(row.TargetAmount.Value)
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Source Wallet">
+                    <Template Context="row">
+                        @(string.IsNullOrWhiteSpace(row.SourceWallet) ? "—" : row.SourceWallet)
+                    </Template>
+                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Target Wallet">
                     <Template Context="row">
                         @(string.IsNullOrWhiteSpace(row.TargetWallet) ? "—" : row.TargetWallet)
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="Opposite">
+                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="" Width="140px">
                     <Template Context="row">
-                        <span class="opposite-indicator @(row.HasOpposite ? "has-opposite" : "no-opposite")">
-                            @(row.HasOpposite ? "Ja" : "Nein")
-                        </span>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="TransactionRowDTO" Title="">
-                    <Template Context="row">
-                        <button type="button" class="details-button" @onclick="async () => await OpenDetailsAsync(row)">Details</button>
+                        <div class="action-buttons">
+                            <button type="button" class="details-button" @onclick="async () => await OpenDetailsAsync(row)">Details</button>
+                            @if (RequiresLotAssignment(row))
+                            {
+                                <button type="button" class="lot-button" @onclick="() => OpenLotAssignmentAsync(row)">Lots</button>
+                            }
+                        </div>
                     </Template>
                 </RadzenDataGridColumn>
             </Columns>
@@ -156,6 +151,7 @@
     <div class="alert alert-danger" role="alert" style="margin-top:20px">@ErrorMessage</div>
 }
 
+@* Details Modal *@
 @if (IsDetailsOpen)
 {
     <div class="modal-overlay" @onclick="CloseDetails">
@@ -440,6 +436,104 @@
                     }
                 </div>
             }
+        </div>
+    </div>
+}
+
+@* Lot Assignment Modal *@
+@if (IsLotAssignmentOpen && LotAssignmentRow != null)
+{
+    <div class="modal-overlay" @onclick="CloseLotAssignment">
+        <div class="modal-card lot-assignment-modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Lot-Zuordnung</h3>
+                <button type="button" class="details-close" @onclick="CloseLotAssignment">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="lot-assignment-info">
+                    <div class="lot-assignment-info-item">
+                        <label>Datum</label>
+                        <span>@FormatHelper.FormatUtc(LotAssignmentRow.DateTime)</span>
+                    </div>
+                    <div class="lot-assignment-info-item">
+                        <label>Typ</label>
+                        <span>@(IsSellTrade(LotAssignmentRow) ? "Verkauf" : "Transfer")</span>
+                    </div>
+                    <div class="lot-assignment-info-item">
+                        <label>Coin</label>
+                        <span><CoinLink Symbol="@LotAssignmentRow.Symbol" Slug="@LotAssignmentRow.Slug" /></span>
+                    </div>
+                    <div class="lot-assignment-info-item">
+                        <label>Menge</label>
+                        <span>@FormatHelper.FormatAmount(LotAssignmentRow.Amount) @LotAssignmentRow.Symbol</span>
+                    </div>
+                    @if (IsSellTrade(LotAssignmentRow))
+                    {
+                        <div class="lot-assignment-info-item">
+                            <label>Verkaufswert</label>
+                            <span>@FormatHelper.FormatEuro(LotAssignmentRow.EuroValue)</span>
+                        </div>
+                    }
+                </div>
+
+                <hr style="margin: 15px 0; border-color: var(--border-color);" />
+
+                @if (IsLotAssignmentConfirmed)
+                {
+                    <div class="lot-assignment-confirmed">
+                        <span class="text-success">Lot-Zuordnung bereits bestätigt</span>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">
+                        @if (IsSellTrade(LotAssignmentRow))
+                        {
+                            <text>Wählen Sie die Lots aus, die für diesen Verkauf verwendet werden sollen. Es werden nur Lots angezeigt, die VOR dem Verkaufsdatum erworben wurden.</text>
+                        }
+                        else
+                        {
+                            <text>Wählen Sie die Lots aus, die mit diesem Transfer übertragen werden sollen. Die Anschaffungskosten werden auf das Ziel-Wallet übernommen.</text>
+                        }
+                    </p>
+                    
+                    <LotSelector WalletName="@GetLotAssignmentWallet()"
+                                 Symbol="@LotAssignmentRow.Symbol"
+                                 RequiredQuantity="@LotAssignmentRow.Amount"
+                                 MaxAcquisitionDate="@LotAssignmentRow.DateTime"
+                                 PrioritizeAltbestand="@IsSellTrade(LotAssignmentRow)"
+                                 ShowTaxPreview="@IsSellTrade(LotAssignmentRow)"
+                                 SalePriceEur="@(IsSellTrade(LotAssignmentRow) ? LotAssignmentRow.EuroValue / LotAssignmentRow.Amount : null)"
+                                 LotsApi="LotsApi"
+                                 SelectionChanged="OnLotSelectionChanged" />
+                }
+                
+                @if (LotAssignmentError != null)
+                {
+                    <div class="alert alert-danger" style="margin-top:15px">@LotAssignmentError</div>
+                }
+                @if (LotAssignmentSuccess != null)
+                {
+                    <div class="alert alert-success" style="margin-top:15px">@LotAssignmentSuccess</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseLotAssignment">Schließen</button>
+                @if (!IsLotAssignmentConfirmed && SelectedLotAllocations.Count > 0)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmLotAssignment" disabled="@IsConfirmingLotAssignment">
+                        @if (IsConfirmingLotAssignment)
+                        {
+                            <span class="loading-spinner-small"></span>
+                            <span>Speichere...</span>
+                        }
+                        else
+                        {
+                            <span>Lot-Zuordnung bestätigen</span>
+                        }
+                    </button>
+                }
+            </div>
         </div>
     </div>
 }

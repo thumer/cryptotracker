@@ -1,4 +1,4 @@
-﻿using CryptoTracker.Shared;
+using CryptoTracker.Shared;
 
 namespace CryptoTracker.Entities;
 
@@ -58,6 +58,33 @@ public class CryptoTrade : IFlow
     /// Gegenüberliegende Trade.
     /// </summary>
     public CryptoTrade? OppositeTrade { get; set; }
+
+    // === Lot-Tracking ===
+
+    /// <summary>
+    /// Bei Sell: Welche Lots wurden verkauft?
+    /// Bei Buy mit Krypto-Zahlung: Welche Lots wurden verwendet?
+    /// </summary>
+    public ICollection<LotMovement> LotMovements { get; set; } = new List<LotMovement>();
+
+    /// <summary>
+    /// Bei Buy: Das erstellte Lot
+    /// </summary>
+    public int? ResultingLotId { get; set; }
+    public AssetLot? ResultingLot { get; set; }
+
+    /// <summary>
+    /// Bei Swap (Sell-Seite): Welches Lot wird für diesen Trade verwendet?
+    /// Ermöglicht die Verknüpfung der Source-Lots mit dem Swap.
+    /// </summary>
+    public int? SourceLotId { get; set; }
+    public AssetLot? SourceLot { get; set; }
+
+    /// <summary>
+    /// Wurde die Lot-Zuordnung für diesen Trade bestätigt?
+    /// Bei Fiat-Kauf automatisch true, bei Verkauf/Swap muss User Lots auswählen.
+    /// </summary>
+    public bool LotAssignmentConfirmed { get; set; }
 
     FlowDirection IFlow.FlowDirection => TradeType switch
     {

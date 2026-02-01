@@ -177,7 +177,7 @@ public class TransactionService
         var tradeQuery = _dbContext.CryptoTrades
             .Include(t => t.Wallet)
             .Include(t => t.OppositeTrade)
-            .ThenInclude(t => t.Wallet)
+            .ThenInclude(t => t!.Wallet)
             .AsQueryable();
 
         if (includeHidden)
@@ -217,9 +217,9 @@ public class TransactionService
             .Include(t => t.Wallet)
             .Include(t => t.OppositeWallet)
             .Include(t => t.OppositeTransaction)
-            .ThenInclude(t => t.Wallet)
+            .ThenInclude(t => t!.Wallet)
             .Include(t => t.OppositeTransaction)
-            .ThenInclude(t => t.OppositeWallet)
+            .ThenInclude(t => t!.OppositeWallet)
             .AsQueryable();
 
         if (includeHidden)

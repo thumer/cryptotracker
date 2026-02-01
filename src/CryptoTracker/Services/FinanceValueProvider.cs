@@ -20,6 +20,9 @@ public class FinanceValueProvider : IFinanceValueProvider
 
     public async Task<decimal> GetCurrentEuroValueAsync(string symbol)
     {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return 0;
+
         if (_cache.TryGetValue(symbol, out decimal cached))
         {
             return cached;
@@ -31,11 +34,25 @@ public class FinanceValueProvider : IFinanceValueProvider
             var response = _client.GetCurrencyBySymbol(symbol, "EUR");
             price = response.Price;
         }
+        catch (JsonSerializationException ex)
+        {
+            // Known issue with NoobsMuc.Coinmarketcap.Client: nullable int fields 
+            // (like num_market_pairs) cause deserialization errors
+            _logger.LogDebug(ex, "JSON deserialization error for {Symbol} - API response contains null values for non-nullable fields", symbol);
+        }
+        catch (InvalidCastException ex)
+        {
+            // Related to the JSON issue - null cannot be converted to value type
+            _logger.LogDebug(ex, "Type conversion error for {Symbol}", symbol);
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not retrieve value for {Symbol}", symbol);
         }
-        _cache.Set(symbol, price, TimeSpan.FromMinutes(15));
+
+        // Cache even failed lookups to prevent repeated API calls for problematic symbols
+        _cache.Set(symbol, price, TimeSpan.FromMinutes(price > 0 ? 15 : 5));
+        await Task.CompletedTask;
         return price;
     }
 }

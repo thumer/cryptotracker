@@ -22,6 +22,122 @@ namespace CryptoTracker.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CryptoTracker.Entities.AgentMemory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AgentKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("MemoryType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentKey");
+
+                    b.HasIndex("AgentKey", "MemoryType", "Key")
+                        .IsUnique();
+
+                    b.ToTable("AgentMemories");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.AssetLot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("AcquisitionDate")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("AcquisitionPriceEur")
+                        .HasColumnType("decimal(27, 12)");
+
+                    b.Property<int>("AcquisitionType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("CurrentWalletId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FlowIncompleteReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsFlowComplete")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("OriginalQuantity")
+                        .HasColumnType("decimal(27, 12)");
+
+                    b.Property<int?>("ParentLotId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RemainingQuantity")
+                        .HasColumnType("decimal(27, 12)");
+
+                    b.Property<int?>("SourceTradeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SourceTransactionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("TotalAcquisitionCostEur")
+                        .HasColumnType("decimal(27, 12)");
+
+                    b.Property<int?>("TransformedToLotId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcquisitionDate");
+
+                    b.HasIndex("ParentLotId");
+
+                    b.HasIndex("SourceTradeId");
+
+                    b.HasIndex("SourceTransactionId");
+
+                    b.HasIndex("TransformedToLotId");
+
+                    b.HasIndex("CurrentWalletId", "Symbol");
+
+                    b.ToTable("AssetLots");
+                });
+
             modelBuilder.Entity("CryptoTracker.Entities.CryptoTrade", b =>
                 {
                     b.Property<int>("Id")
@@ -49,6 +165,9 @@ namespace CryptoTracker.Migrations
                     b.Property<bool>("IsHidden")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("LotAssignmentConfirmed")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OppositeSymbol")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -65,6 +184,12 @@ namespace CryptoTracker.Migrations
                     b.Property<string>("Referenz")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ResultingLotId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SourceLotId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Symbol")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -80,6 +205,10 @@ namespace CryptoTracker.Migrations
                     b.HasIndex("OppositeTradeId")
                         .IsUnique()
                         .HasFilter("[OppositeTradeId] IS NOT NULL");
+
+                    b.HasIndex("ResultingLotId");
+
+                    b.HasIndex("SourceLotId");
 
                     b.HasIndex("WalletId");
 
@@ -109,6 +238,12 @@ namespace CryptoTracker.Migrations
                     b.Property<bool>("IsHidden")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsIntentionallyUnlinked")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("LotAssignmentConfirmed")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Network")
                         .HasColumnType("nvarchar(max)");
 
@@ -120,6 +255,9 @@ namespace CryptoTracker.Migrations
 
                     b.Property<decimal>("Quantity")
                         .HasColumnType("decimal(27, 12)");
+
+                    b.Property<int?>("ResultingLotId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Symbol")
                         .IsRequired()
@@ -141,6 +279,8 @@ namespace CryptoTracker.Migrations
                         .HasFilter("[OppositeTransactionId] IS NOT NULL");
 
                     b.HasIndex("OppositeWalletId");
+
+                    b.HasIndex("ResultingLotId");
 
                     b.HasIndex("WalletId");
 
@@ -667,6 +807,68 @@ namespace CryptoTracker.Migrations
                     b.ToTable("OkxTrades");
                 });
 
+            modelBuilder.Entity("CryptoTracker.Entities.LotMovement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("DateTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsTaxFree")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LotId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MovementType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(27, 12)");
+
+                    b.Property<decimal?>("RealizedGainEur")
+                        .HasColumnType("decimal(27, 12)");
+
+                    b.Property<int?>("ResultingLotId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("SalePriceEur")
+                        .HasColumnType("decimal(27, 12)");
+
+                    b.Property<int?>("TaxFreeReason")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TradeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TransactionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DateTime");
+
+                    b.HasIndex("LotId");
+
+                    b.HasIndex("ResultingLotId");
+
+                    b.HasIndex("TradeId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.ToTable("LotMovements");
+                });
+
             modelBuilder.Entity("CryptoTracker.Entities.ManualCoinPrice", b =>
                 {
                     b.Property<int>("Id")
@@ -696,6 +898,47 @@ namespace CryptoTracker.Migrations
                     b.ToTable("ManualCoinPrices");
                 });
 
+            modelBuilder.Entity("CryptoTracker.Entities.TransactionLinkMetadata", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Confidence")
+                        .HasColumnType("decimal(5, 4)");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LinkType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("LinkedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TransactionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsConfirmed");
+
+                    b.HasIndex("LinkType");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique();
+
+                    b.ToTable("TransactionLinkMetadata");
+                });
+
             modelBuilder.Entity("CryptoTracker.Entities.Wallet", b =>
                 {
                     b.Property<int>("Id")
@@ -703,6 +946,9 @@ namespace CryptoTracker.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsVirtual")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -716,11 +962,60 @@ namespace CryptoTracker.Migrations
                     b.ToTable("Wallets");
                 });
 
+            modelBuilder.Entity("CryptoTracker.Entities.AssetLot", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.Wallet", "CurrentWallet")
+                        .WithMany()
+                        .HasForeignKey("CurrentWalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CryptoTracker.Entities.AssetLot", "ParentLot")
+                        .WithMany("ChildLots")
+                        .HasForeignKey("ParentLotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.CryptoTrade", "SourceTrade")
+                        .WithMany()
+                        .HasForeignKey("SourceTradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.CryptoTransaction", "SourceTransaction")
+                        .WithMany()
+                        .HasForeignKey("SourceTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.AssetLot", "TransformedToLot")
+                        .WithMany("TransformedFromLots")
+                        .HasForeignKey("TransformedToLotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CurrentWallet");
+
+                    b.Navigation("ParentLot");
+
+                    b.Navigation("SourceTrade");
+
+                    b.Navigation("SourceTransaction");
+
+                    b.Navigation("TransformedToLot");
+                });
+
             modelBuilder.Entity("CryptoTracker.Entities.CryptoTrade", b =>
                 {
                     b.HasOne("CryptoTracker.Entities.CryptoTrade", "OppositeTrade")
                         .WithOne()
                         .HasForeignKey("CryptoTracker.Entities.CryptoTrade", "OppositeTradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.AssetLot", "ResultingLot")
+                        .WithMany()
+                        .HasForeignKey("ResultingLotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.AssetLot", "SourceLot")
+                        .WithMany()
+                        .HasForeignKey("SourceLotId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
@@ -730,6 +1025,10 @@ namespace CryptoTracker.Migrations
                         .IsRequired();
 
                     b.Navigation("OppositeTrade");
+
+                    b.Navigation("ResultingLot");
+
+                    b.Navigation("SourceLot");
 
                     b.Navigation("Wallet");
                 });
@@ -746,6 +1045,11 @@ namespace CryptoTracker.Migrations
                         .HasForeignKey("OppositeWalletId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("CryptoTracker.Entities.AssetLot", "ResultingLot")
+                        .WithMany()
+                        .HasForeignKey("ResultingLotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CryptoTracker.Entities.Wallet", "Wallet")
                         .WithMany()
                         .HasForeignKey("WalletId")
@@ -755,6 +1059,8 @@ namespace CryptoTracker.Migrations
                     b.Navigation("OppositeTransaction");
 
                     b.Navigation("OppositeWallet");
+
+                    b.Navigation("ResultingLot");
 
                     b.Navigation("Wallet");
                 });
@@ -867,6 +1173,70 @@ namespace CryptoTracker.Migrations
                         .IsRequired();
 
                     b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.LotMovement", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.AssetLot", "Lot")
+                        .WithMany("Movements")
+                        .HasForeignKey("LotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CryptoTracker.Entities.AssetLot", "ResultingLot")
+                        .WithMany()
+                        .HasForeignKey("ResultingLotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.CryptoTrade", "Trade")
+                        .WithMany("LotMovements")
+                        .HasForeignKey("TradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CryptoTracker.Entities.CryptoTransaction", "Transaction")
+                        .WithMany("LotMovements")
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Lot");
+
+                    b.Navigation("ResultingLot");
+
+                    b.Navigation("Trade");
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.TransactionLinkMetadata", b =>
+                {
+                    b.HasOne("CryptoTracker.Entities.CryptoTransaction", "Transaction")
+                        .WithOne("LinkMetadata")
+                        .HasForeignKey("CryptoTracker.Entities.TransactionLinkMetadata", "TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.AssetLot", b =>
+                {
+                    b.Navigation("ChildLots");
+
+                    b.Navigation("Movements");
+
+                    b.Navigation("TransformedFromLots");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.CryptoTrade", b =>
+                {
+                    b.Navigation("LotMovements");
+                });
+
+            modelBuilder.Entity("CryptoTracker.Entities.CryptoTransaction", b =>
+                {
+                    b.Navigation("LinkMetadata");
+
+                    b.Navigation("LotMovements");
                 });
 #pragma warning restore 612, 618
         }

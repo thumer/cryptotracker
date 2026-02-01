@@ -26,6 +26,25 @@ param identityProviderClientId string
 @description('Name of the Azure AD application used for authentication')
 param identityProviderName string
 
+// OpenAI Configuration
+@description('Azure OpenAI Endpoint URL')
+param openAiEndpoint string = ''
+
+@description('Main deployment name for complex agent conversations')
+param openAiDeploymentName string = ''
+
+@description('Fast deployment name for batch classification')
+param openAiFastDeploymentName string = ''
+
+@description('Embedding deployment name for similarity search')
+param openAiEmbeddingDeploymentName string = ''
+
+@description('Embedding vector dimensions')
+param openAiEmbeddingVectorDimensions int = 1536
+
+@description('Key Vault reference to the OpenAI API key')
+param openAiKeyKVUri string = ''
+
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: applicationInsightsName
   scope: resourceGroup()
@@ -54,6 +73,31 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
           {
             name: 'COINMARKETCAP_API_KEY'
             value: '@Microsoft.KeyVault(SecretUri=${coinmarketcapApiKeyKVUri})'
+          }
+          // OpenAI Configuration
+          {
+            name: 'OpenAiEndpoint'
+            value: openAiEndpoint
+          }
+          {
+            name: 'OpenAiDeploymentName'
+            value: openAiDeploymentName
+          }
+          {
+            name: 'OpenAiFastDeploymentName'
+            value: openAiFastDeploymentName
+          }
+          {
+            name: 'OpenAiEmbeddingDeploymentName'
+            value: openAiEmbeddingDeploymentName
+          }
+          {
+            name: 'OpenAiEmbeddingVectorDimensions'
+            value: string(openAiEmbeddingVectorDimensions)
+          }
+          {
+            name: 'OpenAiKey'
+            value: openAiKeyKVUri != '' ? '@Microsoft.KeyVault(SecretUri=${openAiKeyKVUri})' : ''
           }
         ]
         connectionStrings: [

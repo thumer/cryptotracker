@@ -35,6 +35,12 @@ public class WalletService
     public async Task<IList<Wallet>> GetWallets()
         => await _dbContext.Wallets.OrderBy(w => w.Name).ToListAsync();
 
+    public async Task<IList<Wallet>> GetVirtualWallets()
+        => await _dbContext.Wallets
+            .Where(w => w.IsVirtual)
+            .OrderBy(w => w.Name)
+            .ToListAsync();
+
     public async Task<Wallet> SaveWallet(Wallet wallet)
     {
         if (wallet.Id == 0)

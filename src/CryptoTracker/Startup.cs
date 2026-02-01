@@ -7,6 +7,14 @@ using NoobsMuc.Coinmarketcap.Client;
 using CryptoTracker.Shared;
 using CryptoTracker.Controllers;
 using Radzen;
+using CryptoTracker.Agent.Common;
+using CryptoTracker.Agent.Definitions;
+using CryptoTracker.Agent.Services;
+using CryptoTracker.Agent.Tools;
+using CryptoTracker.Hubs;
+using Azure.AI.OpenAI;
+using Azure;
+using Azure.Identity;
 
 namespace CryptoTracker
 {
@@ -66,16 +74,101 @@ namespace CryptoTracker
             services.AddScoped<BalanceService>();
             services.AddScoped<OverviewService>();
             services.AddScoped<TransactionService>();
+            services.AddScoped<LotService>();
+            services.AddScoped<LotFlowValidator>();
+
+            // === AI Linking Agent Services ===
+            // OpenAI settings werden direkt aus Environment-Variablen / secrets.json gebunden
+            services.Configure<OpenAISettings>(options =>
+            {
+                options.OpenAiEndpoint = Configuration["OpenAiEndpoint"] ?? "";
+                options.OpenAiDeploymentName = Configuration["OpenAiDeploymentName"] ?? "gpt-5.2";
+                options.OpenAiFastDeploymentName = Configuration["OpenAiFastDeploymentName"] ?? "gpt-5-nano";
+                options.OpenAiEmbeddingDeploymentName = Configuration["OpenAiEmbeddingDeploymentName"] ?? "text-embedding-3-large";
+                if (int.TryParse(Configuration["OpenAiEmbeddingVectorDimensions"], out var dims))
+                    options.OpenAiEmbeddingVectorDimensions = dims;
+                options.OpenAiKey = Configuration["OpenAiKey"];
+            });
+
+            // Azure OpenAI Client (mit API Key oder DefaultAzureCredential)
+            services.AddSingleton<AzureOpenAIClient>(sp =>
+            {
+                var endpoint = Configuration["OpenAiEndpoint"];
+                var apiKey = Configuration["OpenAiKey"];
+
+                if (string.IsNullOrEmpty(endpoint))
+                {
+                    // Dummy-Client wenn nicht konfiguriert
+                    return new AzureOpenAIClient(
+                        new Uri("https://placeholder.openai.azure.com/"),
+                        new AzureKeyCredential("placeholder"));
+                }
+
+                if (!string.IsNullOrEmpty(apiKey))
+                {
+                    return new AzureOpenAIClient(
+                        new Uri(endpoint),
+                        new AzureKeyCredential(apiKey));
+                }
+                return new AzureOpenAIClient(
+                    new Uri(endpoint),
+                    new DefaultAzureCredential());
+            });
+
+            // Agent Builder
+            services.AddScoped<AILinkingAgentBuilder>();
+            services.AddSingleton<ILinkingAgentContextAccessor, LinkingAgentContextAccessor>();
+            services.AddSingleton<ILotLinkingAgentContextAccessor, LotLinkingAgentContextAccessor>();
+
+            // Agent Tools
+            services.AddScoped<GetUnlinkedTransactionsTool>();
+            services.AddScoped<GetTransactionDetailsTool>();
+            services.AddScoped<FindMatchingTransactionsTool>();
+            services.AddScoped<LinkTransactionsTool>();
+            services.AddScoped<LinkVirtualWalletTool>();
+            services.AddScoped<MarkAsIntentionallyUnlinkedTool>();
+            services.AddScoped<AskLinkingQuestionTool>();
+            services.AddScoped<SkipTransactionTool>();
+            services.AddScoped<LogLinkingEventTool>();
+            services.AddScoped<SaveAgentMemoryTool>();
+            services.AddScoped<GetAgentMemoryTool>();
+
+            services.AddScoped<GetPendingLotAssignmentsTool>();
+            services.AddScoped<GetLotOptionsTool>();
+            services.AddScoped<GetTradeDetailsTool>();
+            services.AddScoped<TransferLotsTool>();
+            services.AddScoped<SellLotsTool>();
+            services.AddScoped<TransformSwapLotsTool>();
+            services.AddScoped<CreateRootLotTool>();
+            services.AddScoped<AskLotLinkingQuestionTool>();
+            services.AddScoped<LogLotLinkingEventTool>();
+            services.AddScoped<SkipLotAssignmentTool>();
+            services.AddScoped<SaveLotMemoryTool>();
+            services.AddScoped<GetLotMemoryTool>();
+
+            // Agent Definitions
+            services.AddScoped<IAgentDefinition, TransactionLinkingAgentDefinition>();
+            services.AddScoped<IAgentDefinition, LotLinkingAgentDefinition>();
+
+            // Agent Services
+            services.AddScoped<TransactionLinkingService>();
+            services.AddSingleton<InteractiveLinkingService>();
+            services.AddSingleton<InteractiveLotLinkingService>();
+
+            // SignalR
+            services.AddSignalR();
 
             services.AddScoped<IWalletApi, WalletController>();
             services.AddScoped<IFlowApi, FlowController>();
             services.AddScoped<IBalanceApi, BalanceController>();
             services.AddScoped<IOverviewApi, OverviewController>();
             services.AddScoped<ITransactionsApi, TransactionsController>();
+            services.AddScoped<ITransactionLinkingApi, TransactionLinkingController>();
             services.AddScoped<ICoinRatesApi, CoinRatesController>();
             services.AddScoped<IDataImportApi, DataImportController>();
             services.AddScoped<IImportEntriesApi, ImportEntriesController>();
             services.AddScoped<IImportOverviewApi, ImportOverviewController>();
+            services.AddScoped<ILotsApi, LotsController>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -109,6 +202,7 @@ namespace CryptoTracker
                     //.AddInteractiveWebAssemblyRenderMode()
                     .AddAdditionalAssemblies(typeof(Overview).Assembly);
                 endpoints.MapControllers();
+                endpoints.MapHub<LinkingHub>("/hubs/linking");
                 endpoints.MapDefaultControllerRoute();
                 endpoints.MapFallbackToFile("index.html");
             });
